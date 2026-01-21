@@ -38,7 +38,7 @@ const Footer = () => {
           </div>
         </div>
         <div className='text-center py-6 border-t border-neutral-800'>
-          &copy; Smartables {new Date().getFullYear()} - P.IVA 02863390411
+          &copy; Smartables di Tobia Bartolomei {new Date().getFullYear()} - P.IVA 02863390411
         </div>
       </div>
     </footer>
