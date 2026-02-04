@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (!phoneNumber || !locationId) {
       return NextResponse.json(
         { error: "Missing phoneNumber or locationId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -26,14 +26,48 @@ export async function POST(request: Request) {
     if (locationError || !location) {
       return NextResponse.json(
         { error: "Location not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     // 2. Buy from Telnyx
-    // Note: You might want to pass a connectionId here if you have a specific Call Control App
-    // For now we leave it undefined or you can add it to environment variables
-    const purchaseResult = await purchasePhoneNumber(phoneNumber);
+    // Fetch regulatory requirement for this location/area code if needed
+    // Assuming location has an associated regulatory requirement or we fail
+    const { data: regulatory } = await supabase
+      .from("locations")
+      .select(
+        `
+        regulatory_requirement_id,
+        regulatory_requirements:telnyx_regulatory_requirements (
+          telnyx_requirement_group_id,
+          status
+        )
+      `,
+      )
+      .eq("id", locationId)
+      .single();
+
+    // Supabase join might return an array or object depending on relationship definition
+    // Safely cast or access
+    const regulatoryData = regulatory?.regulatory_requirements as any;
+    const requirementGroupId = Array.isArray(regulatoryData)
+      ? regulatoryData[0]?.telnyx_requirement_group_id
+      : regulatoryData?.telnyx_requirement_group_id;
+
+    if (!requirementGroupId) {
+      return NextResponse.json(
+        {
+          error:
+            "Compliance: No approved Regulatory Requirement found for this location.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const purchaseResult = await purchasePhoneNumber(
+      phoneNumber,
+      requirementGroupId,
+    );
 
     // 3. Update database
     const { error: updateError } = await supabase
@@ -50,7 +84,7 @@ export async function POST(request: Request) {
       console.error("Error updating location with new number:", updateError);
       return NextResponse.json(
         { error: "Number purchased but failed to update database" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -59,7 +93,7 @@ export async function POST(request: Request) {
     console.error("Error purchasing Telnyx number:", error);
     return NextResponse.json(
       { error: "Failed to purchase number" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -9,10 +9,10 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }>) {
   const supabase = await createClient()
-  
+
   const { data: { session } } = await supabase.auth.getSession()
 
-  if (session) {
+  if (session && session.user.id !== '0a82970f-1fc5-4a52-97a1-a8613de0e3f7') {
     return redirect('/dashboard')
   }
 

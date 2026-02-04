@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { it } from "date-fns/locale"
 import {
   Popover,
   PopoverContent,
@@ -60,7 +61,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
               id="date-picker"
               className="w-full flex-1 justify-between font-normal"
             >
-              {value ? value.toLocaleDateString() : "Select date"}
+              {value ? value.toLocaleDateString() : "Seleziona data"}
               <ChevronDownIcon />
             </Button>
           </PopoverTrigger>
@@ -70,6 +71,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
               selected={value}
               captionLayout="dropdown"
               onSelect={handleDateSelect}
+              locale={it}
             />
           </PopoverContent>
         </Popover>

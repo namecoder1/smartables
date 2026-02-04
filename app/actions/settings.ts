@@ -16,14 +16,15 @@ export async function updateLocation(
     seats?: number;
     opening_hours?: any;
     slug?: string;
-  }
+  },
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { error, data: result } = await supabase
     .from("locations")
     .update(data)
-    .eq("id", locationId);
+    .eq("id", locationId)
+    .select();
 
   if (error) {
     console.error("Error updating location:", error);
@@ -34,8 +35,6 @@ export async function updateLocation(
   return { success: true };
 }
 
-// --- Menus ---
-
 export async function createMenu(
   organizationId: string,
   data: {
@@ -44,7 +43,7 @@ export async function createMenu(
     pdf_url?: string;
     location_ids?: string[];
     is_active?: boolean;
-  }
+  },
 ) {
   const supabase = await createClient();
 
@@ -100,7 +99,7 @@ export async function updateMenu(
     description?: string;
     is_active?: boolean;
     pdf_url?: string | null;
-  }
+  },
 ) {
   const supabase = await createClient();
 
@@ -183,7 +182,7 @@ export async function deleteMenu(menuId: string) {
 
 export async function assignMenuToLocations(
   menuId: string,
-  locationIds: string[]
+  locationIds: string[],
 ) {
   const supabase = await createClient();
 
@@ -205,7 +204,7 @@ export async function assignMenuToLocations(
         menu_id: menuId,
         location_id: id,
         is_active: true,
-      }))
+      })),
     );
 
     if (insertError) {
@@ -263,7 +262,7 @@ async function saveMenuContent(menuId: string, content: any[]) {
 export async function createCategory(
   menuId: string,
   organizationId: string,
-  data: { name: string; description?: string; is_visible?: boolean }
+  data: { name: string; description?: string; is_visible?: boolean },
 ) {
   try {
     const content = await getMenuContent(menuId);
@@ -296,7 +295,7 @@ export async function updateCategory(
     description?: string;
     sort_order?: number;
     is_visible?: boolean;
-  }
+  },
 ) {
   try {
     const content = await getMenuContent(menuId);
@@ -355,7 +354,7 @@ export async function createMenuItem(
     price: number;
     description?: string;
     image_url?: string;
-  }
+  },
 ) {
   try {
     const content = await getMenuContent(menuId);
@@ -395,7 +394,7 @@ export async function updateMenuItem(
     image_url?: string;
     is_available?: boolean;
     sort_order?: number;
-  }
+  },
 ) {
   try {
     const content = await getMenuContent(menuId);

@@ -37,12 +37,24 @@ export async function signup(formData: FormData) {
 
   const { error } = await supabase.auth.signUp(data);
 
+  const plan = formData.get("plan") as string;
+  const interval = formData.get("interval") as string;
+
   if (error) {
-    redirect("/register?error=Could not create user");
+    let errorUrl = "/register?error=Could not create user";
+    if (plan) errorUrl += `&plan=${plan}`;
+    if (interval) errorUrl += `&interval=${interval}`;
+    redirect(errorUrl);
   }
 
   revalidatePath("/", "layout");
-  redirect("/onboarding");
+
+  let redirectUrl = "/onboarding";
+  if (plan && interval) {
+    redirectUrl += `?plan=${plan}&interval=${interval}`;
+  }
+
+  redirect(redirectUrl);
 }
 
 export async function logout() {

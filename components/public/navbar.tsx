@@ -41,21 +41,29 @@ const Navbar = () => {
                 <p className='cursor-pointer'>Soluzioni</p>
               </DropdownMenuTrigger>
               <DropdownMenuContent align='end' className='w-140 mt-2 p-2 bg-neutral-950 border border-neutral-800 rounded-md shadow-lg grid grid-cols-2'>
-                <DropdownMenuItem className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/gestione-sala" className='font-bold text-lg'>Gestione Sala</Link>
-                  <p className='text-sm'>Gestisci i tavoli con Smartables</p>
+                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
+                  <Link href="/solutions/gestione-sala">
+                    <p className='font-bold text-lg'>Gestione Sala</p>
+                    <p className='text-sm'>Gestisci i tavoli con Smartables</p>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/crm" className='font-bold text-lg'>CRM</Link>
-                  <p className='text-sm'>Gestisci più sedi con Smartables</p>
+                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
+                  <Link href="/solutions/crm">
+                    <p className='font-bold text-lg'>CRM</p>
+                    <p className='text-sm'>Gestisci più sedi con Smartables</p>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/gestione-prenotazioni" className='font-bold text-lg'>Gestione prenotazioni</Link>
-                  <p className='text-sm'>Gestisci prenotazioni mancate con Smartables</p>
+                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
+                  <Link href="/solutions/gestione-prenotazioni">
+                    <p className='font-bold text-lg'>Gestione prenotazioni</p>
+                    <p className='text-sm'>Gestisci prenotazioni mancate con Smartables</p>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/integrazione-ai" className='font-bold text-lg'>Integrazione AI</Link>
-                  <p className='text-sm'>Il tuo assistente AI fornito da Smartables</p>
+                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
+                  <Link href="/solutions/integrazione-ai">
+                    <p className='font-bold text-lg'>Integrazione AI</p>
+                    <p className='text-sm'>Il tuo assistente AI fornito da Smartables</p>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -76,11 +84,11 @@ const Navbar = () => {
               <Globe className="mr-2 h-4 w-4" />
               <span className="text-sm font-medium">IT</span>
             </div>
-            {/* <Button className="rounded-2xl bg-[#FF9710] font-semibold border-[#FF9710] text-white hover:bg-[#FF971080] hover:text-white" asChild>
+            <Button className="rounded-2xl bg-[#FF9710] font-semibold border-[#FF9710] text-white hover:bg-[#FF971080] hover:text-white" asChild>
               <Link href="/login">
                 Accedi
               </Link>
-            </Button> */}
+            </Button>
           </div>
         </div>
 

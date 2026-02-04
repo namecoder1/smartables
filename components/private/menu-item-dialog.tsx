@@ -134,11 +134,12 @@ export function MenuItemDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-4">
-          <div className="grid gap-6">
+          <div className="grid gap-6 pb-1">
             {/* ... Fields ... */}
             <div className="flex flex-col gap-6">
               <div>
                 <ImageUpload
+                  title='Immagine Piatto'
                   value={existingImageUrl}
                   onChange={(url, file) => {
                     setImageFile(file || null)
@@ -164,7 +165,6 @@ export function MenuItemDialog({
                         id="price"
                         type="number"
                         step="0.01"
-                        className="pl-7"
                         value={price}
                         onChange={e => setPrice(e.target.value)}
                         placeholder="0.00"

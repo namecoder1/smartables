@@ -5,6 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function isDev() {
+  return process.env.NODE_ENV === 'development'
+}
+
 export function getStatusBadgeVariant(status: string) {
   switch (status) {
     case 'confirmed': return 'default' // or specific green variant if available
@@ -25,3 +29,4 @@ export function mapStatusLabel(status: string) {
     default: return status
   }
 }
+

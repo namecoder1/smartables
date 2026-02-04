@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 interface ConfirmDialogProps {
-  trigger: React.ReactNode
+  trigger?: React.ReactNode // Made optional
   title: string
   description: string
   confirmLabel?: string
@@ -23,6 +23,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void
   disabled?: boolean
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const ConfirmDialog = ({
@@ -33,13 +35,17 @@ const ConfirmDialog = ({
   cancelLabel = "Cancel",
   onConfirm,
   disabled = false,
-  variant = "default", // Default styling, though usually this prop controls the button style
+  variant = "default",
+  open,
+  onOpenChange
 }: ConfirmDialogProps) => {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        {trigger}
-      </AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {trigger && (
+        <AlertDialogTrigger asChild>
+          {trigger}
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -49,7 +55,7 @@ const ConfirmDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={disabled}>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction 
+          <AlertDialogAction
             onClick={(e) => {
               e.preventDefault(); // Prevent auto-close if needed, but usually we want it to close. 
               // However, typically AlertDialogAction closes automatically. 

@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
         hostname: 'sonizywznazqmnbxwubw.supabase.co'
       }
     ]
-  }
+  },
+  
 };
 
 export default nextConfig;

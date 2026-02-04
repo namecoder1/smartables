@@ -1,22 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { TimePicker } from "@/components/ui/time-picker"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Label } from "@/components/ui/label"
 import { Plus, Trash2 } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
-
-export type TimeSlot = {
-  id: string
-  open: string
-  close: string
-}
-
-export type WeeklyHours = {
-  [key: string]: TimeSlot[]
-}
+import { WeeklyHours } from "@/types/general"
 
 const DAYS = [
   "lunedì",
@@ -40,11 +30,15 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
     initialData || DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {})
   )
 
+  // Use ref to capture latest onChange without causing re-renders
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
   useEffect(() => {
-    if (onChange) {
-        onChange(schedule)
+    if (onChangeRef.current) {
+      onChangeRef.current(schedule)
     }
-  }, [schedule, onChange])
+  }, [schedule])
 
 
   const addSlot = (day: string) => {
@@ -162,25 +156,24 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 border-neutral-200 border bg-[#f4f4f480]">
       <input type="hidden" name="openingHours" value={JSON.stringify(schedule)} />
 
       <ScrollArea className="h-[400px] rounded-md border p-4">
         {DAYS.map((day) => (
           <div
             key={day}
-            className="mb-4 flex flex-col gap-2 border-b pb-4 last:mb-0 last:border-0 last:pb-0"
+            className="mb-4 flex flex-col gap-2 border-b pb-4 last:mb-0 last:border-0 last:pb-0 p-1"
           >
             <div className="flex items-center justify-between">
-              <span className="w-24 font-medium capitalize">{day}</span>
+              <span className="w-24 font-medium capitalize text-black">{day}</span>
               <div className="flex items-center gap-2">
                 {schedule[day]?.length > 0 && (
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
                     onClick={() => setSchedule((prev) => ({ ...prev, [day]: [] }))}
-                    className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                    className="h-7 text-xs bg-destructive hover:bg-destructive/90"
                   >
                     Segna Chiuso
                   </Button>
@@ -190,9 +183,9 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
                   variant="outline"
                   size="sm"
                   onClick={() => addSlot(day)}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs border border-neutral-200! text-black hover:text-black"
                 >
-                  <Plus className="mr-1 h-3 w-3" /> Aggiungi Orari
+                  <Plus className="h-3 w-3" /> Aggiungi Orari
                 </Button>
               </div>
             </div>
@@ -216,23 +209,24 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
                       value={slot.open}
                       onChange={(val) => updateSlot(day, index, "open", val)}
                       label="Apertura"
+                      context="onboarding"
                       className="flex-1"
                     />
                     <TimePicker
                       value={slot.close}
                       onChange={(val) => updateSlot(day, index, "close", val)}
                       label="Chiusura"
+                      context="onboarding"
                       className="flex-1"
                     />
                   </div>
                   <Button
                     type="button"
-                    variant="ghost"
                     size="icon"
-                    className="mb-1.5 text-destructive hover:text-destructive/90"
+                    className="mb-1 bg-destructive hover:bg-destructive/90"
                     onClick={() => removeSlot(day, slot.id)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" color="white" />
                   </Button>
                 </motion.div>
               ))}

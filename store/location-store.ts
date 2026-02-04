@@ -1,12 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-
-interface Location {
-  id: string;
-  organization_id: string;
-  name: string;
-  [key: string]: any;
-}
+import { Location } from "@/types/general";
 
 interface LocationState {
   locations: Location[];

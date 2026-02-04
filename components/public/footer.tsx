@@ -31,14 +31,17 @@ const Footer = () => {
             </div>
             <div className='flex flex-col gap-2'>
               <h4 className='font-bold text-lg mb-1'>Legale</h4>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Politica sulla privacy</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Termini e Condizioni</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Contattaci</Link>
+              <Link href='/privacy-policy' className='hover:text-[#FF9710] transition-colors text-sm'>Politica sulla privacy</Link>
+              <Link href='/terms-&-conditions' className='hover:text-[#FF9710] transition-colors text-sm'>Termini e Condizioni</Link>
+              <Link href='mailto:info@smartables.it' className='hover:text-[#FF9710] transition-colors text-sm'>Contattaci</Link>
             </div>
           </div>
         </div>
         <div className='text-center py-6 border-t border-neutral-800'>
-          &copy; Smartables di Tobia Bartolomei {new Date().getFullYear()} - P.IVA 02863390411
+          <p>
+            &copy; Smartables di Tobia Bartolomei {new Date().getFullYear()} - P.IVA 02863390411
+          </p>
+          <p className='text-xs mt-1'>Piazzale Giuseppe Garibaldi 4, 61121 Pesaro | info@smartables.it</p>
         </div>
       </div>
     </footer>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Phone, Check, Loader2, Info } from 'lucide-react'
-import { Location } from '@/types/components'
+import { Location } from '@/types/general'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import PhoneSettings from './phone-settings'
 

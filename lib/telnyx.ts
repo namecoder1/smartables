@@ -15,7 +15,7 @@ export type TelnyxNumber = {
 export async function searchAvailableNumbers(
   countryCode: string = "IT",
   region?: string,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<TelnyxNumber[]> {
   if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
 
@@ -42,7 +42,7 @@ export async function searchAvailableNumbers(
           Authorization: `Bearer ${TELNYX_API_KEY}`,
           Accept: "application/json",
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -67,11 +67,21 @@ export async function searchAvailableNumbers(
 
 export async function purchasePhoneNumber(
   phoneNumber: string,
-  connectionId?: string
+  requirementGroupId?: string,
+  connectionId?: string,
 ) {
   if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
 
   try {
+    const payload: any = {
+      phone_numbers: [{ phone_number: phoneNumber }],
+      connection_id: connectionId,
+    };
+
+    if (requirementGroupId) {
+      payload.requirements_id = requirementGroupId;
+    }
+
     const response = await fetch(`${TELNYX_API_URL}/number_orders`, {
       method: "POST",
       headers: {
@@ -79,10 +89,7 @@ export async function purchasePhoneNumber(
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({
-        phone_numbers: [{ phone_number: phoneNumber }],
-        connection_id: connectionId, // Optional: Link to specific Call Control App
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -115,7 +122,7 @@ export async function rejectCall(callControlId: string) {
         body: JSON.stringify({
           cause: "USER_BUSY",
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -181,6 +188,147 @@ export async function updatePhoneNumber(id: string, connectionId: string) {
     return await response.json();
   } catch (error) {
     console.error("Error updating Telnyx number:", error);
+    throw error;
+  }
+}
+
+export async function uploadDocument(fileBlob: Blob, filename: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  const formData = new FormData();
+  formData.append("file", fileBlob, filename);
+
+  try {
+    const response = await fetch(`${TELNYX_API_URL}/documents`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Telnyx upload error:", errorText);
+      throw new Error(`Telnyx upload failed: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data; // Returns { id: string, size: number, content_type: string, ... }
+  } catch (error) {
+    console.error("Error uploading document to Telnyx:", error);
+    throw error;
+  }
+}
+
+export async function createAddress(addressData: {
+  customer_reference?: string;
+  street_address: string;
+  extended_address?: string;
+  locality: string; // City
+  administrative_area?: string; // State/Province
+  postal_code: string;
+  country_code: string;
+  business_name?: string;
+  first_name?: string;
+  last_name?: string;
+}) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  try {
+    const response = await fetch(`${TELNYX_API_URL}/addresses`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(addressData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Telnyx create address error:", errorText);
+      throw new Error(`Telnyx address creation failed: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error creating address:", error);
+    throw error;
+  }
+}
+
+export async function createRequirementGroup(
+  countryCode: string = "IT",
+  phoneNumberType: string = "local",
+  action: "ordering" | "porting" = "ordering",
+  customerReference: string,
+  requirements: { requirement_id: string; field_value: string }[],
+) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  // TODO: Retrieve actual requirement IDs for Italy/Local dynamically or via config.
+  // For now, we assume the caller passes the correct requirement structure or we hardcode common ones for IT/Local if known.
+  // But usually, you query distinct requirements first. For this MVP, we might need to know them.
+  // "regulatory_requirements" usually need a specific ID.
+  //
+  // However, `requirements` argument here allows flexibility.
+
+  try {
+    const payload = {
+      country_code: countryCode,
+      phone_number_type: phoneNumberType,
+      action: action,
+      customer_reference: customerReference,
+      regulatory_requirements: requirements, // Note: API expects 'regulatory_requirements' array of objects
+    };
+
+    const response = await fetch(`${TELNYX_API_URL}/requirement_groups`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Telnyx create requirement group error:", errorText);
+      throw new Error(`Telnyx requirement group creation failed: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data; // Returns { id: string, status: string, ... }
+  } catch (error) {
+    console.error("Error creating requirement group:", error);
+    throw error;
+  }
+}
+
+export async function getRequirementGroup(id: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  try {
+    const response = await fetch(`${TELNYX_API_URL}/requirement_groups/${id}`, {
+      headers: {
+        Authorization: `Bearer ${TELNYX_API_KEY}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get requirement group: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error getting requirement group:", error);
     throw error;
   }
 }

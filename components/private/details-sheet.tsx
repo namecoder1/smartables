@@ -1,6 +1,3 @@
-import { Booking } from '@/types/general'
-import React from 'react'
-
 import {
   Sheet,
   SheetContent,
@@ -9,19 +6,20 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { BookingWithCustomer } from '@/types/components'
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Info, Notebook, Phone, User, Users } from "lucide-react"
 import { getStatusBadgeVariant, mapStatusLabel } from '@/lib/utils'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { Button } from '../ui/button'
+import { Button } from '@/components/ui/button'
 import { deleteBooking } from '@/supabase/actions'
 
 interface DetailsSheetProps {
   isSheetOpen: boolean
   setIsSheetOpen: (open: boolean) => void
-  selectedBooking: Booking | null
+  selectedBooking: BookingWithCustomer | null
 }
 
 const DetailsSheet = ({
@@ -46,7 +44,7 @@ const DetailsSheet = ({
                   <User className="h-5 w-5 text-muted-foreground" />
                   {selectedBooking.guest_name}
                 </h3>
-                <Badge variant={getStatusBadgeVariant(selectedBooking.status) as any}>
+                <Badge variant={getStatusBadgeVariant(selectedBooking.status)}>
                   <div className="flex items-center gap-2">
                     {mapStatusLabel(selectedBooking.status)}
                   </div>
@@ -84,7 +82,7 @@ const DetailsSheet = ({
                 <User className="h-4 w-4" /> Dettagli Cliente
               </h4>
               {selectedBooking.customer ? (
-                <div className="grid grid-cols-2 gap-4 text-sm bg-muted/50 pt-2 rounded-md">
+                <div className="grid grid-cols-2 gap-4 p-2 text-sm bg-muted/50 pt-2 rounded-md">
                   <div>
                     <span className="text-xs text-muted-foreground block">Nome</span>
                     <span className="font-medium">{selectedBooking.customer.name}</span>
@@ -127,13 +125,13 @@ const DetailsSheet = ({
               </div>
             </div>
 
+            <SheetFooter>
+              <Button variant="destructive" onClick={() => deleteBooking(selectedBooking.id)}>
+                Elimina Prenotazione
+              </Button>
+            </SheetFooter>
           </div>
         )}
-      <SheetFooter>
-        <Button variant="destructive" onClick={() => deleteBooking(selectedBooking?.id || "")}>
-          Elimina Prenotazione
-        </Button>
-      </SheetFooter>
       </SheetContent>
     </Sheet>
   )

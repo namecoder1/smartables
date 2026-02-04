@@ -2,10 +2,11 @@
 
 import React from 'react'
 import { Booking } from '@/types/general'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow, isTomorrow } from 'date-fns'
 import { mapBookingStatus } from '@/lib/maps'
 import { Button } from '../ui/button'
 import { it } from 'date-fns/locale'
+import { CircleQuestionMark } from 'lucide-react'
 
 const ReservationsTable = ({
   data,
@@ -21,7 +22,7 @@ const ReservationsTable = ({
   setOpen?: (open: boolean) => void
 }) => {
   return (
-    <div>
+    <div className='bg-card'>
       {data && data.length > 0 ? (
         <div className="rounded-md border">
           <div className="relative w-full overflow-auto">
@@ -46,7 +47,7 @@ const ReservationsTable = ({
                 {data.map((booking: Booking) => (
                   <tr
                     key={booking.id}
-                    style={{ backgroundColor: selectedBooking?.id === booking.id && isSheetOpen ? '#f0f0f0' : '' }}
+                    style={{ backgroundColor: selectedBooking?.id === booking.id && isSheetOpen ? '#f0f0f020' : '' }}
                     className={`border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted ${handleRowClick ? 'cursor-pointer' : ''}`}
                     onClick={() => handleRowClick?.(booking)}
                   >
@@ -55,7 +56,10 @@ const ReservationsTable = ({
                       <div className="text-xs text-muted-foreground">{booking.guest_phone}</div>
                     </td>
                     <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                      {formatDistanceToNow(new Date(booking.booking_time), { addSuffix: true, locale: it })}
+                      {isTomorrow(new Date(booking.booking_time)) && <span className='capitalize'>Domani, </span>}
+                      <span className='capitalize'>
+                        {format(new Date(booking.booking_time), isTomorrow(new Date(booking.booking_time)) ? 'HH:mm' : 'EEEE, HH:mm', { locale: it })}
+                      </span>
                     </td>
                     <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                       {booking.guests_count}
@@ -72,13 +76,11 @@ const ReservationsTable = ({
       ) : (
         <div className="flex py-20 shrink-0 items-center justify-center rounded-md border border-dashed">
           <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-            <h3 className="mt-4 text-lg font-semibold">Nessuna prenotazione</h3>
+            <CircleQuestionMark className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Nessuna prenotazione</h3>
             <p className="mb-4 mt-2 text-sm text-muted-foreground">
               Non ci sono prenotazioni per questo periodo.
             </p>
-            {setOpen && (
-              <Button variant="outline" onClick={() => setOpen(true)}>Aggiungi prenotazione</Button>
-            )}
           </div>
         </div>
       )}

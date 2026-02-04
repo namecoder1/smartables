@@ -8,11 +8,9 @@ export async function POST(request: Request) {
     const eventType = body.data?.event_type;
     const callControlId = body.data?.payload?.call_control_id;
 
-    console.log(`[Telnyx Webhook] Received event: ${eventType}`);
 
     if (eventType === "call.initiated") {
       if (callControlId) {
-        console.log(`[Telnyx Webhook] Rejecting call ${callControlId} as busy`);
         // We reject the call immediately to simulate "Busy"
         // This stops the phone from ringing and allows us to trigger the "Missed Call" flow
         await rejectCall(callControlId);

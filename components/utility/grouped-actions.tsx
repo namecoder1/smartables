@@ -9,7 +9,7 @@ const GroupedActions = ({
 }: {
   items: {
     label: string,
-    variant?: 'default' | 'destructive',
+    variant?: 'outline' | 'destructive',
     icon: React.ReactNode,
     action: () => void
   }[],
@@ -22,11 +22,13 @@ const GroupedActions = ({
           <EllipsisVertical />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' side={side}>
+      <DropdownMenuContent align='end' side={side} className='space-y-1'>
         {items.map((item, index) => (
-          <DropdownMenuItem variant={item.variant} key={index} onClick={item.action}>
-            {item.icon}
-            {item.label}
+          <DropdownMenuItem key={index} asChild>
+            <Button variant={item.variant || 'outline'} onClick={item.action} className='w-full group justify-start'>
+              {item.icon}
+              {item.label}
+            </Button>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

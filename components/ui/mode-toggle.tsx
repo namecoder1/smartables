@@ -11,14 +11,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Switch } from "./switch"
 
-export function ModeToggle() {
-  const { setTheme } = useTheme()
+export function ModeToggle({
+  variant = 'default'
+}: {
+  variant?: 'default' | 'mini'
+}) {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <Button variant="outline" className="w-1/2 opacity-0">
+        {/* Placeholder to prevent layout shift */}
+        <span className="sr-only">Loading theme toggle</span>
+      </Button>
+    )
+  }
+  
+  if (variant === 'mini') {
+    return (
+      <div className="flex items-center gap-2 p-2 justify-between">
+        <p className="text-sm text-foreground">Dark mode</p>
+        <Switch checked={theme === 'dark'} onCheckedChange={(value) => setTheme(value ? 'dark' : 'light')} />
+      </div>
+    )
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-1/2">
+        <Button variant="outline">
           <div className="scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90 flex items-center gap-2">
             <Sun className="h-[1.2rem] w-[1.2rem]" />
             <p>Light</p>

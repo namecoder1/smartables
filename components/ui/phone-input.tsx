@@ -1,6 +1,8 @@
 import * as React from "react";
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import * as RPNInput from "react-phone-number-input";
+import { parsePhoneNumber } from "react-phone-number-input";
+
 import flags from "react-phone-number-input/flags";
 
 import { Button } from "@/components/ui/button";
@@ -27,32 +29,50 @@ type PhoneInputProps = Omit<
 > &
   Omit<RPNInput.Props<typeof RPNInput.default>, "onChange"> & {
     onChange?: (value: RPNInput.Value) => void;
+    context?: 'onboarding' | 'default';
   };
+
+// Context for passing styling context to child components
+const PhoneInputContext = React.createContext<{ isOnboarding: boolean }>({ isOnboarding: false });
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
   React.forwardRef<React.ElementRef<typeof RPNInput.default>, PhoneInputProps>(
-    ({ className, onChange, value, ...props }, ref) => {
+    ({ className, onChange, value, context = 'default', ...props }, ref) => {
+      const isOnboarding = context === 'onboarding';
+      const validValue = React.useMemo(() => {
+        if (value && !value.startsWith("+") && props.defaultCountry) {
+          try {
+            return parsePhoneNumber(value, props.defaultCountry)?.number as RPNInput.Value;
+          } catch {
+            return value;
+          }
+        }
+        return value;
+      }, [value, props.defaultCountry]);
+
       return (
-        <RPNInput.default
-          ref={ref}
-          className={cn("flex", className)}
-          flagComponent={FlagComponent}
-          countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent}
-          smartCaret={false}
-          value={value || undefined}
-          /**
-           * Handles the onChange event.
-           *
-           * react-phone-number-input might trigger the onChange event as undefined
-           * when a valid phone number is not entered. To prevent this,
-           * the value is coerced to an empty string.
-           *
-           * @param {E164Number | undefined} value - The entered value
-           */
-          onChange={(value) => onChange?.(value || ("" as RPNInput.Value))}
-          {...props}
-        />
+        <PhoneInputContext.Provider value={{ isOnboarding }}>
+          <RPNInput.default
+            ref={ref}
+            className={cn("flex", className)}
+            flagComponent={FlagComponent}
+            countrySelectComponent={CountrySelect}
+            inputComponent={InputComponent}
+            smartCaret={false}
+            value={validValue || undefined}
+            /**
+             * Handles the onChange event.
+             *
+             * react-phone-number-input might trigger the onChange event as undefined
+             * when a valid phone number is not entered. To prevent this,
+             * the value is coerced to an empty string.
+             *
+             * @param {E164Number | undefined} value - The entered value
+             */
+            onChange={(value) => onChange?.(value || ("" as RPNInput.Value))}
+            {...props}
+          />
+        </PhoneInputContext.Provider>
       );
     },
   );
@@ -61,14 +81,20 @@ PhoneInput.displayName = "PhoneInput";
 const InputComponent = React.forwardRef<
   HTMLInputElement,
   React.ComponentProps<"input">
->(({ className, ...props }, ref) => (
-  <Input
-    className={className}
-    {...props}
-    placeholder="Inserisci il numero"
-    ref={ref}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const { isOnboarding } = React.useContext(PhoneInputContext);
+  return (
+    <Input
+      className={cn(
+        className,
+        isOnboarding && "h-12 text-lg text-black "
+      )}
+      {...props}
+      placeholder="Inserisci il numero"
+      ref={ref}
+    />
+  );
+});
 InputComponent.displayName = "InputComponent";
 
 type CountryEntry = { label: string; value: RPNInput.Country | undefined };
@@ -86,6 +112,7 @@ const CountrySelect = ({
   options: countryList,
   onChange,
 }: CountrySelectProps) => {
+  const { isOnboarding } = React.useContext(PhoneInputContext);
   const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   const [searchValue, setSearchValue] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
@@ -100,10 +127,12 @@ const CountrySelect = ({
       }}
     >
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="flex gap-1 border-r-0 px-3 focus:z-10"
+          className={cn(
+            "flex items-center gap-1 border-r-0 px-3 focus:z-10",
+            isOnboarding ? "bg-[#f4f4f480] border-gray-200 text-gray-900 hover:bg-gray-50 h-12" : 'bg-background dark:bg-input/30 border h-9'
+          )}
           disabled={disabled}
         >
           <FlagComponent
@@ -113,29 +142,46 @@ const CountrySelect = ({
           <ChevronsUpDown
             className={cn(
               "-mr-2 size-4 opacity-50",
+              isOnboarding ? "text-black" : "text-foreground",
               disabled ? "hidden" : "opacity-100",
             )}
           />
-        </Button>
+        </button>
       </PopoverTrigger>
-      <PopoverContent align="end" side="right" className="w-[300px] p-0">
-        <Command shouldFilter={false}>
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={8}
+        className={cn(
+          "w-[300px] p-0 shadow-lg border",
+          isOnboarding
+            ? "bg-white border-gray-200"
+            : "bg-background dark:bg-input/30 border-border"
+        )}
+      >
+        <Command shouldFilter={false} className={cn(
+          isOnboarding ? "bg-[#f4f4f480]" : "bg-background dark:bg-[#181818]"
+        )}>
           <CommandInput
             value={searchValue}
             onValueChange={(value) => {
               setSearchValue(value);
             }}
             placeholder="Cerca paese..."
+            className={cn(
+              isOnboarding && "border-gray-200 text-gray-900 placeholder:text-gray-400"
+            )}
           />
           <CommandList>
-            <ScrollArea ref={scrollAreaRef} className="h-72">
-              <CommandEmpty>Nessun risultato.</CommandEmpty>
+            <ScrollArea ref={scrollAreaRef} className="h-60">
+              <CommandEmpty className={cn(
+                isOnboarding && "text-gray-500"
+              )}>Nessun risultato.</CommandEmpty>
               <CommandGroup>
                 {countryList
                   .filter((x) =>
                     x.label.toLowerCase().includes(searchValue.toLowerCase()),
                   )
-                  .slice(0, 5)
                   .map(({ value, label }) =>
                     value ? (
                       <CountrySelectOption
@@ -145,6 +191,7 @@ const CountrySelect = ({
                         selectedCountry={selectedCountry}
                         onChange={onChange}
                         onSelectComplete={() => setIsOpen(false)}
+                        isOnboarding={isOnboarding}
                       />
                     ) : null,
                   )}
@@ -161,6 +208,7 @@ interface CountrySelectOptionProps extends RPNInput.FlagProps {
   selectedCountry: RPNInput.Country;
   onChange: (country: RPNInput.Country) => void;
   onSelectComplete: () => void;
+  isOnboarding?: boolean;
 }
 
 const CountrySelectOption = ({
@@ -169,6 +217,7 @@ const CountrySelectOption = ({
   selectedCountry,
   onChange,
   onSelectComplete,
+  isOnboarding,
 }: CountrySelectOptionProps) => {
   const handleSelect = () => {
     onChange(country);
@@ -176,12 +225,38 @@ const CountrySelectOption = ({
   };
 
   return (
-    <CommandItem className="gap-2" onSelect={handleSelect}>
+    <CommandItem
+      className={cn(
+        "gap-2 cursor-pointer",
+        isOnboarding ? [
+          "text-gray-900",
+          "hover:bg-gray-100",
+          "data-[selected=true]:bg-gray-100",
+          "aria-selected:bg-gray-100",
+        ] : [
+          "text-white",
+          "hover:bg-gray-200 dark:hover:bg-gray-100/10",
+          "data-[selected=true]:bg-gray-200 dark:data-[selected=true]:bg-gray-100/10",
+          "aria-selected:bg-gray-200 dark:aria-selected:bg-gray-100/10",
+        ]
+      )}
+      onSelect={handleSelect}
+    >
       <FlagComponent country={country} countryName={countryName} />
-      <span className="flex-1 text-sm">{countryName}</span>
-      <span className="text-sm text-foreground/50">{`+${RPNInput.getCountryCallingCode(country)}`}</span>
+      <span className={cn(
+        "flex-1 text-sm",
+        isOnboarding ? "text-gray-900" : "text-black dark:text-white"
+      )}>{countryName}</span>
+      <span className={cn(
+        "text-sm",
+        isOnboarding ? "text-gray-500" : "text-black dark:text-white"
+      )}>{`+${RPNInput.getCountryCallingCode(country)}`}</span>
       <CheckIcon
-        className={`ml-auto size-4 ${country === selectedCountry ? "opacity-100" : "opacity-0"}`}
+        className={cn(
+          "ml-auto size-4",
+          country === selectedCountry ? "opacity-100" : "opacity-0",
+          isOnboarding ? "text-gray-900" : 'text-black dark:text-white'
+        )}
       />
     </CommandItem>
   );
@@ -191,7 +266,7 @@ const FlagComponent = ({ country, countryName }: RPNInput.FlagProps) => {
   const Flag = flags[country];
 
   return (
-    <span className="flex h-4 w-6 overflow-hidden rounded-sm bg-foreground/20 [&_svg:not([class*='size-'])]:size-full">
+    <span className="flex h-4 w-6 overflow-hidden bg-foreground/20 [&_svg:not([class*='size-'])]:size-full">
       {Flag && <Flag title={countryName} />}
     </span>
   );

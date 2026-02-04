@@ -108,9 +108,10 @@ _Obiettivo: Intercettare la chiamata e mandare un messaggio._
 
 - [x] Setup Next.js + Supabase + Shadcn.
 - [x] Implementazione Auth (Supabase) + Verifica OTP WhatsApp.
-- [ ] **Telnyx Provisioning**: API per acquistare numeri ponte e associarli alla location.
+- [x] **Meta Production Setup**: Migrato da Sandbox a WABA Reale ("Smartables").
+- [x] **Telnyx Number**: Numero locale (+39 0721...) acquistato e verificato tramite Chiamata Vocale.
 - [ ] **Telnyx Webhook**: Endpoint `/api/telnyx/voice` che rifiuta chiamata e triggera WhatsApp.
-- [ ] **Meta Integration**: Invio Template "Missed Call" statico.
+- [ ] **Meta Integration**: Template `test_tobi` creato (pending approval), invio dinamico.
 - [ ] **Billing Lite**: Assegnazione crediti manuale/bonus all'iscrizione.
 
 ### 🟡 FASE 2: The Flow (Conversione)

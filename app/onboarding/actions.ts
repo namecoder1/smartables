@@ -2,23 +2,23 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
+import { PLANS } from "@/lib/plans";
+import { createStripeSubscriptionCheckout } from "@/stripe/actions";
 
 export async function submitOnboarding(formData: FormData) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/login");
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return redirect("/login");
 
   const restaurantName = formData.get("restaurantName") as string;
+  const totalSeats = formData.get("totalSeats") as string;
+  const fullName = formData.get("fullName") as string;
   const openingHoursRaw = formData.get("openingHours") as string;
+  const phoneNumber = formData.get("phoneNumber") as string;
   const address = formData.get("address") as string;
 
-  // 1. Create the Organization
+  // 1. Parse Opening Hours
   let openingHours = {};
   if (openingHoursRaw) {
     try {
@@ -33,7 +33,9 @@ export async function submitOnboarding(formData: FormData) {
     .from("organizations")
     .insert({
       name: restaurantName,
-      credits: 10, // Welcome bonus
+      whatsapp_usage_count: 0,
+      stripe_status: "incomplete",
+      created_by: user.id,
     })
     .select()
     .single();
@@ -43,7 +45,18 @@ export async function submitOnboarding(formData: FormData) {
     return redirect("/onboarding?error=Could not create organization");
   }
 
-  // 2. Create the First Location (Physical Branch)
+  // 2. Link User Profile to Organization
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ organization_id: orgData.id, full_name: fullName })
+    .eq("id", user.id);
+
+  if (profileError) {
+    console.error("Error updating profile:", profileError);
+    return redirect("/onboarding?error=Could not link profile");
+  }
+
+  // 3. Create the First Location (Physical Branch)
   const slug =
     restaurantName
       .toLowerCase()
@@ -55,8 +68,9 @@ export async function submitOnboarding(formData: FormData) {
     name: restaurantName, // Default name for first location
     address: address,
     opening_hours: openingHours,
+    phone_number: phoneNumber,
+    seats: totalSeats,
     slug: slug,
-    // phone_number: ... (add input if needed, or update later)
   });
 
   if (locError) {
@@ -65,21 +79,27 @@ export async function submitOnboarding(formData: FormData) {
     return redirect("/onboarding?error=Could not create location");
   }
 
-  // 3. Link User Profile to Organization
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({ organization_id: orgData.id })
-    .eq("id", user.id);
+  // 4. Check for Plan Selection and Trigger Checkout
+  const planId = formData.get("plan") as string;
+  const interval = formData.get("interval") as string;
 
-  if (profileError) {
-    console.error("Error updating profile:", profileError);
-    return redirect("/onboarding?error=Could not link profile");
+  if (planId) {
+    const selectedPlan = PLANS.find((p) => p.id === planId);
+
+    if (selectedPlan) {
+      const isAnnual = interval === "year";
+      const priceId = isAnnual
+        ? selectedPlan.priceIdYear
+        : selectedPlan.priceIdMonth;
+
+
+      if (priceId) {
+        // Trigger checkout
+        await createStripeSubscriptionCheckout(priceId);
+        return;
+      }
+    }
   }
-
-  // if (error) {
-  //   console.error(error)
-  //   return redirect('/onboarding?error=Could not save details')
-  // }
 
   redirect("/dashboard");
 }

@@ -3,12 +3,14 @@
 import { createClient } from "@/supabase/server";
 import { stripe } from "./client";
 import { redirect } from "next/navigation";
+import { isDev } from "@/lib/utils";
 
 const getUrl = () => {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  if (isDev()) return "http://localhost:3000";
+  return process.env.NEXT_PUBLIC_SITE_URL;
 };
 
-export async function createStripeCheckoutSession(amount: number) {
+export async function createStripeSubscriptionCheckout(priceId: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,6 +48,9 @@ export async function createStripeCheckoutSession(amount: number) {
     const customer = await stripe.customers.create({
       email: org.billing_email || user.email,
       name: org.name,
+      address: {
+        country: "IT",
+      },
       metadata: {
         organization_id: org.id,
       },
@@ -60,30 +65,32 @@ export async function createStripeCheckoutSession(amount: number) {
   }
 
   // Create Checkout Session
+  // Create Checkout Session
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
-    payment_method_types: ["card"],
     line_items: [
       {
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: "Ricarica Credito",
-          },
-          unit_amount: Math.round(amount * 100), // Amount in cents
-        },
+        price: priceId,
         quantity: 1,
       },
+      ...(process.env.NEXT_PUBLIC_ENABLE_SETUP_FEE === "true" &&
+      process.env.STRIPE_SETUP_FEE_PRICE_ID
+        ? [
+            {
+              price: process.env.STRIPE_SETUP_FEE_PRICE_ID,
+              quantity: 1,
+            },
+          ]
+        : []),
     ],
-    mode: "payment",
-    invoice_creation: {
-      enabled: true,
-    },
+    mode: "subscription",
+    locale: "it",
+    billing_address_collection: "required",
     success_url: `${getUrl()}/billing?success=true`,
     cancel_url: `${getUrl()}/billing?canceled=true`,
     metadata: {
       organization_id: org.id,
-      type: "topup",
+      type: "subscription",
     },
   });
 
