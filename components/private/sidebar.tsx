@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react"
 import { routes, isRouteGroup, RouteEntry } from "@/lib/routes"
 
 import {
-  Sidebar,
+  Sidebar as AppSidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -26,26 +26,23 @@ import {
 } from "@/components/ui/collapsible"
 import { LocationsSwitcher } from "./locations-switcher"
 
-const PrivateSidebar = ({ className, ...props }: React.ComponentProps<typeof Sidebar>) => {
+const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar>) => {
   const pathname = usePathname()
 
   // Combina tutte le routes in un unico array per la navigazione
   const allRoutes: RouteEntry[] = [...routes.platform, ...routes.organization]
 
   return (
-    <Sidebar className={className} {...props}>
+    <AppSidebar className={className} {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Image src="/logo.png" alt="Logo" width={32} height={32} />
+                <div className="flex aspect-square size-9 items-center justify-center rounded-lg">
+                  <Image src="/logo.png" alt="Logo" width={40} height={40} />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium text-foreground">Smartables</span>
-                  <span className="text-xs text-muted-foreground">v1.0.0</span>
-                </div>
+                <p className="text-2xl text-foreground font-bold tracking-tighter">Smartables</p>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -114,8 +111,8 @@ const PrivateSidebar = ({ className, ...props }: React.ComponentProps<typeof Sid
       <SidebarFooter className="w-full">
         <LocationsSwitcher />
       </SidebarFooter>
-    </Sidebar>
+    </AppSidebar>
   )
 }
 
-export default PrivateSidebar
+export default Sidebar

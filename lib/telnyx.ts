@@ -75,7 +75,7 @@ export async function purchasePhoneNumber(
   try {
     const payload: any = {
       phone_numbers: [{ phone_number: phoneNumber }],
-      connection_id: connectionId,
+      connection_id: connectionId || process.env.TELNYX_CONNECTION_ID,
     };
 
     if (requirementGroupId) {
@@ -102,6 +102,67 @@ export async function purchasePhoneNumber(
     return data;
   } catch (error) {
     console.error("Error purchasing Telnyx number:", error);
+    throw error;
+  }
+}
+
+export async function answerCall(callControlId: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  try {
+    const response = await fetch(
+      `${TELNYX_API_URL}/calls/${callControlId}/actions/answer`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          // stream_track: "inbound_track",
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to answer call", await response.text());
+      throw new Error("Failed to answer call");
+    }
+    return true;
+  } catch (error) {
+    console.error("Error answering call:", error);
+    throw error;
+  }
+}
+
+export async function startRecording(callControlId: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  try {
+    const response = await fetch(
+      `${TELNYX_API_URL}/calls/${callControlId}/actions/record_start`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          format: "mp3",
+          channels: "single",
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to start recording", await response.text());
+      throw new Error("Failed to start recording");
+    }
+    return true;
+  } catch (error) {
+    console.error("Error starting recording:", error);
     throw error;
   }
 }

@@ -139,11 +139,11 @@ const ActivitiesView = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestisci le sedi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Gestisci sedi</h1>
           <p className="text-muted-foreground">Gestisci le sedi della tua organizzazione.</p>
         </div>
         <Button onClick={handleOpenAdd} disabled={organization?.activation_status !== "active"} className="shadow-sm">
-          <Plus className="mr-2 h-4 w-4" /> Aggiungi sede
+          <Plus className="h-4 w-4" /> Aggiungi
         </Button>
       </div>
 

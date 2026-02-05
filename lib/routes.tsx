@@ -94,7 +94,7 @@ export const routes = {
       label: "Organizzazione",
       items: [
         {
-          title: "Gestisci le sedi",
+          title: "Gestisci sedi",
           url: "/manage-activities",
           icon: Store,
         },
@@ -127,3 +127,11 @@ export const routes = {
     },
   ] as RouteEntry[],
 }
+
+export const adminRoutes = [
+  {
+    label: "Gestisci",
+    url: "/manage",
+    icon: Home,
+  },
+] as RouteEntry[]

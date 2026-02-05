@@ -1,19 +1,18 @@
 import React from 'react'
 import NavbarSearch from './navbar-search'
-import { Bell, Menu, CircleQuestionMark } from 'lucide-react'
-import { Button } from '../ui/button'
+import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '../ui/sheet'
-import PrivateSidebar from './private-sidebar'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '../ui/sheet'
+import PrivateSidebar from './sidebar'
 import { UserMenu } from './user-menu'
 import { createClient } from '@/supabase/server'
 import { Profile } from '@/types/general'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { TbHelpSquareRounded } from "react-icons/tb";
 import Link from 'next/link'
 import Image from 'next/image'
 
-const PrivateNavbar = async (props: React.HTMLAttributes<HTMLDivElement>) => {
+const Navbar = async (props: React.HTMLAttributes<HTMLDivElement>) => {
   const supabase = await createClient()
 
   const { data: auth } = await supabase.auth.getUser()
@@ -74,4 +73,4 @@ const SupportDropdown = () => {
   )
 }
 
-export default PrivateNavbar
+export default Navbar

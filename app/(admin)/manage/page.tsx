@@ -14,12 +14,17 @@ const AdminPage = async () => {
 
   // Verify Admin
   const { data: { user } } = await supabase.auth.getUser()
+  
+  console.log(user?.app_metadata.role)
   if (!user) return <div>Unauthorized</div>
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-  if (profile?.role !== 'admin' && user.id !== '0a82970f-1fc5-4a52-97a1-a8613de0e3f7') {
-    return <div>Access Denied. Admins only.</div>
+  // CHECK: app_metadata.role must be 'superadmin'
+  // This separates platform admins from organization admins/staff
+  if (user.app_metadata?.role !== 'superadmin') {
+    return <div>Access Denied. Superadmins only.</div>
   }
+
+  // console.log(profile, user.id)
 
   // Fetch Pending Requests using Admin Client to bypass RLS on organizations/locations
   const supabaseAdmin = createAdminClient(
@@ -60,7 +65,7 @@ const AdminPage = async () => {
   }));
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight mb-2">Admin Dashboard</h1>
         <p className="text-muted-foreground">Manage compliance requests and approvals.</p>
@@ -79,7 +84,122 @@ const AdminPage = async () => {
           ))}
         </div>
       </div>
+
+      <div className="mt-12 space-y-6">
+        <h2 className="text-xl font-semibold">Locations Automation Status</h2>
+        <AutomationStatusTable />
+      </div>
     </div>
+  )
+}
+
+import {
+  manualPurchaseNumber,
+  manualMetaRegistration,
+  manualVoiceVerification
+} from '@/app/actions/admin-automation'
+import { BadgeCheck, Phone, RefreshCw } from 'lucide-react'
+
+async function AutomationStatusTable() {
+  const supabase = await createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Fetch locations with their requirement status
+  const { data: locations } = await supabase
+    .from("locations")
+    .select(`
+      *,
+      organization:organization_id ( name ),
+      requirement:regulatory_requirement_id ( id, status )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(20) // Just recent ones
+
+  if (!locations?.length) return <p>No locations found.</p>
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {locations.map((loc) => (
+        <AutomationCard key={loc.id} location={loc} />
+      ))}
+    </div>
+  )
+}
+
+function AutomationCard({ location }: { location: any }) {
+  const reqStatus = location.requirement?.status || 'none';
+  const hasTelnyx = !!location.telnyx_phone_number; // Always true if generated, but maybe not purchased?
+  // We don't have a distinct flag for "purchased" vs "assigned", but activation_status gives a hint.
+  const hasMeta = !!location.meta_phone_id;
+  const isActive = location.activation_status === 'active';
+
+  return (
+    <Card key={location.id} className="text-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{location.name} <span className="text-xs font-normal text-muted-foreground">({location.organization?.name})</span></CardTitle>
+        <CardDescription className="text-xs break-all">{location.id}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 pb-3">
+        {/* Step 0: Regulatory */}
+        <div className="flex justify-between items-center">
+          <span>Regulatory:</span>
+          <Badge variant={reqStatus === 'approved' ? 'default' : 'secondary'} className={reqStatus === 'approved' ? 'bg-green-100 text-green-800' : ''}>
+            {reqStatus}
+          </Badge>
+        </div>
+
+        {/* Step 1: Purchase */}
+        <div className="flex justify-between items-center border-t pt-2">
+          <span>Telnyx Number:</span>
+          <span className="font-mono text-xs">{location.telnyx_phone_number || 'N/A'}</span>
+        </div>
+        {reqStatus === 'approved' && (
+          <form action={async () => {
+            "use server"
+            await manualPurchaseNumber(location.id, location.requirement?.id)
+          }}>
+            <Button size="sm" variant="outline" className="w-full h-7 mt-1 text-xs">
+              <RefreshCw className="w-3 h-3 mr-1" /> Force Purchase
+            </Button>
+          </form>
+        )}
+
+        {/* Step 2: Meta */}
+        <div className="flex justify-between items-center border-t pt-2">
+          <span>Meta ID:</span>
+          {hasMeta ? <BadgeCheck className="w-4 h-4 text-green-600" /> : <span className="text-xs text-muted-foreground">Missing</span>}
+        </div>
+        {!hasMeta && hasTelnyx && (
+          <form action={async () => {
+            "use server"
+            await manualMetaRegistration(location.id)
+          }}>
+            <Button size="sm" variant="outline" className="w-full h-7 mt-1 text-xs">
+              <Phone className="w-3 h-3 mr-1" /> Force Add to Meta
+            </Button>
+          </form>
+        )}
+
+        {/* Step 3: Verify */}
+        <div className="flex justify-between items-center border-t pt-2">
+          <span>Status:</span>
+          <Badge variant={isActive ? 'default' : 'outline'}>{location.activation_status}</Badge>
+        </div>
+        {hasMeta && (
+          <form action={async () => {
+            "use server"
+            await manualVoiceVerification(location.id)
+          }}>
+            <Button size="sm" variant="secondary" className="w-full h-7 mt-1 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700">
+              <RefreshCw className="w-3 h-3 mr-1" /> Re-trigger Call
+            </Button>
+          </form>
+        )}
+
+      </CardContent>
+    </Card>
   )
 }
 
