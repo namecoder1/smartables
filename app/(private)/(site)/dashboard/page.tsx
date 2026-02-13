@@ -1,35 +1,26 @@
 import ComplianceAlert from "@/components/utility/compliance-alert"
 import { createClient } from "@/utils/supabase/server"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns"
 import { SummaryCards } from "@/app/(private)/(site)/dashboard/summary-cards"
-// SimpleLine removed
 import { cookies } from "next/headers"
 import { DonutPie } from "@/components/charts/donut-pie"
 import { BookingProgressChart } from "@/components/charts/progress-bar"
-import { User } from "lucide-react"
 import { it } from "date-fns/locale"
 import { Reservations } from "@/app/(private)/(site)/dashboard/reservations"
 import PageWrapper from "@/components/private/page-wrapper"
 import { DashboardRealtimeUpdater } from "@/components/dashboard/dashboard-realtime-updater"
 import { EmptyChartState } from "@/components/analytics/empty-chart-state"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 export const metadata = {
   title: 'Dashboard',
   description: 'Dashboard',
-  openGraph: {
-    title: 'Dashboard',
-    description: 'Dashboard',
-    type: 'website'
-  }
 }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
-  // Fetch Organization & Locations
   const { data: { user } } = await supabase.auth.getUser()
-
 
   let organization = null
   let reservationsToday = 0
@@ -66,24 +57,18 @@ export default async function DashboardPage() {
         .eq('organization_id', profile.organization_id)
 
       locations = locData || []
-
-
-      // Determine Active Location
       activeLocationId = (await cookies()).get("smartables-location-id")?.value
 
-      // If no cookie or cookie invalid (optional check), fallback to first location
       if (!activeLocationId && locations.length > 0) {
         activeLocationId = locations[0].id
       }
 
-      // Date calculations
       const now = new Date()
       const todayStart = startOfDay(now).toISOString()
       const todayEnd = endOfDay(now).toISOString()
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString() // Monday start
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString()
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString()
 
-      // Build query for Weekly Stats (and filtering today from it)
       let query = supabase
         .from('bookings')
         .select('*')
@@ -93,20 +78,12 @@ export default async function DashboardPage() {
         query = query.eq('location_id', activeLocationId)
       }
 
-      // We need TWO queries:
-      // 1. Data for "Reservations Today", "Weekly", "Covers" -> specific ranges
-      // 2. Data for "Most Popular Times" -> broad range (e.g. all time or last 3 months) to get statistically significant "popular" times.
-      // However, fetching EVERYTHING might be heavy. Let's fetch last 90 days for popular times.
-
-      // Query 1: This Week (for summary cards)
-      const { data: weekData, error: weekError } = await query
+      const { data: weekData } = await query
         .gte('booking_time', weekStart)
         .lte('booking_time', weekEnd)
 
-      if (weekError) console.error("Week Query Error:", weekError)
-
       bookingsThisWeek = weekData || []
-      // Let's create a separate query for this to avoid overriding restrictions
+
       let allStatsQuery = supabase
         .from('bookings')
         .select('*')
@@ -116,50 +93,25 @@ export default async function DashboardPage() {
         allStatsQuery = allStatsQuery.eq('location_id', activeLocationId)
       }
 
-      // For peak times, maybe last 90 days is good enough? 
-      // If the user said "voglio vedere i giorni in cui ci sono PIU prenotazioni" it implies finding trends.
-      // Let's limit to recent history + future to be safe, or just "all time" with a reasonable limit.
-      // Or just fetch all. Let's try fetching a larger batch for stats.
       const { data: allBookingsData } = await allStatsQuery
-        .gte('booking_time', new Date(new Date().setMonth(new Date().getMonth() - 2)).toISOString()) // Last 2 months?
-        // Actually, let's just fetch all for now, assuming small dataset, or limit to 1000
+        .gte('booking_time', new Date(new Date().setMonth(new Date().getMonth() - 2)).toISOString())
         .limit(2000)
 
       analysisBookings = allBookingsData || []
 
-
-      // Calculate Metrics
-      reservationsWeek = bookingsThisWeek.length
-
       const todayBookingsFiltered = bookingsThisWeek.filter(b =>
         b.booking_time >= todayStart && b.booking_time <= todayEnd
       )
-      // Note: "weekData" might not explicitly capture "today" if "today" is Sunday and weekstart is Monday... wait.
-      // startOfWeek(now, { weekStartsOn: 1 }) -> Monday.
-      // If today is Sunday, it is part of this week. CORRECT.
-      // BUT if we are checking "reservationsToday", we should probably ensure our "week query" covers today.
-      // If today is Monday, weekStart is today.
-      // So filtering from weekData is fine.
 
-      // WAIT: If we want "Today's" bookings regardless of week logic details (edge cases),
-      // we can just filter from analysisBookings if it covers today, OR just trust weekData.
-      // Let's filter today from the specifically fetched week data to be consistent with "reservationsWeek".
-
+      reservationsWeek = bookingsThisWeek.length
       reservationsToday = todayBookingsFiltered.length
       coversToday = todayBookingsFiltered.reduce((acc, curr) => acc + (curr.guests_count || 0), 0)
       todaysBookings = todayBookingsFiltered
-
-      // DEBUG: Fetch raw bookings for Org to check Location IDs
-      const { data: debugRawBookings } = await supabase
-        .from('bookings')
-        .select('id, location_id, booking_time, guest_name')
-        .eq('organization_id', profile.organization_id)
-        .limit(5)
     }
   }
 
   return (
-    <PageWrapper>
+    <PageWrapper className="bg-zinc-50/50 dark:bg-black/20">
       {organization && (
         <ComplianceAlert
           context="page"
@@ -167,106 +119,121 @@ export default async function DashboardPage() {
           managedAccountId={locations.find(l => l.id === activeLocationId)?.telnyx_managed_account_id}
         />
       )}
-      <div className="space-y-6">
-        <div className="xl:hidden flex items-start">
-          <h2 className="text-2xl font-bold tracking-tighter">Dashboard</h2>
-          <p className="text-muted-foreground">Panoramica sulle attvitià</p>
+
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex items-center justify-between xl:hidden">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Panoramica</h2>
+            <p className="text-zinc-500 font-medium dark:text-zinc-400">Ecco come sta andando il tuo ristorante oggi.</p>
+          </div>
         </div>
+
         <SummaryCards
           reservationsToday={reservationsToday}
           reservationsWeek={reservationsWeek}
           coversToday={coversToday}
         />
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Metodi prenotazioni</CardTitle>
-              <CardDescription>
-                Analizza le fonti da cui arrivano i tuoi clienti
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 items-start">
+
+          {/* Main Chart - Bento Card */}
+          <BentoCard className="col-span-4 min-h-[400px]" title="Andamento Settimanale" description={`${reservationsToday} prenotazioni oggi`}>
+            <div className="mt-6 h-full w-full">
+              {analysisBookings.length > 0 ? (
+                <BookingProgressChart data={analysisBookings} />
+              ) : (
+                <EmptyChartState className="h-[300px] border-none bg-transparent" />
+              )}
+            </div>
+          </BentoCard>
+
+          {/* Today's Customers List - Bento Card */}
+          <BentoCard className="col-span-3 min-h-[400px]" title="Ospiti di Oggi" description={`${todaysBookings.length} prenotazioni confermate`}>
+            <div className="mt-6 space-y-2">
+              {todaysBookings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+                  <div className="h-12 w-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                    <UserIcon className="h-6 w-6 text-zinc-400" />
+                  </div>
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Nessuna prenotazione per oggi</p>
+                </div>
+              ) : (
+                todaysBookings.map((booking) => (
+                  <div key={booking.id} className="group flex items-center p-3 rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-default">
+                    <Avatar className="h-10 w-10 border-2 border-white dark:border-zinc-800 shadow-sm">
+                      <AvatarFallback className="bg-zinc-100 text-zinc-600 font-bold text-xs dark:bg-zinc-800 dark:text-zinc-300">
+                        {booking.guest_name ? booking.guest_name.substring(0, 2).toUpperCase() : 'G'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="ml-4 space-y-0.5">
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 leading-none">{booking.guest_name || "Ospite"}</p>
+                      <p className="text-xs text-zinc-500 font-medium">
+                        {formatDistanceToNow(new Date(booking.booking_time), { addSuffix: true, locale: it })}
+                      </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
+                        {booking.guests_count} ps
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </BentoCard>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 items-start">
+          <BentoCard className="col-span-3" title="Canali Acquisizione" description='Analizza le fonti delle prenotazioni'>
+            <div className="mt-6">
               {analysisBookings.length > 0 ? (
                 <DonutPie data={analysisBookings} />
               ) : (
                 <EmptyChartState className="h-[250px] border-none bg-transparent" />
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>I clienti di oggi</CardTitle>
-              <CardDescription>
-                Riepilogo delle prenotazioni odierne
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div>
-                {todaysBookings.length === 0 ? (
-                  <EmptyChartState
-                    message="Nessuna prenotazione per oggi."
-                    className="h-[250px] border-none bg-transparent"
-                  />
-                ) : (
-                  todaysBookings.map((booking) => (
-                    <Card key={booking.id} className="mb-4 py-4 bg-background">
-                      <CardHeader className="flex items-center gap-3 px-4">
-                        <div className="bg-neutral-200/40 border dark:bg-neutral-800 w-fit p-2">
-                          <User />
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">
-                            {booking.guest_name || "Ospite"}
-                          </CardTitle>
-                          <CardDescription>
-                            {formatDistanceToNow(new Date(booking.booking_time), { addSuffix: true, locale: it })} • {booking.guests_count} persone
-                          </CardDescription>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Giorni & orari più affollati</CardTitle>
-              <CardDescription>
-                Statistiche sui momenti di maggiore affluenza
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            </div>
+          </BentoCard>
+
+          <BentoCard className="col-span-4 h-full" title="Tutte le Prenotazioni" description='Visualizza tutte le tue prenotazioni'>
+            <div className="mt-6">
               {analysisBookings.length > 0 ? (
-                <BookingProgressChart data={analysisBookings} />
+                <Reservations data={analysisBookings} />
               ) : (
                 <EmptyChartState className="h-[250px] border-none bg-transparent" />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </BentoCard>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Dettagli prenotazioni</CardTitle>
-            <CardDescription>
-              Lista dettagliata delle ultime prenotazioni
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {analysisBookings.length > 0 ? (
-              <Reservations data={analysisBookings} />
-            ) : (
-              <EmptyChartState className="h-[250px] border-none bg-transparent" />
-            )}
-          </CardContent>
-        </Card>
       </div>
-      <DashboardRealtimeUpdater
-        organizationId={profile.organization_id}
-        locationId={activeLocationId}
-      />
+
+      {profile && (
+        <DashboardRealtimeUpdater
+          organizationId={profile.organization_id}
+          locationId={activeLocationId}
+        />
+      )}
     </PageWrapper>
+  )
+}
+
+function BentoCard({ children, className, title, description }: { children: React.ReactNode, className?: string, title: string, description?: string }) {
+  return (
+    <div className={cn("rounded-3xl bg-card shadow-[0_2px_20px_-8px_rgba(0,0,0,0.05)] border-2", className)}>
+      <div className="space-y-1 border-b p-6 bg-muted/30">
+        <h3 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h3>
+        {description && <p className="text-sm text-zinc-500 font-medium dark:text-zinc-400">{description}</p>}
+      </div>
+      <div className="p-6 sm:p-8 pt-0">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+    </svg>
   )
 }

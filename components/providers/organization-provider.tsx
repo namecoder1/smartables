@@ -5,7 +5,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from "react
 interface Organization {
   id: string;
   name: string;
-  credits: number;
+  billing_tier: string;
   activation_status: string;
   [key: string]: any;
 }

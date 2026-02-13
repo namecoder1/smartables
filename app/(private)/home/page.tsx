@@ -1,13 +1,14 @@
 import React from 'react'
 import { OnboardingStatus } from '@/app/(private)/home/onboarding-status'
+import { getOnboardingStatus, type OnboardingData } from '@/actions/get-onboarding-status'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { HelpCircle, Mail, MessageSquare, ExternalLink } from 'lucide-react'
+import { MessageSquare, Mail, ExternalLink, LifeBuoy } from 'lucide-react'
 import { ResourcesSection } from '@/app/(private)/home/resources-section'
-import { getOnboardingStatus } from '@/actions/get-onboarding-status'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import PageWrapper from '@/components/private/page-wrapper'
 
 const HomePage = async () => {
   const supabase = await createClient()
@@ -20,7 +21,7 @@ const HomePage = async () => {
   // Fetch user's locations/organizations
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id, full_name')
     .eq('id', user.id)
     .single()
 
@@ -35,12 +36,14 @@ const HomePage = async () => {
     .limit(1)
     .single()
 
-  let onboardingData = {
+  let onboardingData: OnboardingData = {
     documents: false,
     phone: false,
     voice: false,
     branding: false,
-    whatsapp: false
+    whatsapp: false,
+    test: false,
+    phoneNumber: null
   }
 
   if (location) {
@@ -48,95 +51,83 @@ const HomePage = async () => {
   }
 
   return (
-    <div className='min-h-screen p-6 space-y-8 anime-fade-in'>
-      {/* Header Section */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2 border-b border-border/40">
-        <Greetings />
-      </section>
+    <PageWrapper>
+      {/* Header Banner */}
+      <Greetings profile={profile} />
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Onboarding & Resources */}
-        <div className="lg:col-span-8 space-y-6">
-          <section>
-            <OnboardingStatus data={onboardingData} />
-          </section>
-
-          <section>
-            <ResourcesSection />
-          </section>
+        {/* Main Content (Onboarding) */}
+        <div className="lg:col-span-8">
+          <OnboardingStatus data={onboardingData} />
         </div>
 
-        {/* Right Column: Support & Help */}
-        <div className="lg:col-span-4 space-y-6 sticky top-6">
+        {/* Sidebar (Resources & Support) */}
+        <div className="lg:col-span-4 space-y-6">
+          <ResourcesSection />
           <SupportSection />
         </div>
       </div>
-    </div>
+    </PageWrapper>
   )
 }
 
+const Greetings = ({ profile }: { profile: any }) => {
+  const firstName = profile.full_name?.split(' ')[0] || "Utente"
 
-const Greetings = () => {
-  // We can add dynamic greeting based on time of day here if we want to be fancy,
-  // but for now, let's keep it static but polished.
   return (
-    <div className="space-y-1">
-      <h1 className="text-3xl font-bold tracking-tight text-foreground">
-        Bentornato su Smartables
-      </h1>
-      <p className="text-muted-foreground text-base max-w-2xl">
-        Ecco una panoramica delle attività del tuo ristorante.
-      </p>
+    <div className='relative overflow-hidden rounded-xl xl:border-2 xl:py-6'>
+      <div className="absolute inset-0 hidden xl:block">
+        {/* Note: In a real app we'd use Next.js Image optimization, but for now standard img tag with object-cover works great */}
+        <img src="/home.jpg" alt="Restaurant Background" className="w-full h-full object-cover opacity-20 dark:opacity-10" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/90 to-transparent" />
+      </div>
+
+      <div className="relative z-10 border-b pb-4 xl:border-none xl:pb-10 xl:p-10">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          Ciao, {firstName}
+        </h1>
+        <p className="text-muted-foreground xl:mt-2 max-w-2xl text-lg">
+          Benvenuto nella tua dashboard. Ecco cosa abbiamo in programma per oggi.
+        </p>
+      </div>
     </div>
   )
 }
 
 const SupportSection = () => {
   return (
-    <Card className='border-border/60 shadow-sm bg-card h-fit'>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <HelpCircle className="h-5 w-5 text-primary" />
+    <Card className='border-2 shadow-sm py-0 gap-0'>
+      <CardHeader className="py-6 border-b-2 bg-muted/20 flex items-center gap-3">
+        <LifeBuoy className="w-5 h-5 text-muted-foreground" />
+        <CardTitle className="text-lg font-semibold">
           Centro Assistenza
         </CardTitle>
-        <CardDescription>
-          Hai bisogno di aiuto per la configurazione?
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Contact Options */}
-        <div className="grid grid-cols-1 gap-3">
-          <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 gap-3 bg-background hover:bg-muted/50" asChild>
+      <CardContent className="p-5 space-y-4">
+        <div className='grid grid-cols-1 2xl:grid-cols-2 gap-4'>
+          <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 gap-3 border-2 bg-card hover:bg-muted/50" asChild>
             <Link href="#">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <MessageSquare className="h-4 w-4" />
-              </div>
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="font-semibold text-sm">Live Chat</span>
-                <span className="text-xs text-muted-foreground font-normal">Parla con un esperto</span>
+              <MessageSquare className="h-5 w-5 text-blue-600" />
+              <div className="text-left">
+                <div className="font-semibold text-sm">Live Chat</div>
+                <div className="text-xs text-muted-foreground">Parla con un esperto</div>
               </div>
             </Link>
           </Button>
 
-          <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 gap-3 bg-background hover:bg-muted/50" asChild>
+          <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 gap-3 border-2 bg-card hover:bg-muted/50" asChild>
             <Link href="mailto:support@smartables.app">
-              <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Mail className="h-4 w-4" />
-              </div>
-              <div className="flex flex-col items-start gap-0.5">
-                <span className="font-semibold text-sm">Email Support</span>
-                <span className="text-xs text-muted-foreground font-normal">Risposta in 24h</span>
+              <Mail className="h-5 w-5 text-purple-600" />
+              <div className="text-left">
+                <div className="font-semibold text-sm">Email Support</div>
+                <div className="text-xs text-muted-foreground">Risposta in 24h</div>
               </div>
             </Link>
           </Button>
         </div>
 
-        <div className="h-px bg-border/50" />
-
-        {/* FAQ Preview */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="pt-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Domande Frequenti
           </h4>
           <ul className="space-y-2">
@@ -144,12 +135,11 @@ const SupportSection = () => {
               "Come reimpostare la password?",
               "Guida alla verifica dell'account",
               "Gestione dei metodi di pagamento",
-              "Aggiungere un nuovo membro nel team"
             ].map((item, i) => (
               <li key={i}>
-                <Link href="#" className="flex items-center justify-between text-sm text-foreground/80 hover:text-primary transition-colors group py-1">
+                <Link href="#" className="flex items-center justify-between text-sm text-foreground/80 hover:text-primary transition-colors py-1">
                   <span>{item}</span>
-                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
                 </Link>
               </li>
             ))}
@@ -159,7 +149,5 @@ const SupportSection = () => {
     </Card>
   )
 }
-
-
 
 export default HomePage

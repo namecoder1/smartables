@@ -84,7 +84,7 @@ export default async function BillingPage({
 
   return (
     <PageWrapper>
-      <div>
+      <div className='xl:hidden flex flex-col'>
         <h1 className="text-3xl font-bold tracking-tight">Fatturazione</h1>
         <p className="text-muted-foreground">Gestisci il tuo abbonamento, visualizza i dettagli del piano e scarica le fatture.</p>
       </div>
@@ -126,11 +126,6 @@ export default async function BillingPage({
                   <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Piano Attuale</p>
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold">{currentPlan?.name || 'Free / Nessuno'}</h2>
-                    {org?.stripe_status && (
-                      <Badge variant={org.stripe_status === 'active' ? 'default' : 'secondary'} className="capitalize">
-                        {org.stripe_status}
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </div>

@@ -13,16 +13,6 @@ interface Props {
   data: Booking[]
 }
 
-interface GroupedData {
-  id: string
-  label: string // e.g., "Friday"
-  subLabel: string // e.g., "20:00"
-  count: number
-  guests: number
-  percentage: number
-  color: string
-}
-
 export function BookingProgressChart({ data }: Props) {
   const processedData = React.useMemo(() => {
     if (!data || data.length === 0) return []
@@ -75,7 +65,7 @@ export function BookingProgressChart({ data }: Props) {
   }, [data])
 
   return (
-    <Card className="border-none shadow-none py-0 mt-4">
+    <Card className="border-none bg-transparent shadow-none py-0 mt-4">
       <CardContent className="space-y-6 px-0">
         {/* Top Segmented Bar */}
         <div className="flex h-4 w-full overflow-hidden rounded-full">

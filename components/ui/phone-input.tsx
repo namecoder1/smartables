@@ -88,7 +88,7 @@ const InputComponent = React.forwardRef<
       className={cn(
         className,
         'rounded-l-none! border-l-0',
-        isOnboarding && "h-12 text-lg text-black rounded-l-none!"
+        isOnboarding && "h-12 text-lg text-black rounded-l-none! border-0"
       )}
       {...props}
       placeholder="Inserisci il numero"
@@ -154,7 +154,7 @@ const CountrySelect = ({
         side="bottom"
         sideOffset={8}
         className={cn(
-          "w-[300px] p-0 shadow-lg border",
+          "w-[300px] p-0 shadow-lg border-2",
           isOnboarding
             ? "bg-white border-gray-200"
             : "bg-background dark:bg-input/30 border-border"

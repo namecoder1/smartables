@@ -106,11 +106,7 @@ const Reservations = () => {
   return (
     <div>
 
-      {viewMode !== 'map' && data && data.length > 0 && (
-        <div>
-          ciao
-        </div>
-      )}
+     
       <div className='flex justify-between items-center mb-4'>
         <div className="flex gap-2">
           <ButtonGroup>

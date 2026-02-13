@@ -12,11 +12,11 @@ interface PageData {
 const pathToDataMap: Record<string, PageData> = {
   "/home": {
     title: "Home",
-    description: "Benvenuto in Smartables! Ecco un riassunto di cosa sta succedendo oggi."
+    description: "Un riassunto sulla tua situazione attuale."
   },
   "/dashboard": {
     title: "Dashboard",
-    description: "Panoramica delle attività"
+    description: "Panoramica dei dati per la sede corrente."
   },
   "/reservations": {
     title: "Prenotazioni",
@@ -56,7 +56,7 @@ const pathToDataMap: Record<string, PageData> = {
   },
   "/billing": {
     title: "Fatturazione",
-    description: "Gestisci i metodi di pagamento e le fatture"
+    description: "Informazioni sul tuo abbonamento e fatture"
   },
   "/general-settings": {
     title: "Impostazioni Generali",

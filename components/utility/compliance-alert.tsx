@@ -2,11 +2,8 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, CircleQuestionMark, FileText } from "lucide-react"
+import { CircleQuestionMark, FileText } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 
 interface ComplianceAlertProps {
   context: 'sidebar' | 'page'
@@ -15,7 +12,7 @@ interface ComplianceAlertProps {
 }
 
 export default function ComplianceAlert({ context = 'sidebar', status, managedAccountId }: ComplianceAlertProps) {
-  const [isOpen, setIsOpen] = useState(false)
+
 
   // Logic: Show alert if Organization is ACTIVE (phone verified) but no Managed Account/Docs yet.
 
@@ -55,45 +52,27 @@ export default function ComplianceAlert({ context = 'sidebar', status, managedAc
   }
 
   return (
-    <Alert
-      variant="destructive"
-      className="bg-orange-500/10 border-orange-500/50 text-orange-700 dark:text-orange-400 rounded-xl"
-    >
-      <AlertTitle
-        className="mb-1 flex flex-col items-start"
-      >
-        <div className="flex items-center gap-2">
-          <h2 className="font-bold text-lg tracking-tight text-foreground">
-            Verifica il tuo Numero Locale
-          </h2>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button>
-                <CircleQuestionMark className="text-foreground" size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Link href="/compliance" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Carica Documenti
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-orange-200 bg-orange-50/50 p-4 dark:border-orange-900/50 dark:bg-orange-950/20">
+      <div className="flex items-start gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary dark:bg-primary/50 dark:text-primary">
+          <CircleQuestionMark className="h-5 w-5" />
         </div>
-        <p className="text-muted-foreground text-base font-medium">
-          Carica i documenti aziendali per collegare un indirizzo fisico al tuo numero.
-        </p>
-      </AlertTitle>
-      <AlertDescription className="flex flex-col gap-2 ml-auto">
-        <Button asChild size="sm" className="w-fit mt-2 bg-orange-600 hover:bg-orange-700 text-white border-none shadow-sm">
-          <Link href="/compliance" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Carica Documenti
-          </Link>
-        </Button>
-      </AlertDescription>
-    </Alert>
+        <div className="flex flex-col gap-1">
+          <h3 className="font-bold tracking-tight text-lg text-foreground">
+            Verifica il tuo Numero Locale
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Carica i documenti aziendali per collegare un indirizzo fisico al tuo numero.
+          </p>
+        </div>
+      </div>
+
+      <Button asChild size="sm" className="w-full sm:w-auto">
+        <Link href="/compliance" className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          Carica Documenti
+        </Link>
+      </Button>
+    </div>
   )
 }

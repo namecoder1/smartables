@@ -4,6 +4,8 @@ import { Resend } from "resend";
 import { purchasePhoneNumber, answerCall, startRecording } from "@/lib/telnyx";
 import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
 import { registerNumberWithMeta } from "@/lib/meta-registration";
+import NumberActiveEmail from "@/emails/number-active";
+import { render } from "@react-email/components";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -39,10 +41,12 @@ export async function POST(req: Request) {
 
       // 2. If Approved, Activate Location & Register with Meta
       if (status === "approved" && reqGroup?.location_id) {
-        // Fetch Location to get the phone number
+        // Fetch Location to get the phone number AND Organization info
         const { data: location, error: locationFetchError } = await supabase
           .from("locations")
-          .select("telnyx_phone_number, name")
+          .select(
+            "telnyx_phone_number, name, organization:organizations(name, billing_email)",
+          )
           .eq("id", reqGroup.location_id)
           .single();
 
@@ -91,6 +95,37 @@ export async function POST(req: Request) {
           console.log("Requesting Voice Verification Code from Meta...");
           await requestVerificationCode(metaPhoneId, "VOICE");
           console.log("Verification Code Requested!");
+
+          // 3. Send Notification Email
+          try {
+            const org = location.organization as any;
+            const billingEmail = org?.billing_email;
+            const teamName = org?.name || "Il tuo Team";
+
+            if (billingEmail) {
+              const emailHtml = await render(
+                NumberActiveEmail({
+                  teamName: teamName,
+                  phoneNumber: location.telnyx_phone_number,
+                }),
+              );
+
+              await resend.emails.send({
+                from: "Smartables <onboarding@smartables.it>",
+                to: billingEmail,
+                subject: "Il tuo numero è attivo su Smartables!",
+                html: emailHtml,
+              });
+              console.log(`Activation email sent to ${billingEmail}`);
+            } else {
+              console.warn(
+                "No billing email found for organization, skipping email.",
+              );
+            }
+          } catch (emailErr) {
+            console.error("Failed to send activation email:", emailErr);
+            // Don't block the flow
+          }
         } catch (error: any) {
           console.error(
             "Failed in automation flow (Meta Registration):",

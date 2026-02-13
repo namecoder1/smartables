@@ -67,7 +67,7 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
 
   return (
     <PageWrapper className='relative'>
-      <div className="flex xl:hidden items-center justify-between mb-6">
+      <div className="flex xl:hidden items-center justify-between mb-6 gap-10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestisci collaboratori</h1>
           <p className="text-muted-foreground">Gestisci i collaboratori della tua organizzazione.</p>
@@ -130,8 +130,8 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
 
       <div className="border-2 rounded-xl">
         <Table className='rounded-xl'>
-          <TableHeader className='bg-muted'>
-            <TableRow>
+          <TableHeader className='bg-card'>
+            <TableRow className='hover:bg-card/50'>
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Ruolo</TableHead>
@@ -155,10 +155,10 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
               </TableRow>
             ) : (
               collaborators.map((collaborator) => (
-                <TableRow key={collaborator.id}>
+                <TableRow key={collaborator.id} className='hover:bg-card'>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-primary font-bold">
                         {collaborator.full_name ? collaborator.full_name.charAt(0).toUpperCase() : collaborator.email.charAt(0).toUpperCase()}
                       </div>
                       {collaborator.full_name || "Invitato"} {(user.id === collaborator.id) && "(tu)"}

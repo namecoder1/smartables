@@ -119,7 +119,7 @@ const PricingCard = ({
             : popular
               ? "border-primary/50 shadow-lg shadow-primary/10 bg-linear-to-b from-primary/5 to-transparent"
               : "hover:border-primary/20 hover:shadow-lg",
-        changeType === 'current' && "ring-2 ring-primary/50 border-primary/50"
+        changeType === 'current' && "ring-2 ring-green-500/50 bg-green-500/5 border-green-500/50 hover:ring-green-500/50 hover:border-green-500/50"
       )}>
         {popular && (
           <div className="absolute top-0 right-0">

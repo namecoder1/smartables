@@ -1,10 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PricingCard from '@/components/utility/pricing-card'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
-import { Sparkles } from 'lucide-react'
 
 const PlansSwitcher = ({
   plans,
@@ -15,7 +14,20 @@ const PlansSwitcher = ({
   currentPriceId?: string | null
   stripeStatus?: string | null
 }) => {
-  const [isAnnual, setIsAnnual] = useState(true)
+  const [isAnnual, setIsAnnual] = useState(false)
+
+  useEffect(() => {
+    function getPlanSpan() {
+      const plan =  plans.find((plan) => plan.priceIdMonth || plan.priceIdYear === currentPriceId)
+      if (plan?.priceIdMonth == currentPriceId) {
+        setIsAnnual(false)
+      }
+      if (plan?.priceIdYear == currentPriceId) {
+        setIsAnnual(true)
+      }
+    }
+    getPlanSpan()
+  }, [currentPriceId])
 
   return (
     <div className='mt-12 space-y-8'>
@@ -24,6 +36,7 @@ const PlansSwitcher = ({
           <h2 className="text-3xl font-bold tracking-tight">Piani e Prezzi</h2>
           <p className="text-muted-foreground text-lg">
             Scegli il piano più adatto alla tua attività.
+            
           </p>
         </div>
 

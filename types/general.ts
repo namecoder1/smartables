@@ -139,7 +139,12 @@ export type TelnyxRegulatoryRequirement = {
   country_code: string;
   telnyx_requirement_group_id: string;
   telnyx_bundle_request_id: string;
-  status: "pending" | "approved" | "rejected" | "more_info_required";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "more_info_required"
+    | "unapproved";
   rejection_reason: string;
   documents_data: any;
   created_at: string;

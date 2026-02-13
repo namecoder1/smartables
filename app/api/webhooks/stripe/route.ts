@@ -94,7 +94,12 @@ export async function POST(req: Request) {
             stripe_status: subscription.status,
             stripe_current_period_end: periodEnd,
             current_billing_cycle_start: periodStart,
+            billing_tier:
+              PLANS.find(
+                (p) => p.priceIdMonth === priceId || p.priceIdYear === priceId,
+              )?.id || "starter",
             stripe_cancel_at_period_end: subscription.cancel_at_period_end,
+
             ...getPlanUpdates(priceId),
           })
           .eq("id", organizationId);
@@ -185,6 +190,12 @@ export async function POST(req: Request) {
       .update({
         stripe_status: subscription.status,
         stripe_price_id: subscription.items.data[0].price.id,
+        billing_tier:
+          PLANS.find(
+            (p) =>
+              p.priceIdMonth === subscription.items.data[0].price.id ||
+              p.priceIdYear === subscription.items.data[0].price.id,
+          )?.id || "starter",
         stripe_current_period_end: periodEnd,
         current_billing_cycle_start: periodStart,
         stripe_cancel_at_period_end: subscription.cancel_at_period_end,

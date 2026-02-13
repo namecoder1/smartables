@@ -131,6 +131,8 @@ const ActivitiesView = () => {
     );
   }
 
+  console.log(organization.billing_tier)
+
   return (
     <PageWrapper className="relative">
       {/* Header */}
@@ -139,7 +141,7 @@ const ActivitiesView = () => {
           <h1 className="text-3xl font-bold tracking-tight">Gestisci sedi</h1>
           <p className="text-muted-foreground">Gestisci le sedi della tua organizzazione.</p>
         </div>
-        <Button onClick={handleOpenAdd} disabled={organization?.activation_status !== "active"} className="shadow-sm">
+        <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"} className="shadow-sm">
           <Plus className="h-4 w-4" /> Aggiungi
         </Button>
       </div>
@@ -148,7 +150,7 @@ const ActivitiesView = () => {
         <TooltipTrigger asChild>
           <Button
             onClick={handleOpenAdd}
-            disabled={organization?.activation_status !== "active"}
+            disabled={organization?.billing_tier === "starter"}
             className="absolute bottom-6 right-6 hidden xl:flex"
           >
             <Plus className="h-4 w-4" /> Aggiungi
@@ -162,7 +164,7 @@ const ActivitiesView = () => {
       {/* Info Box */}
       <div className="flex items-start gap-4 rounded-lg border bg-primary/20 p-4 dark:bg-primary/20 dark:text-primary border-primary dark:border-primary">
         <div className="space-y-2">
-          <p className="font-semibold text-lg tracking-tight leading-none">Gestisci piu di un'attività?</p>
+          <p className="font-semibold text-lg tracking-tight leading-none">Gestisci piu di un'attività? {organization?.billing_tier === "starter" ? "No" : "Si"}</p>
           <p className="text-sm opacity-90">
             Ogni attività ha il proprio indirizzo e orari di apertura specifici. Aggiungere un'attività nuova permette di gestire le prenotazioni separatamente.
           </p>
@@ -298,11 +300,8 @@ const LocationCard = ({
     <Card key={loc.id} className="group relative overflow-hidden transition-all hover:shadow-md">
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Store className="h-4 w-4" />
-            </div>
-            <span className="truncate tracking-tight">{loc.name}</span>
+          <CardTitle className="flex items-center gap-2">
+            <h3 className="truncate tracking-tight font-bold text-2xl">{loc.name}</h3>
           </CardTitle>
           <GroupedActions
             side="bottom"
@@ -323,20 +322,20 @@ const LocationCard = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <div className="flex items-start gap-3 text-muted-foreground">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-3 text-foreground">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>{loc.address || "Nessun indirizzo"}</span>
         </div>
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Phone className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-3 text-foreground">
+          <Phone className="h-4 w-4 shrink-0 text-primary" />
           <span>{loc.phone_number || "Nessun telefono"}</span>
         </div>
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Users className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-3 text-foreground">
+          <Users className="h-4 w-4 shrink-0 text-primary" />
           <span>{loc.seats ? `${loc.seats} Coperti` : "Coperti non specificati"}</span>
         </div>
-        <div className="flex items-start gap-3 text-muted-foreground">
-          <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-3 text-foreground">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div className="space-y-1">
             {(() => {
               if (!loc.opening_hours || Object.keys(loc.opening_hours).length === 0) {
@@ -361,7 +360,7 @@ const LocationCard = ({
                   </>
                 );
               } else {
-                return <span className="text-muted-foreground">Chiuso oggi</span>;
+                return <span className="text-foreground">Chiuso oggi</span>;
               }
             })()}
           </div>

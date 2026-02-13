@@ -13,6 +13,8 @@ export type OnboardingData = {
   voice: boolean;
   branding: boolean;
   whatsapp: boolean;
+  test: boolean;
+  phoneNumber: string | null;
 };
 
 export async function getOnboardingStatus(
@@ -38,11 +40,18 @@ export async function getOnboardingStatus(
       voice: false,
       branding: false,
       whatsapp: false,
+      test: false,
+      phoneNumber: null,
     };
   }
 
   // 2. Fetch Regulatory Requirement status (if ID exists)
   let documentsStatus = false;
+  // For now: documents = approved.
+  console.log(
+    "Checking regulatory requirement:",
+    location.regulatory_requirement_id,
+  );
   if (location.regulatory_requirement_id) {
     const { data: requirement } = await supabase
       .from("telnyx_regulatory_requirements")
@@ -50,15 +59,14 @@ export async function getOnboardingStatus(
       .eq("id", location.regulatory_requirement_id)
       .single();
 
-    // valid statuses: 'approved' | 'pending' | 'more_info_required' | 'rejected'
-    // check if it exists and is not rejected? or just approved?
-    // User said "Invia documenti", so maybe just having sent them (pending) is enough for that step?
-    // But usually "Completed" means approved. Let's stick to 'approved' for green check.
-    // Actually, let's treat 'pending' or 'approved' as "Action Taken" so the step is marked as done?
-    // No, "Done" implies success. Let's stick to approved.
-    // Wait, if it takes time, the user might feel stuck.
-    // For now: documents = approved.
-    if (requirement && requirement.status === "approved") {
+    console.log("Requirement status:", requirement?.status);
+
+    if (
+      requirement &&
+      (requirement.status === "approved" ||
+        requirement.status === "pending" ||
+        requirement.status === "unapproved")
+    ) {
       documentsStatus = true;
     }
   }
@@ -72,11 +80,16 @@ export async function getOnboardingStatus(
   const organization = location.organization as unknown as Organization;
   const whatsappStatus = !!organization?.telnyx_managed_account_id;
 
+  // Test status: check if whatsapp_usage_count > 0
+  const testStatus = organization?.whatsapp_usage_count > 0;
+
   return {
     documents: documentsStatus,
     phone: phoneStatus,
     voice: voiceStatus,
     branding: brandingStatus,
     whatsapp: whatsappStatus,
+    test: testStatus,
+    phoneNumber: location.telnyx_phone_number || null,
   };
 }
