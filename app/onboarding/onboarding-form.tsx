@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,10 +9,10 @@ import { WeeklyHoursSelector } from "@/components/utility/weekly-hours-selector"
 import { Store, User, Utensils, ArrowRight, Check, MapPin, Phone } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { NumberInput } from "@/components/ui/number-input";
 import { submitOnboarding } from "./actions";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
-import Image from "next/image";
 
 const STEPS = [
   { id: 1, title: "Chi sei", description: "Dettagli del profilo" },
@@ -19,8 +20,14 @@ const STEPS = [
   { id: 3, title: "Dettagli", description: "Capienza e orari" },
 ];
 
-export function OnboardingForm({ plan, interval }: { plan?: string; interval?: string }) {
+export function OnboardingForm({ plan, interval, error }: { plan?: string; interval?: string; error?: string }) {
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
@@ -48,7 +55,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
   // Validation minimal logic for "Next" button enablement
   const isStep1Valid = formData.restaurantName.length > 2 && formData.fullName.length > 2;
   const isStep2Valid = formData.address.length > 5 && formData.phoneNumber.length > 5;
-  const isStep3Valid = formData.totalSeats.length > 0;
+  const isStep3Valid = parseInt(formData.totalSeats) > 0;
   // Note: Opening hours are optional or have defaults usually, but let's assume valid.
 
   return (
@@ -70,7 +77,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                   <div className="flex flex-col items-center">
                     <div
                       className={cn(
-                        "flex w-8 h-8 items-center justify-center border-2 transition-all duration-300",
+                        "flex w-8 h-8 rounded-lg items-center justify-center border-2 transition-all duration-300",
                         isActive
                           ? "border-white bg-white text-primary"
                           : isCompleted
@@ -83,8 +90,8 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                     {s.id !== STEPS.length && (
                       <div
                         className={cn(
-                          "h-full w-0.5 my-2 rounded-full transition-colors duration-300",
-                          isCompleted ? "bg-white/20" : "bg-white"
+                          "h-full w-px my-2 rounded-full transition-colors duration-300",
+                          isCompleted ? "bg-white/20" : "bg-white/80"
                         )}
                       />
                     )}
@@ -192,7 +199,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                           <Store className="absolute left-3 top-3.5 h-5 w-5 text-black" />
                           <Input
                             id="restaurantName"
-                            className="pl-10 h-12 text-lg text-black border-neutral-200 bg-[#f4f4f480]!"
+                            className="pl-10 h-12 text-lg text-black border-neutral-200 border-2 bg-white!"
                             placeholder="es. La Bella Napoli"
                             value={formData.restaurantName}
                             onChange={(e) => updateField("restaurantName", e.target.value)}
@@ -206,7 +213,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                           <User className="absolute left-3 top-3.5 h-5 w-5 text-black" />
                           <Input
                             id="fullName"
-                            className="pl-10 h-12 text-lg text-black border-neutral-200 bg-[#f4f4f480]!"
+                            className="pl-10 h-12 text-lg text-black border-neutral-200 border-2 bg-white!"
                             placeholder="es. Mario Rossi"
                             value={formData.fullName}
                             onChange={(e) => updateField("fullName", e.target.value)}
@@ -244,7 +251,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                             id="phoneNumber"
                             name="phoneNumber_visible"
                             context="onboarding"
-                            className="border-neutral-200 border bg-[#f4f4f480]!"
+                            className="border-neutral-200 bg-white! border-2 rounded-xl "
                             defaultCountry="IT"
                             value={formData.phoneNumber}
                             onChange={(val) => updateField("phoneNumber", val)}
@@ -267,14 +274,14 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                       <div className="space-y-2">
                         <Label htmlFor="totalSeats" className="text-black">Coperti Totali</Label>
                         <div className="relative">
-                          <Utensils className="absolute left-3 top-3.5 h-5 w-5 text-black" />
-                          <Input
+                          <Utensils className="absolute left-3 top-3.5 h-5 w-5 text-black z-10 pointer-events-none" />
+                          <NumberInput
                             id="totalSeats"
-                            className="pl-10 h-12 text-lg text-black border-neutral-200 bg-[#f4f4f480]!"
+                            context="onboarding"
+                            className="pl-10 h-12 text-lg text-black border-2 border-neutral-200 bg-white!"
                             placeholder="es. 80"
-                            type="number"
-                            value={formData.totalSeats}
-                            onChange={(e) => updateField("totalSeats", e.target.value)}
+                            value={formData.totalSeats ? parseInt(formData.totalSeats) : undefined}
+                            onValueChange={(val) => updateField("totalSeats", val?.toString() ?? "")}
                           />
                         </div>
                       </div>
@@ -294,7 +301,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
 
             <div className="mt-8 flex justify-between pt-6 border-t">
               {step > 1 ? (
-                <Button type="button" variant="outline" className="text-black border border-neutral-200! hover:text-black/50" onClick={prevStep} disabled={isLoading}>
+                <Button type="button" variant="outline" className="text-black bg-white! border border-neutral-200! hover:text-black/50" onClick={prevStep} disabled={isLoading}>
                   Indietro
                 </Button>
               ) : (
@@ -314,7 +321,7 @@ export function OnboardingForm({ plan, interval }: { plan?: string; interval?: s
                 <Button
                   type="submit"
                   disabled={!isStep3Valid || isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+                  className="min-w-[120px]"
                 >
                   {isLoading ? "Salvataggio..." : "Completa Setup"}
                 </Button>

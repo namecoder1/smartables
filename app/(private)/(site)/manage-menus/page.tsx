@@ -1,4 +1,4 @@
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Metadata } from 'next'
 import PageWrapper from '@/components/private/page-wrapper'
@@ -49,9 +49,7 @@ const ManageMenus = async () => {
     .order('created_at')
 
   return (
-    <PageWrapper>
-      <MenusView menus={menus as any} organizationId={organizationId} locations={locations || []} />
-    </PageWrapper>
+    <MenusView menus={menus as any} organizationId={organizationId} locations={locations || []} />
   )
 }
 

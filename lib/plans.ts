@@ -1,9 +1,17 @@
+import { isDev } from "./utils";
+
 export const PLANS = [
   {
     id: "starter",
     name: "Starter",
-    priceIdMonth: "price_1SuvWrDmWHgnXPDyqZ2gQbls",
-    priceIdYear: "price_1Sus34DmWHgnXPDyVEgoctUN",
+    priceIdMonth:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTH :
+      "price_1SuvWrDmWHgnXPDyqZ2gQbls",
+    priceIdYear:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_YEAR :
+      "price_1Sus34DmWHgnXPDyVEgoctUN",
     priceMonth: 79,
     priceYear: 790,
     features: [
@@ -24,8 +32,14 @@ export const PLANS = [
   {
     id: "pro",
     name: "Growth",
-    priceIdMonth: "price_1SusAEDmWHgnXPDyUUzEik6c",
-    priceIdYear: "price_1SusAiDmWHgnXPDyR4O5kF2O",
+    priceIdMonth:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTH :
+      "price_1SusAEDmWHgnXPDyUUzEik6c",
+    priceIdYear:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEAR :
+      "price_1SusAiDmWHgnXPDyR4O5kF2O",
     priceMonth: 99,
     priceYear: 990,
     features: [
@@ -46,8 +60,14 @@ export const PLANS = [
   {
     id: "business",
     name: "Business",
-    priceIdMonth: "price_1SusB3DmWHgnXPDyggftPbfV",
-    priceIdYear: "price_1SusBKDmWHgnXPDyyetBeNzy",
+    priceIdMonth:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS_MONTH :
+      "price_1SusB3DmWHgnXPDyggftPbfV",
+    priceIdYear:
+    !isDev() ?
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS_YEAR :
+      "price_1SusBKDmWHgnXPDyyetBeNzy",
     priceMonth: 199,
     priceYear: 1990,
     features: [

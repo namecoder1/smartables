@@ -16,8 +16,8 @@ const CalendarPage = () => {
   }
 
   return (
-    <PageWrapper>
-      <div className="flex items-center justify-between">
+    <PageWrapper className='relative'>
+      <div className="items-center justify-between xl:hidden flex">
         <div>
           <h1 className='text-3xl font-bold tracking-tight'>Calendario</h1>
           <p className='text-muted-foreground'>Visualizza le prenotazioni nel calendario.</p>
@@ -27,6 +27,10 @@ const CalendarPage = () => {
           Nuova prenotazione
         </Button>
       </div>
+      <Button onClick={() => setOpen(true)} className='absolute bottom-6 right-6 z-50'>
+        <Plus />
+        Nuova prenotazione
+      </Button>
       <CalendarView key={refreshKey} />
       <ReservationSheet open={open} onOpenChange={setOpen} onSuccess={handleSuccess} />
     </PageWrapper>

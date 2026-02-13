@@ -1,6 +1,5 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, CalendarCheck, CalendarDays } from "lucide-react"
+import { CalendarCheck } from "lucide-react"
 
 interface SummaryCardsProps {
   reservationsToday: number
@@ -14,7 +13,7 @@ export function SummaryCards({
   coversToday,
 }: SummaryCardsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
       <SummaryCard
         title="Prenotazioni oggi"
         value={reservationsToday}
@@ -45,9 +44,9 @@ export function SummaryCards({
 
 function SummaryCard({ title, value, description, icon }: any) {
   return (
-    <div className="flex flex-row items-start justify-between space-y-0 bg-card border p-6 pb-6 gap-4">
+    <div className="flex hover:scale-105 transition-all duration-300 cursor-pointer flex-row items-start justify-between rounded-xl space-y-0 bg-card border-2 p-4 pb-4 gap-4">
       <div className="space-y-2">
-        <h2 className="text-sm font-medium">
+        <h2 className="text-md font-semibold tracking-tighter">
           {title}
         </h2>
         <div className="text-3xl font-bold">{value}</div>
@@ -55,7 +54,7 @@ function SummaryCard({ title, value, description, icon }: any) {
           {description}
         </p>
       </div>
-      <div className="bg-[#ff960c] dark:bg-[#ff960c90] p-3"> 
+      <div className="bg-[#ff960c] dark:bg-[#ff960c90] rounded-lg p-2">
         {icon}
       </div>
     </div>

@@ -1,8 +1,10 @@
 import React from 'react'
 
-const PageWrapper = ({ children }: { children: React.ReactNode }) => {
+import { cn } from "@/lib/utils"
+
+const PageWrapper = ({ children, className }: { children: React.ReactNode, className?: string }) => {
   return (
-    <section className='p-6 flex flex-col gap-6 min-h-full dark:bg-[#1e1e1e]'>
+    <section className={cn('p-6 flex flex-col gap-6 min-h-full bg-background dark:bg-[#1a1813]', className)}>
       {children}
     </section>
   )

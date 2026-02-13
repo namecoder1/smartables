@@ -73,14 +73,15 @@ export async function purchasePhoneNumber(
   if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
 
   try {
+    const phoneNumberEntry: any = { phone_number: phoneNumber };
+    if (requirementGroupId) {
+      phoneNumberEntry.requirement_group_id = requirementGroupId;
+    }
+
     const payload: any = {
-      phone_numbers: [{ phone_number: phoneNumber }],
+      phone_numbers: [phoneNumberEntry],
       connection_id: connectionId || process.env.TELNYX_CONNECTION_ID,
     };
-
-    if (requirementGroupId) {
-      payload.requirements_id = requirementGroupId;
-    }
 
     const response = await fetch(`${TELNYX_API_URL}/number_orders`, {
       method: "POST",
@@ -346,15 +347,18 @@ export async function createRequirementGroup(
       regulatory_requirements: requirements, // Note: API expects 'regulatory_requirements' array of objects
     };
 
-    const response = await fetch(`${TELNYX_API_URL}/requirement_groups`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+    const response = await fetch(
+      "https://api.telnyx.com/v2/requirement_groups",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -390,6 +394,36 @@ export async function getRequirementGroup(id: string) {
     return data.data;
   } catch (error) {
     console.error("Error getting requirement group:", error);
+    throw error;
+  }
+}
+
+export async function submitRequirementGroup(id: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  try {
+    const response = await fetch(
+      `${TELNYX_API_URL}/requirement_groups/${id}/submit`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Telnyx submit RG error:", errorText);
+      throw new Error(`Failed to submit requirement group: ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error submitting requirement group:", error);
     throw error;
   }
 }

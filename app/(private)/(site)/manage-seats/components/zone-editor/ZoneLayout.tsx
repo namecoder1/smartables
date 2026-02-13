@@ -7,17 +7,17 @@ import { Menu } from 'lucide-react';
 
 import { Grid as GridComponent } from '../grid';
 
-import { TableInstance, Zone, Guide } from './types';
+import { TableInstance, Zone, Guide, DrawingWallState } from './types';
 import { CanvasItem } from './canvas-item';
 import { useZoneColors } from './use-zone-colors';
-import { snapToGrid } from './snapping-utils';
+import { snapToGrid, getLineGuideStops, getGuides } from './snapping-utils';
 
 interface ZoneLayoutProps {
   currentZone: Zone | null;
   tables: TableInstance[];
   guides: Guide[];
   selectedId: string | null;
-  drawingWall: { startX: number, startY: number, currentX: number, currentY: number } | null;
+  drawingWall: DrawingWallState | null;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>, stage: any, params: { x: number, y: number, scale: number }) => void;
@@ -55,10 +55,10 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
   const colors = useZoneColors();
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [localGuides, setLocalGuides] = useState<Guide[]>([]);
 
   const { scale, setScale, x: positionX, y: positionY, setPosition, setStageDimensions, stageDimensions } = stageParams;
 
-  // -- Resize Observer --
   // -- Resize Observer --
   const observerRef = useRef<ResizeObserver | null>(null);
 
@@ -91,7 +91,7 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
   const handleStageMouseDown = (e: any) => {
     // 0. Finalize Wall Drawing
     if (drawingWall) {
-      const { startX, startY, currentX, currentY } = drawingWall;
+      const { startX, startY, currentX, currentY, originalId } = drawingWall;
       const dX = Math.abs(currentX - startX);
       const dY = Math.abs(currentY - startY);
 
@@ -102,22 +102,33 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
       const centerX = isHorizontal ? (startX + currentX) / 2 : startX;
       const centerY = isHorizontal ? startY : (startY + currentY) / 2;
 
-      const newWall: TableInstance = {
-        id: 'wall-custom',
-        type: 'wall',
-        label: 'Muro',
-        seats: 0,
-        uniqueId: uuidv4(),
-        zone_id: currentZone!.id,
-        rotation: 0,
+      const geometry = {
         width: isHorizontal ? length : thickness,
         height: isHorizontal ? thickness : length,
         x: centerX,
         y: centerY,
       };
 
-      onUpdateTables([...tables, newWall]);
+      if (originalId) {
+        // Update existing wall
+        onUpdateTables(tables.map(t => t.uniqueId === originalId ? { ...t, ...geometry } : t));
+      } else {
+        // Create new wall
+        const newWall: TableInstance = {
+          id: 'wall-custom',
+          type: 'wall',
+          label: 'Muro',
+          seats: 0,
+          uniqueId: uuidv4(),
+          zone_id: currentZone!.id,
+          rotation: 0,
+          ...geometry
+        };
+        onUpdateTables([...tables, newWall]);
+      }
+
       setDrawingWall(null);
+      setLocalGuides([]); // Clear guides
       return;
     }
 
@@ -147,8 +158,44 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
     if (drawingWall && pos) {
       const localX = (pos.x - positionX) / scale;
       const localY = (pos.y - positionY) / scale;
-      const snappedX = snapToGrid(localX);
-      const snappedY = snapToGrid(localY);
+
+      // Guide Calculation
+      const zoneW = currentZone?.width || DEFAULT_ZONE_WIDTH;
+      const zoneH = currentZone?.height || DEFAULT_ZONE_HEIGHT;
+      // Skip nothing when drawing fresh, but if we were extending maybe skip original?
+      // Actually we want to align to everything else.
+      const guideStops = getLineGuideStops(tables, drawingWall.originalId || '', zoneW, zoneH);
+
+      // Current "Item Bounds" is just the point we are dragging
+      // We create a pseudo-bound of 0x0 size at localX, localY
+      const itemBounds = {
+        vertical: [
+          { guide: localX, offset: 0, snap: 'center' },
+        ],
+        horizontal: [
+          { guide: localY, offset: 0, snap: 'center' },
+        ],
+      };
+
+      const newGuides = getGuides(guideStops, itemBounds);
+      let snappedX = localX;
+      let snappedY = localY;
+
+      if (newGuides.length > 0) {
+        setLocalGuides(newGuides);
+        newGuides.forEach((guide) => {
+          if (guide.orientation === 'V') {
+            snappedX = guide.lineGuide - guide.offset;
+          } else {
+            snappedY = guide.lineGuide - guide.offset;
+          }
+        });
+      } else {
+        setLocalGuides([]);
+        snappedX = snapToGrid(localX);
+        snappedY = snapToGrid(localY);
+      }
+
       setDrawingWall((prev: any) => prev ? ({ ...prev, currentX: snappedX, currentY: snappedY }) : null);
       return;
     }
@@ -216,11 +263,13 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
     }
 
     setDrawingWall({ startX, startY, currentX: startX, currentY: startY });
+    onSelect(null); // Deselect to hide controls
   }
 
   // Render Helpers
   const renderGuides = () => {
-    return guides.map((guide, i) => {
+    const allGuides = [...guides, ...localGuides];
+    return allGuides.map((guide, i) => {
       if (guide.orientation === 'V') {
         return (
           <KonvaLine
@@ -244,11 +293,11 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
   return (
     <div
       ref={setContainerRef}
-      className="relative w-full h-full bg-zinc-100 dark:bg-zinc-950/50 shadow-inner overflow-hidden cursor-crosshair"
+      className="relative bg-[#fdf0d2] dark:bg-[#232119] w-full h-full shadow-inner overflow-hidden cursor-crosshair"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
-      <Button variant="outline" size="icon" className="h-8 w-8 absolute top-2 right-2 z-20" onClick={onToggleSidebar}>
+      <Button variant="outline" size="icon" className="bg-card! h-8 w-8 absolute top-2 right-2 z-20" onClick={onToggleSidebar}>
         <Menu className="w-4 h-4" />
       </Button>
 
@@ -291,6 +340,32 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
               {renderGuides()}
 
               {/* Drawing Wall Ghost */}
+
+              {[...tables].sort((a, b) => {
+                // Priority: Wall (0) < Others (1) < Door (2)
+                const getPriority = (type: string) => {
+                  if (type === 'wall') return 0;
+                  if (type === 'door') return 2;
+                  return 1;
+                };
+                return getPriority(a.type) - getPriority(b.type);
+              }).filter(t => t.uniqueId !== drawingWall?.originalId).map((table) => (
+                <CanvasItem
+                  key={table.uniqueId}
+                  table={table}
+                  isSelected={selectedId === table.uniqueId}
+                  colors={colors}
+                  onSelect={onSelect}
+                  onDragStart={() => { }} // We might not need this if we don't track drag start specifically for logic
+                  onDragMove={onDragMove}
+                  onDragEnd={onDragEnd}
+                  onDelete={onDelete}
+                  onRotate={onRotate}
+                  onWallExtendStart={handleWallExtendStart}
+                />
+              ))}
+
+              {/* Drawing Wall Ghost */}
               {drawingWall && (() => {
                 const { startX, startY, currentX, currentY } = drawingWall;
                 const dX = Math.abs(currentX - startX);
@@ -314,23 +389,6 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
                   />
                 );
               })()}
-
-              {/* Items */}
-              {tables.map((table) => (
-                <CanvasItem
-                  key={table.uniqueId}
-                  table={table}
-                  isSelected={selectedId === table.uniqueId}
-                  colors={colors}
-                  onSelect={onSelect}
-                  onDragStart={() => { }} // We might not need this if we don't track drag start specifically for logic
-                  onDragMove={onDragMove}
-                  onDragEnd={onDragEnd}
-                  onDelete={onDelete}
-                  onRotate={onRotate}
-                  onWallExtendStart={handleWallExtendStart}
-                />
-              ))}
             </Group>
           </Layer>
         </Stage>

@@ -16,7 +16,6 @@ export type Booking = {
   created_at: string;
 };
 
-
 export type Customer = {
   id: string;
   organization_id: string;
@@ -162,6 +161,17 @@ export type Transaction = {
   invoice_pdf?: string;
   period_start?: string;
   period_end?: string;
+  created_at: string;
+};
+
+export type Feedback = {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  type: string;
+  reason: string | null;
+  message: string | null;
+  metadata: any;
   created_at: string;
 };
 

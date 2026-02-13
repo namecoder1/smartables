@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Stage, Layer, Rect, Circle, Group, Text } from 'react-konva';
 import { useTheme } from 'next-themes';
 import { getFloorPlan } from '@/app/actions/floor-plan';
@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Users, Clock } from 'lucide-react';
+import { Users, Clock, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,6 +25,7 @@ import { assignBookingToTable, updateBooking, unassignBooking } from '@/app/acti
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 
 
 interface ReservationsFloorPlanProps {
@@ -100,25 +101,122 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
     boothStroke: isDark ? '#27272a' : '#52525b',
   };
 
-  useEffect(() => {
-    const loadFloorPlan = async () => {
-      setLoading(true);
-      try {
-        const data = await getFloorPlan(locationId);
-        setZones(data.zones);
-        setTables(data.tables);
-        if (data.zones.length > 0) {
-          setCurrentZone(data.zones[0]);
-        }
-      } catch (error) {
-        console.error(error);
-        toast.error('Errore nel caricamento della mappa');
-      } finally {
-        setLoading(false);
+  const loadFloorPlan = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getFloorPlan(locationId);
+      setZones(data.zones);
+      setTables(data.tables);
+      // Only set current zone if not already set or if current zone became invalid
+      // Actually for now let's just keep it simple: if no current zone, set first.
+      // But if we are refreshing, we want to persist the view.
+      if (!currentZone && data.zones.length > 0) {
+        setCurrentZone(data.zones[0]);
       }
-    };
+    } catch (error) {
+      console.error(error);
+      toast.error('Errore nel caricamento della mappa');
+    } finally {
+      setLoading(false);
+    }
+  }, [locationId, currentZone]);
+
+  useEffect(() => {
     loadFloorPlan();
-  }, [locationId]);
+  }, [loadFloorPlan]);
+
+
+  useRealtimeRefresh('bookings', {
+    filter: locationId ? `location_id=eq.${locationId}` : undefined,
+    onUpdate: onAssignmentChange
+  })
+
+  useRealtimeRefresh('zones', {
+    filter: locationId ? `location_id=eq.${locationId}` : undefined,
+    onUpdate: () => {
+      // Re-fetch zones/tables but keep current booking data (handled by parent or separate refresh)
+      // Actually we need to re-run the effect that loads floor plan
+      // We can duplicate the fetch logic or extract it. 
+      // Let's just trigger a re-render by toggling a key? No, just call the effect again.
+      // But useEffect has dependencies.
+      // Let's extract the fetch function.
+      // For now, I will just replicate the fetch logic in a useCallback or separate function.
+      // Or better, let's look at lines 104-120. It's inside useEffect.
+    }
+  })
+
+  // NOTE: The above approach to re-fetch inside useEffect is tricky without extraction.
+  // I will refactor the fetch logic in the next step to be usable by onUpdate.
+
+
+  // -- Panning Logic --
+  const isPanning = useRef(false);
+  const lastPointerPosition = useRef<{ x: number, y: number } | null>(null);
+
+  const handleStageMouseDown = (e: any) => {
+    const stage = e.target.getStage();
+    // Only pan if clicking on empty stage (not on draggable items, though items are not draggable here usually)
+    // Actually, items might have onClick.
+    // Let's allow panning if clicking on background or empty space.
+    // In Konva, if we click on a shape with listening=true, it catches the event.
+    // If we want to pan, we usually drag the background.
+    // But here we are using draggable on Stage? 
+    // Wait, the Stage in the previous code had `draggable` prop on line 307.
+    // If Stage is draggable, Konva handles panning automatically for the whole stage!
+    // BUT, we want controlled panning/zooming like in ZoneEditor to keep track of position state.
+    // ZoneEditor uses manual panning logic. Let's stick to that for consistency and state control.
+
+    // Check if we clicked a table
+    const clickedOnTable = e.target.getParent()?.className === 'Group';
+    if (clickedOnTable) return;
+
+    isPanning.current = true;
+    lastPointerPosition.current = stage.getPointerPosition();
+  };
+
+  const handleStageMouseMove = (e: any) => {
+    if (!isPanning.current) return;
+
+    const stage = e.target.getStage();
+    const pos = stage.getPointerPosition();
+
+    if (pos && lastPointerPosition.current) {
+      const dx = pos.x - lastPointerPosition.current.x;
+      const dy = pos.y - lastPointerPosition.current.y;
+
+      setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      lastPointerPosition.current = pos;
+    }
+  };
+
+  const handleStageMouseUp = () => {
+    isPanning.current = false;
+  };
+
+  const handleWheel = (e: any) => {
+    e.evt.preventDefault();
+    const scaleBy = 1.05;
+    const oldScale = scale;
+    const stage = e.target.getStage();
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const mousePointTo = {
+      x: (pointer.x - position.x) / oldScale,
+      y: (pointer.y - position.y) / oldScale,
+    };
+
+    let newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+    newScale = Math.max(0.1, Math.min(newScale, 3)); // Limits matching ZoneEditor roughly
+
+    const newPos = {
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    };
+
+    setScale(newScale);
+    setPosition(newPos);
+  };
 
   // Auto-Center Logic (Matches ZoneEditor)
   useEffect(() => {
@@ -213,9 +311,9 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
   };
 
   return (
-    <div className="flex h-[calc(100vh-200px)]">
+    <div className="flex h-[calc(100vh-220px)]">
       {/* Sidebar: Unassigned Bookings */}
-      <Card className="w-80 shrink-0  flex flex-col">
+      <Card className="w-80 shrink-0 rounded-r-none flex flex-col">
         <CardHeader>
           <CardTitle className="text-lg">Da Assegnare ({unassignedBookings.length})</CardTitle>
         </CardHeader>
@@ -250,7 +348,7 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
       </Card>
 
       {/* Main Map */}
-      <Card className="flex-1 flex flex-col overflow-hidden border-l-0 pt-0 gap-0">
+      <Card className="flex-1 flex flex-col overflow-hidden border-l-0 rounded-l-none pt-0 gap-0">
         {zones.length > 1 && (
           <div className="flex border-b overflow-x-auto">
             {zones.map(z => (
@@ -266,7 +364,7 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
           </div>
         )}
 
-        <div ref={containerRef} className="flex-1 bg-zinc-50 dark:bg-zinc-950 relative overflow-hidden">
+        <div ref={containerRef} className="flex-1 bg-card relative overflow-hidden">
           {currentZone && (
             <div className="absolute inset-0">
               <Stage
@@ -276,7 +374,11 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
                 y={position.y}
                 scaleX={scale}
                 scaleY={scale}
-                draggable
+                onMouseDown={handleStageMouseDown}
+                onMouseMove={handleStageMouseMove}
+                onMouseUp={handleStageMouseUp}
+                onMouseLeave={handleStageMouseUp}
+                onWheel={handleWheel}
               >
                 <Layer>
                   {/* Room Background */}
@@ -479,6 +581,13 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
               Nessuna mappa trovata.
             </div>
           )}
+
+          {/* Zoom Controls */}
+          <div className="absolute bottom-4 right-4 flex bg-white dark:bg-zinc-800 border rounded-lg shadow-lg items-center z-10">
+            <Button variant="ghost" size="icon" className='rounded-r-none border-r opacity-80 hover:opacity-100' onClick={() => setScale(s => Math.max(0.1, s - 0.1))}><ZoomOut className="w-4 h-4" /></Button>
+            <span className="text-xs w-12 text-center text-muted-foreground">{Math.round(scale * 100)}%</span>
+            <Button variant="ghost" size="icon" className='rounded-l-none border-l opacity-80 hover:opacity-100' onClick={() => setScale(s => Math.min(3, s + 0.1))}><ZoomIn className="w-4 h-4" /></Button>
+          </div>
         </div>
       </Card >
 

@@ -4,7 +4,10 @@ import { useLocationStore } from "@/store/location-store"
 import { useEffect, useRef } from "react"
 import { setLocationCookie } from "@/app/actions/set-location-cookie"
 
-export function LocationInitializer({ locations }: { locations: any[] | null }) {
+import { useRouter } from "next/navigation"
+
+export function LocationInitializer({ locations, activeLocationId }: { locations: any[] | null, activeLocationId?: string }) {
+  const router = useRouter()
   const setLocations = useLocationStore((state) => state.setLocations)
   const selectedLocationId = useLocationStore((state) => state.selectedLocationId)
   const initialized = useRef(false)
@@ -24,8 +27,16 @@ export function LocationInitializer({ locations }: { locations: any[] | null }) 
   useEffect(() => {
     if (selectedLocationId) {
       setLocationCookie(selectedLocationId)
+
+      // If server rendered with a different location, refresh to sync
+      if (activeLocationId && activeLocationId !== selectedLocationId) {
+        router.refresh()
+      } else if (!activeLocationId) {
+        // If server had no location (first load), refresh to set it
+        router.refresh()
+      }
     }
-  }, [selectedLocationId])
+  }, [selectedLocationId, activeLocationId, router])
 
   return null
 }

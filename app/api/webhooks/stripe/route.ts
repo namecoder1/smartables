@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { stripe } from "@/stripe/client";
-import { createAdminClient } from "@/supabase/admin";
+import { stripe } from "@/utils/stripe/client";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { PLANS } from "@/lib/plans";
 import Stripe from "stripe";
 
@@ -151,6 +151,24 @@ export async function POST(req: Request) {
       subscriptionEvent.id,
     );
 
+    // Detect plan change (proration) via previous_attributes
+    const previousAttributes = (event.data as any).previous_attributes;
+    if (previousAttributes?.items) {
+      const oldPriceId = previousAttributes.items?.data?.[0]?.price?.id;
+      const newPriceId = subscription.items.data[0].price.id;
+      if (oldPriceId && oldPriceId !== newPriceId) {
+        const oldPlan = PLANS.find(
+          (p) => p.priceIdMonth === oldPriceId || p.priceIdYear === oldPriceId,
+        );
+        const newPlan = PLANS.find(
+          (p) => p.priceIdMonth === newPriceId || p.priceIdYear === newPriceId,
+        );
+        console.log(
+          `=== PLAN CHANGE DETECTED === ${oldPlan?.name || oldPriceId} → ${newPlan?.name || newPriceId}`,
+        );
+      }
+    }
+
     // Get period dates (async fetch from latest invoice if needed)
     const periodEnd = await getDateFromSubscription(
       subscription,
@@ -274,6 +292,90 @@ export async function POST(req: Request) {
           });
         }
       }
+    }
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    const customerId =
+      typeof charge.customer === "string"
+        ? charge.customer
+        : charge.customer?.id;
+
+    console.log("=== CHARGE.REFUNDED ===");
+    console.log("Charge ID:", charge.id);
+    console.log("Customer ID:", customerId);
+    console.log("Amount refunded:", charge.amount_refunded);
+
+    if (customerId) {
+      // Find organization by stripe_customer_id
+      const { data: org, error: orgError } = await supabase
+        .from("organizations")
+        .select("id, stripe_subscription_id")
+        .eq("stripe_customer_id", customerId)
+        .single();
+
+      if (orgError || !org) {
+        console.error("Error finding organization for refund:", orgError);
+        return new NextResponse("Organization not found for refund", {
+          status: 500,
+        });
+      }
+
+      // 1. Record refund transaction
+      await supabase.from("transactions").insert({
+        organization_id: org.id,
+        amount: -(charge.amount_refunded / 100),
+        currency: charge.currency,
+        status: "succeeded",
+        type: "refund",
+        stripe_payment_intent_id:
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id || null,
+        description: "Rimborso effettuato da Stripe",
+        metadata: {
+          charge_id: charge.id,
+          refund_amount: charge.amount_refunded,
+        },
+      });
+
+      // 2. Cancel the subscription if still active
+      if (org.stripe_subscription_id) {
+        try {
+          await stripe.subscriptions.cancel(org.stripe_subscription_id);
+        } catch (cancelError) {
+          console.error(
+            "[charge.refunded] Subscription cancel failed (may already be canceled):",
+            cancelError,
+          );
+        }
+      }
+
+      // 3. Update organization status
+      const { error: updateError } = await supabase
+        .from("organizations")
+        .update({
+          stripe_status: "canceled",
+          stripe_price_id: null,
+          stripe_subscription_id: null,
+          stripe_cancel_at_period_end: false,
+        })
+        .eq("id", org.id);
+
+      if (updateError) {
+        console.error(
+          "[charge.refunded] Error updating organization:",
+          updateError,
+        );
+        return new NextResponse("Error updating organization after refund", {
+          status: 500,
+        });
+      }
+
+      console.log(
+        `[charge.refunded] Organization ${org.id} refunded and canceled successfully`,
+      );
     }
   }
 

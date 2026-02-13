@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 
@@ -354,6 +354,7 @@ export async function createMenuItem(
     price: number;
     description?: string;
     image_url?: string;
+    is_available?: boolean;
   },
 ) {
   try {
@@ -366,7 +367,7 @@ export async function createMenuItem(
       name: data.name,
       description: data.description || "",
       price: data.price,
-      is_available: true,
+      is_available: data.is_available ?? true,
       image_url: data.image_url || null,
       sort_order: (category.items || []).length,
     };

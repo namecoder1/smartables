@@ -27,7 +27,7 @@ export function AddressAutocomplete({
   defaultValue = "",
   name = "address",
   required = false,
-  placeholder = "Start typing address...",
+  placeholder = "Scrivi l'indirizzo...",
   context = 'default',
 }: AddressAutocompleteProps) {
   const { isLoaded, loadError } = useLoadScript({
@@ -129,8 +129,7 @@ function PlacesAutocomplete({
     <div className="relative">
       <MapPin className={cn(
         "absolute left-3 h-5 w-5",
-        isOnboarding ? "text-black" : "text-gray-500 dark:text-gray-400",
-        context === 'onboarding' ? 'top-3.5' : 'top-2'
+        context === 'onboarding' ? 'top-3.5 text-black' : 'top-2 text-foreground'
       )} />
       <Input
         value={value}
@@ -142,7 +141,7 @@ function PlacesAutocomplete({
         placeholder={placeholder}
         className={cn(
           "pl-9",
-          isOnboarding && "pl-10 h-12 text-lg text-black border-neutral-200 bg-[#f4f4f480]!"
+          isOnboarding && "pl-10 h-12 text-lg text-black border-neutral-200 border-2 bg-white!"
         )}
         autoComplete="new-password"
         name={`${name}_search`}
@@ -161,7 +160,7 @@ function PlacesAutocomplete({
       <input type="hidden" name={name} value={value} />
       {status === "OK" && isOpen && (
         <ul className={cn(
-          "absolute z-10 mt-1 max-h-60 w-full overflow-auto border py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm",
+          "absolute z-10 mt-2 rounded-xl max-h-60 w-full overflow-auto border-2 text-base border-primary! shadow-lg ring-4 ring-primary/40! ring-opacity-5 focus:outline-none sm:text-sm",
           isOnboarding ? "bg-white border-gray-200" : "bg-popover"
         )}>
           {data.map(({ place_id, description }) => (

@@ -1,30 +1,14 @@
-import React from 'react'
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, XCircle, FileText, ExternalLink } from 'lucide-react'
-import { approveComplianceRequest, rejectComplianceRequest } from '@/app/actions/admin-compliance'
-import { redirect } from 'next/navigation'
+import { CheckCircle, XCircle, FileText } from 'lucide-react'
+import { approveComplianceRequest, rejectComplianceRequest, resetComplianceStatusAction } from '@/app/actions/admin-compliance'
 import { format } from 'date-fns'
 
 const AdminPage = async () => {
   const supabase = await createClient()
-
-  // Verify Admin
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  console.log(user?.app_metadata.role)
-  if (!user) return <div>Unauthorized</div>
-
-  // CHECK: app_metadata.role must be 'superadmin'
-  // This separates platform admins from organization admins/staff
-  if (user.app_metadata?.role !== 'superadmin') {
-    return <div>Access Denied. Superadmins only.</div>
-  }
-
-  // console.log(profile, user.id)
 
   // Fetch Pending Requests using Admin Client to bypass RLS on organizations/locations
   const supabaseAdmin = createAdminClient(
@@ -112,10 +96,19 @@ async function AutomationStatusTable() {
     .select(`
       *,
       organization:organization_id ( name ),
-      requirement:regulatory_requirement_id ( id, status )
+      requirement:regulatory_requirement_id ( id, status, telnyx_requirement_group_id )
     `)
     .order('created_at', { ascending: false })
+    .not('regulatory_requirement_id', 'is', null)
     .limit(20) // Just recent ones
+
+  console.log('[Admin] Automation Status - Locations:', locations?.map(l => ({
+    id: l.id,
+    name: l.name,
+    reqId: l.regulatory_requirement_id,
+    reqStatus: l.requirement?.status,
+    telnyxGroupId: l.requirement?.telnyx_requirement_group_id
+  })));
 
   if (!locations?.length) return <p>No locations found.</p>
 
@@ -128,12 +121,23 @@ async function AutomationStatusTable() {
   )
 }
 
+import {
+  simulateTelnyxApproval,
+  simulateIncomingCall,
+  simulateRecordingSaved
+} from '@/app/actions/admin-simulation'
+
 function AutomationCard({ location }: { location: any }) {
   const reqStatus = location.requirement?.status || 'none';
-  const hasTelnyx = !!location.telnyx_phone_number; // Always true if generated, but maybe not purchased?
-  // We don't have a distinct flag for "purchased" vs "assigned", but activation_status gives a hint.
+  const telnyxReqGroupId = location.requirement?.telnyx_requirement_group_id;
+
+  const hasTelnyx = !!location.telnyx_phone_number;
   const hasMeta = !!location.meta_phone_id;
   const isActive = location.activation_status === 'active';
+  const isVerified = location.activation_status === 'verified';
+
+  // Checking environment or just enabling for all admins? 
+  // Let's enable for all admins as requested "management".
 
   return (
     <Card key={location.id} className="text-sm">
@@ -150,6 +154,33 @@ function AutomationCard({ location }: { location: any }) {
           </Badge>
         </div>
 
+
+        {/* STUCK STATE: Pending but no Telnyx Group ID */}
+        {reqStatus === 'pending' && !telnyxReqGroupId && (
+          <form action={async () => {
+            "use server"
+            if (location.requirement?.id) {
+              await resetComplianceStatusAction(location.requirement.id)
+            }
+          }}>
+            <Button size="sm" variant="ghost" className="w-full h-6 mt-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50">
+              ⚠️ Stuck? Reset to Pending Review
+            </Button>
+          </form>
+        )}
+
+        {/* SIMULATION: Approve Regulatory */}
+        {reqStatus !== 'approved' && telnyxReqGroupId && (
+          <form action={async () => {
+            "use server"
+            await simulateTelnyxApproval(telnyxReqGroupId, location.telnyx_phone_number)
+          }}>
+            <Button size="sm" variant="ghost" className="w-full h-6 mt-1 text-[10px] text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+              ⚡ Simulate Approval
+            </Button>
+          </form>
+        )}
+
         {/* Step 1: Purchase */}
         <div className="flex justify-between items-center border-t pt-2">
           <span>Telnyx Number:</span>
@@ -158,6 +189,8 @@ function AutomationCard({ location }: { location: any }) {
         {reqStatus === 'approved' && (
           <form action={async () => {
             "use server"
+            // manualPurchaseNumber requires locationId and requirementId
+            // The original code used location.requirement?.id
             await manualPurchaseNumber(location.id, location.requirement?.id)
           }}>
             <Button size="sm" variant="outline" className="w-full h-7 mt-1 text-xs">
@@ -185,23 +218,60 @@ function AutomationCard({ location }: { location: any }) {
         {/* Step 3: Verify */}
         <div className="flex justify-between items-center border-t pt-2">
           <span>Status:</span>
-          <Badge variant={isActive ? 'default' : 'outline'}>{location.activation_status}</Badge>
+          <Badge variant={isActive || isVerified ? 'default' : 'outline'}>{location.activation_status}</Badge>
         </div>
-        {hasMeta && (
+
+        {/* SIMULATION: Call & Verify */}
+        {hasMeta && !isVerified && (
+          <div className="flex gap-1 mt-1">
+            <form action={async () => {
+              "use server"
+              await simulateIncomingCall(location.telnyx_phone_number)
+            }} className="flex-1">
+              <Button size="sm" variant="secondary" className="w-full h-7 text-[10px] bg-blue-50 text-blue-700 hover:bg-blue-100">
+                ⚡ Sim. Call
+              </Button>
+            </form>
+            <form action={async () => {
+              "use server"
+              await simulateRecordingSaved(location.telnyx_phone_number)
+            }} className="flex-1">
+              <Button size="sm" variant="secondary" className="w-full h-7 text-[10px] bg-green-50 text-green-700 hover:bg-green-100">
+                ⚡ Sim. Code
+              </Button>
+            </form>
+          </div>
+        )}
+
+        {/* Original Manual Trigger (Real) */}
+        {hasMeta && !isVerified && (
           <form action={async () => {
             "use server"
             await manualVoiceVerification(location.id)
           }}>
-            <Button size="sm" variant="secondary" className="w-full h-7 mt-1 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700">
-              <RefreshCw className="w-3 h-3 mr-1" /> Re-trigger Call
+            <Button size="sm" variant="outline" className="w-full h-7 mt-2 text-xs">
+              <RefreshCw className="w-3 h-3 mr-1" /> Re-trigger Real Call
             </Button>
           </form>
         )}
+
+        <div className="pt-2 border-t mt-2">
+          <form action={async () => {
+            "use server"
+            await deleteLocationAction(location.id)
+          }}>
+            <Button size="sm" variant="destructive" className="w-full h-6 text-[10px]">
+              Trash Location (Cleanup)
+            </Button>
+          </form>
+        </div>
 
       </CardContent>
     </Card>
   )
 }
+
+import { deleteLocationAction } from '@/app/actions/admin-automation'
 
 async function RequestCard({ request }: { request: any }) {
   // We need client component for interactive buttons? 

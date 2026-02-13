@@ -73,7 +73,7 @@ export function ImageUpload({
       </div>
       <div className="flex flex-col-reverse items-end gap-1">
         {previewUrl ? (
-          <div className={`relative aspect-${aspect} w-full h-40 overflow-hidden border bg-muted/60`}>
+          <div className={`relative aspect-${aspect} w-full h-40 overflow-hidden rounded-xl border bg-muted/60`}>
             <Image
               src={previewUrl}
               alt="Upload"
@@ -90,7 +90,7 @@ export function ImageUpload({
               onClick={handleRemove}
               variant="destructive"
               size="icon"
-              className="absolute z-50 right-1 top-1 h-4 w-4"
+              className="absolute z-50 right-2 top-2 h-4 w-4"
               disabled={disabled}
             >
               <X className="w-3 h-3" />
@@ -99,7 +99,7 @@ export function ImageUpload({
         ) : (
           <div
             onClick={() => !disabled && fileInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center aspect-video w-full py-4 h-40 border border-dashed bg-muted/50 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+            className={`flex flex-col rounded-xl items-center justify-center aspect-video w-full py-4 h-40 border border-dashed bg-muted/50 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
           >
             <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
             <span className="text-xs text-muted-foreground">Clicca e carica</span>

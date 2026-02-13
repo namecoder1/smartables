@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLocationStore } from "@/store/location-store";
 import { getFloorPlan, saveFloorPlan } from "@/app/actions/floor-plan";
 import { TablePreset } from "../table-presets";
-import { TableInstance, Zone, Guide } from "./types";
+import { TableInstance, Zone, Guide, DrawingWallState } from "./types";
 import {
   getLineGuideStops,
   getObjectSnappingEdges,
@@ -17,6 +17,8 @@ import {
 const DEFAULT_ZONE_WIDTH = 1000;
 const DEFAULT_ZONE_HEIGHT = 800;
 
+import { useHistory } from "@/hooks/use-history";
+
 export function useZoneEditor(
   initialZoneId?: string,
   onSaveSuccess?: () => void,
@@ -25,17 +27,21 @@ export function useZoneEditor(
   const router = useRouter();
 
   // -- State --
-  const [tables, setTables] = useState<TableInstance[]>([]);
+  const {
+    state: tables,
+    set: setTables,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    clear: clearHistory,
+  } = useHistory<TableInstance[]>([]);
+
   const [currentZone, setCurrentZone] = useState<Zone | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [guides, setGuides] = useState<Guide[]>([]);
-  const [drawingWall, setDrawingWall] = useState<{
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-  } | null>(null);
+  const [drawingWall, setDrawingWall] = useState<DrawingWallState | null>(null);
 
   // -- Refs --
   const dragItemRef = useRef<TablePreset | null>(null);
@@ -83,8 +89,14 @@ export function useZoneEditor(
           height: t.height,
           radius: t.shape === "circle" ? t.width / 2 : 0,
           zone_id: t.zone_id,
+          min_capacity: t.min_capacity,
+          max_capacity: t.max_capacity,
         }));
         setTables(loadedTables);
+        // We need to clear history after initial load so "Undo" isn't active immediately
+        // However, useHistory's set updates the present state and adds to history if not initial.
+        // We need a way to reset history. Let's use the new clear function.
+        clearHistory(loadedTables);
       } catch (error) {
         console.error("Failed to load floor plan:", error);
         toast.error("Errore nel caricamento della sala");
@@ -94,6 +106,22 @@ export function useZoneEditor(
     };
     loadData();
   }, [selectedLocationId, initialZoneId]);
+
+  // -- Keyboard Shortcuts --
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+        if (e.shiftKey) {
+          if (canRedo) redo();
+        } else {
+          if (canUndo) undo();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, canUndo, canRedo]);
 
   // -- Save Data --
   const handleSave = async () => {
@@ -120,7 +148,6 @@ export function useZoneEditor(
       toast.error("Errore nel salvataggio");
     } finally {
       setLoading(false);
-      router.push("/manage-seats");
     }
   };
 
@@ -259,5 +286,9 @@ export function useZoneEditor(
     handleCanvasDrop,
     deleteTable,
     rotateTable,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }

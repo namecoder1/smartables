@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export type CreateBookingState = {
@@ -11,7 +11,7 @@ export type CreateBookingState = {
 
 export async function createBooking(
   prevState: CreateBookingState,
-  formData: FormData
+  formData: FormData,
 ): Promise<CreateBookingState> {
   const supabase = await createClient();
 
@@ -151,6 +151,91 @@ export async function createBooking(
 
   revalidatePath("/(private)/(platform)/reservations", "layout");
   return { success: true, message: "Booking created successfully" };
+}
+
+export async function updateBooking(
+  id: string,
+  prevState: CreateBookingState,
+  formData: FormData,
+): Promise<CreateBookingState> {
+  const supabase = await createClient();
+
+  // 1. Auth Check - simplistic for now
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Unauthorized", success: false };
+  }
+
+  // 2. Extract Data
+  const guestName = formData.get("name") as string;
+  const guestPhone = formData.get("phone") as string;
+  const guestsCount = parseInt(formData.get("guests") as string);
+  const bookingTime = formData.get("date") as string;
+  const notes = formData.get("notes") as string;
+  const isKnownCustomer = formData.get("isKnownCustomer") === "true";
+  const selectedCustomerId = formData.get("selectedCustomer") as string | null;
+
+  // Validation
+  if (!guestsCount || !bookingTime) {
+    return {
+      error: "Missing required fields (guests or date)",
+      success: false,
+    };
+  }
+
+  const updatePayload: any = {
+    booking_time: bookingTime,
+    guests_count: guestsCount,
+    notes: notes,
+  };
+
+  if (isKnownCustomer && selectedCustomerId) {
+    updatePayload.customer_id = selectedCustomerId;
+    // We update name/phone on the booking to match customer, or keep as snapshot?
+    // Usually booking snapshot name/phone matches customer if known.
+    updatePayload.guest_name = await getCustomerName(
+      supabase,
+      selectedCustomerId,
+    );
+    updatePayload.guest_phone = await getCustomerPhone(
+      supabase,
+      selectedCustomerId,
+    );
+  } else {
+    // If switching to unknown or just updating details
+    if (!guestName || !guestPhone) {
+      return { error: "Name and Phone are required", success: false };
+    }
+    updatePayload.guest_name = guestName;
+    updatePayload.guest_phone = guestPhone;
+
+    // If it was previously a known customer and now we are changing it to a custom name/phone
+    // we might want to nullify customer_id if that's the logic.
+    // Assuming UI handles logic: if !isKnownCustomer, we treat as walk-in/unknown.
+    // Ideally we should check if this phone matches an existing customer?
+    // For update, let's keep it simple: update what's sent.
+
+    // NOTE: If user explicitly unchecks "Known Customer", we should probably nullify customer_id?
+    // Let's assume yes for now if that's the intent.
+    if (!isKnownCustomer) {
+      updatePayload.customer_id = null;
+    }
+  }
+
+  const { error } = await supabase
+    .from("bookings")
+    .update(updatePayload)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Booking Update Error:", error);
+    return { error: "Failed to update booking", success: false };
+  }
+
+  revalidatePath("/(private)/(platform)/reservations", "layout");
+  return { success: true, message: "Booking updated successfully" };
 }
 
 // Helpers

@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import {
   uploadDocument,
   createRequirementGroup,
@@ -16,13 +17,17 @@ const REQ_ID_IDENTITY_PROOF = "86649686-5e33-469b-8169-2f5407cb591d";
 const REQ_ID_ADDRESS_PROOF = "363e79bd-1002-4217-8854-5188c0051e73";
 
 export async function approveComplianceRequest(requirementId: string) {
+  console.log("[Admin] approveComplianceRequest STARTED", { requirementId });
   const supabase = await createClient();
 
   // 1. Verify Admin (Basic role check or rely on RLS/Middleware if admin path is protected)
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) {
+    console.error("[Admin] Unauthorized: No user found");
+    throw new Error("Unauthorized");
+  }
 
   // Optional: Check if user has admin role from profiles
   const { data: profile } = await supabase
@@ -33,47 +38,81 @@ export async function approveComplianceRequest(requirementId: string) {
 
   const ADMIN_ID = "0a82970f-1fc5-4a52-97a1-a8613de0e3f7";
   if (profile?.role !== "admin" && user.id !== ADMIN_ID) {
+    console.error("[Admin] Unauthorized: User is not admin", {
+      userId: user.id,
+      role: profile?.role,
+    });
     throw new Error("Unauthorized: Admin Access Required");
   }
 
-  // 2. Atomic Lock: Transition from 'pending_review' to 'processing'
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
+  console.log("[Admin] Locking request...");
+  // 2. Atomic Lock: Transition from 'pending_review' to 'pending'
   // This prevents race conditions where two admins click approve simultaneously.
-  const { data: request, error: updateError } = await supabase
+  // We use 'pending' because 'processing' is not in the Enum, and 'pending' effectively locks it from being picked up again (since we query for pending_review)
+  const { data: request, error: updateError } = await supabaseAdmin
     .from("telnyx_regulatory_requirements")
-    .update({ status: "processing" })
+    .update({ status: "pending" })
     .eq("id", requirementId)
     .eq("status", "pending_review")
     .select("*")
     .single();
 
   if (updateError || !request) {
+    console.error("[Admin] Failed to lock request", { updateError, request });
     throw new Error(
       "Request not found given the criteria (it might be already processing or handled).",
     );
   }
+  console.log("[Admin] Request locked and fetched", { requestId: request.id });
 
   try {
     const { identity_path, address_path, identity_filename, address_filename } =
       request.documents_data;
 
+    console.log("[Admin] Downloading documents...", {
+      identity_path,
+      address_path,
+    });
+
     // 3. Download files
     const { data: identityData, error: identityError } = await supabase.storage
       .from("compliance-docs")
       .download(identity_path);
-    if (identityError) throw new Error("Failed to download identity doc");
+    if (identityError) {
+      console.error("[Admin] Identity download failed", identityError);
+      throw new Error("Failed to download identity doc");
+    }
 
     const { data: addressData, error: addressError } = await supabase.storage
       .from("compliance-docs")
       .download(address_path);
-    if (addressError) throw new Error("Failed to download address doc");
+    if (addressError) {
+      console.error("[Admin] Address download failed", addressError);
+      throw new Error("Failed to download address doc");
+    }
+
+    console.log("[Admin] Documents downloaded. Uploading to Telnyx...");
 
     // 4. Upload to Telnyx
     const telnyxIdentityDoc = await uploadDocument(
       identityData,
       identity_filename,
     );
+    console.log("[Admin] Identity uploaded to Telnyx", {
+      id: telnyxIdentityDoc.id,
+    });
+
     // 4. Create Address Object in Telnyx
     const addressDoc = await uploadDocument(addressData, address_filename); // Assuming addressData is the Blob and address_filename is the filename
+    console.log("[Admin] Address doc uploaded to Telnyx", {
+      id: addressDoc.id,
+    });
+
     const telnyxAddressData = {
       customer_reference: `addr_loc_${request.location_id}`,
       street_address: request.documents_data.streetAddress, // e.g. "Via Roma 1"
@@ -85,8 +124,10 @@ export async function approveComplianceRequest(requirementId: string) {
       first_name: request.documents_data.firstName,
       last_name: request.documents_data.lastName,
     };
+    console.log("[Admin] Creating Telnyx address...", telnyxAddressData);
 
     const telnyxAddress = await createAddress(telnyxAddressData); // Assuming createAddress is imported and available
+    console.log("[Admin] Telnyx address created", { id: telnyxAddress.id });
 
     // 5. Prepare Requirements Array
     const {
@@ -195,6 +236,10 @@ export async function approveComplianceRequest(requirementId: string) {
     }
 
     const customerReference = `loc_${request.location_id}_${request.area_code}`; // Precise ref
+    console.log("[Admin] Creating Requirement Group...", {
+      customerReference,
+      requirementsCount: requirements.length,
+    });
 
     const requirementGroup = await createRequirementGroup(
       "IT",
@@ -203,12 +248,27 @@ export async function approveComplianceRequest(requirementId: string) {
       customerReference,
       requirements,
     );
+    console.log("[Admin] Requirement Group created", {
+      id: requirementGroup.id,
+      status: requirementGroup.status,
+    });
 
     // 6. Update DB
-    await supabase
+    console.log("[Admin] Updating DB with Requirement Group ID...", {
+      status: requirementGroup.status.toLowerCase(),
+      telnyx_requirement_group_id: requirementGroup.id,
+    });
+    const {
+      data: updatedData,
+      error: finalUpdateError,
+      count: updatedCount,
+    } = await supabaseAdmin
       .from("telnyx_regulatory_requirements")
       .update({
-        status: requirementGroup.status.toLowerCase(), // 'pending' usually from Telnyx
+        status:
+          requirementGroup.status.toLowerCase() === "unapproved"
+            ? "pending"
+            : requirementGroup.status.toLowerCase(), // Map 'unapproved' to 'pending' as 'unapproved' might not be in our ENUM
         telnyx_requirement_group_id: requirementGroup.id,
         documents_data: {
           ...request.documents_data,
@@ -216,29 +276,44 @@ export async function approveComplianceRequest(requirementId: string) {
           telnyx_address_id: addressDoc.id,
         },
       })
-      .eq("id", requirementId);
+      .eq("id", requirementId)
+      .select()
+      .single();
+
+    if (finalUpdateError) {
+      console.error("[Admin] DB Update FAILED", finalUpdateError);
+      throw finalUpdateError;
+    }
+
+    console.log("[Admin] DB Updated successfully. Revalidating...", {
+      updatedData,
+      updatedCount,
+    });
 
     // 7. Notify User
     // Use organization owner email? simpler query for now
     // We assume the admin knows what they are doing. Implicitly we could notify the org owner.
 
     revalidatePath("/manage");
+    console.log("[Admin] approveComplianceRequest COMPLETED SUCCESSFULLY");
     return { success: true };
   } catch (error: any) {
-    console.error("Approval Error:", error);
+    console.error("[Admin] CRITICAL Approval Error:", error);
     // Rollback: Revert to pending_review so it reappears in dashboard and can be retried
-    const { error: rollbackError } = await supabase
+    const { error: rollbackError } = await supabaseAdmin
       .from("telnyx_regulatory_requirements")
       .update({ status: "pending_review" })
       .eq("id", requirementId)
-      .eq("status", "processing"); // Safety check
+      .eq("status", "pending"); // Safety check
 
     if (rollbackError) {
       console.error(
-        "Critical: Failed to rollback status for req",
+        "[Admin] CRITICAL: Failed to rollback status for req",
         requirementId,
         rollbackError,
       );
+    } else {
+      console.log("[Admin] Rolled back status to pending_review");
     }
 
     return { success: false, error: error.message };
@@ -266,8 +341,13 @@ export async function rejectComplianceRequest(
   if (profile?.role !== "admin" && user.id !== ADMIN_ID)
     throw new Error("Unauthorized");
 
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
   // 2. Update DB
-  await supabase
+  await supabaseAdmin
     .from("telnyx_regulatory_requirements")
     .update({
       status: "rejected",
@@ -277,4 +357,18 @@ export async function rejectComplianceRequest(
 
   revalidatePath("/manage");
   return { success: true };
+}
+
+export async function resetComplianceStatusAction(requirementId: string) {
+  const supabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
+  await supabase
+    .from("telnyx_regulatory_requirements")
+    .update({ status: "pending_review" })
+    .eq("id", requirementId);
+
+  revalidatePath("/manage");
 }

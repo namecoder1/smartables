@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut, Undo2, Redo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TABLE_PRESETS } from './table-presets';
@@ -11,6 +11,8 @@ import { TablePropertiesPanel } from './table-properties-panel';
 import { useZoneEditor } from './zone-editor/use-zone-editor';
 import { ZoneLayout } from './zone-editor/ZoneLayout';
 import { EditorHelpDialog } from './zone-editor/editor-help-dialog';
+import { useZoneColors } from './zone-editor/use-zone-colors';
+import { NumberInput } from '@/components/ui/number-input';
 
 interface ZoneEditorProps {
   initialZoneId?: string;
@@ -19,6 +21,7 @@ interface ZoneEditorProps {
 }
 
 export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: ZoneEditorProps) {
+  const colors = useZoneColors();
   const {
     tables, setTables,
     currentZone, setCurrentZone,
@@ -33,6 +36,10 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
     handleCanvasDrop,
     deleteTable,
     rotateTable,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useZoneEditor(initialZoneId, onSaveSuccess);
 
   // UI State that didn't need to be in the complex hook
@@ -68,9 +75,9 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
   if (!currentZone) return <div className="p-8 text-center text-gray-500">Nessuna sala trovata.</div>;
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="flex h-full flex-col">
       {/* TOOLBAR */}
-      <div className="flex justify-between items-center bg-background dark:bg-card p-4 border-b shrink-0">
+      <div className="flex justify-between items-center p-4 border-b shrink-0">
         <div className="flex items-center gap-2">
           {onBack && (
             <Button variant="outline" size="icon" onClick={onBack}>
@@ -88,12 +95,22 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
                 className="max-w-[200px]"
               />
               <span className="text-gray-400 text-sm">WxH:</span>
-              <Input type="number" className="w-20" value={currentZone.width} onChange={(e) => setCurrentZone(prev => prev ? { ...prev, width: Number(e.target.value) } : null)} />
+              <NumberInput
+                className="w-20"
+                value={currentZone.width}
+                onValueChange={(value) => setCurrentZone(prev => prev ? { ...prev, width: value || 0 } : null)}
+                context="default"
+              />
               <span className="text-gray-400">x</span>
-              <Input type="number" className="w-20" value={currentZone.height} onChange={(e) => setCurrentZone(prev => prev ? { ...prev, height: Number(e.target.value) } : null)} />
+              <NumberInput
+                className="w-20"
+                value={currentZone.height}
+                onValueChange={(value) => setCurrentZone(prev => prev ? { ...prev, height: value || 0 } : null)}
+                context="default"
+              />
             </div>
           ) : (
-            <div className="flex items-center gap-2 group bg-background h-9 px-2 border cursor-pointer" onClick={() => setIsEditingName(true)}>
+            <div className="flex items-center gap-2 group bg-background dark:bg-input/30 h-9 rounded-xl px-2 border cursor-pointer" onClick={() => setIsEditingName(true)}>
               <h2 className="font-semibold text-md">{currentZone.name || 'Nuova Sala'}</h2>
               <Edit2 className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
@@ -101,6 +118,28 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center bg-background dark:bg-input/30 rounded-xl border mr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="rounded-r-none border-r"
+            >
+              <Undo2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="rounded-l-none"
+            >
+              <Redo2 className="w-4 h-4" />
+            </Button>
+          </div>
           <EditorHelpDialog />
           <Button onClick={handleSave} disabled={loading} className="gap-2">
             <Save className="w-4 h-4" /> {loading ? 'Salvataggio...' : 'Salva'}
@@ -109,7 +148,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
       </div>
 
       {/* CONTENT */}
-      <div className="h-[calc(100vh-145px)] w-full relative overflow-hidden">
+      <div className="h-[calc(100vh-145px)] w-full relative overflow-hidden dark:bg-[#1e1e1e] bg-background">
 
         {/* CANVAS - Absolute Full Screen */}
         <div className="absolute inset-0 z-0">
@@ -138,16 +177,16 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
               setStageDimensions
             }}
           />
-          <div className="absolute flex bg-white border items-center bottom-4 right-4 z-20 gap-2">
-            <Button variant="ghost" size="icon" className='border-r' onClick={() => setScale(s => Math.max(0.2, s - 0.1))}><ZoomOut className="w-4 h-4" /></Button>
+          <div className="absolute flex bg-white dark:bg-input/30 border-2 rounded-xl items-center bottom-4 right-4 z-20 gap-2">
+            <Button variant="ghost" size="icon" className='border-r-2 rounded-r-none' onClick={() => setScale(s => Math.max(0.2, s - 0.1))}><ZoomOut className="w-4 h-4" /></Button>
             <span className="text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
-            <Button variant="ghost" size="icon" className='border-l' onClick={() => setScale(s => Math.min(3, s + 0.1))}><ZoomIn className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className='border-l-2 rounded-l-none' onClick={() => setScale(s => Math.min(3, s + 0.1))}><ZoomIn className="w-4 h-4" /></Button>
           </div>
         </div>
 
         {/* SIDEBAR - Overlay */}
         {isSidebarOpen && (
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r flex flex-col z-10 shadow-xl">
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[#fffaef] dark:bg-[#1a1813] border-r flex flex-col z-10 shadow-xl">
             <div className="p-4 border-b">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase">Elementi</h3>
             </div>
@@ -158,17 +197,31 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
                     key={preset.id}
                     draggable
                     onDragStart={() => handleSidebarDragStart(preset)}
-                    className="flex cursor-grab flex-col items-center gap-2 rounded-lg border bg-background p-4 shadow-sm hover:shadow-md transition-all active:cursor-grabbing hover:border-primary/50"
+                    className="flex cursor-grab flex-col items-center gap-2 border bg-card p-4 shadow-sm rounded-xl hover:shadow-md transition-all active:cursor-grabbing hover:border-primary/50"
                   >
-                    <div className={`border-2 border-foreground/80 flex items-center justify-center 
+                    <div className={`border-2 flex items-center justify-center 
                       ${(preset.type === 'circle' || preset.type === 'plant' || (preset.type === 'column' && preset.radius)) ? 'rounded-full' : ''}
-                      ${preset.type === 'plant' ? 'border-green-500 bg-green-500/20' : ''}
-                      ${(preset.type === 'wall' || preset.type === 'door' || preset.type === 'column') ? 'bg-zinc-800 border-zinc-900 dark:bg-zinc-500' : ''}
                     `}
                       style={{
                         width: preset.width ? preset.width / 2 : (preset.radius! * 1),
                         height: preset.height ? preset.height / 2 : (preset.radius! * 1),
                         maxWidth: '60px', maxHeight: '60px', minWidth: '20px', minHeight: '20px',
+                        backgroundColor:
+                          preset.type === 'plant' ? colors.plantFill :
+                            preset.type === 'wall' ? colors.wallFill :
+                              preset.type === 'door' ? colors.doorFill :
+                                preset.type === 'column' ? colors.columnFill :
+                                  preset.type === 'booth' ? colors.boothFill :
+                                    preset.type === 'counter' ? colors.counterFill :
+                                      colors.tableFill,
+                        borderColor:
+                          preset.type === 'plant' ? colors.plantStroke :
+                            preset.type === 'wall' ? colors.wallStroke :
+                              preset.type === 'door' ? colors.doorStroke :
+                                preset.type === 'column' ? colors.columnStroke :
+                                  preset.type === 'booth' ? colors.boothStroke :
+                                    preset.type === 'counter' ? colors.counterStroke :
+                                      colors.tableStroke,
                       }}
                     />
                     <span className="text-xs font-medium text-center">{preset.label}</span>

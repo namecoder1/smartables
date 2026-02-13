@@ -71,50 +71,50 @@ export function CategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{category ? 'Modifica Categoria' : 'Nuova Categoria'}</DialogTitle>
           <DialogDescription>
-            Organizza i tuoi articoli in categorie.
+            Organizza il tuo menu in sezioni (es. Antipasti, Primi).
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="cat-name">Nome</Label>
+            <Label htmlFor="cat-name">Nome Categoria</Label>
             <Input
               id="cat-name"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="es: Aperitivi"
+              placeholder="es. I Nostri Primi"
               autoFocus
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="cat-name">Descrizione</Label>
+            <Label htmlFor="cat-desc">Descrizione (Opzionale)</Label>
             <Textarea
-              rows={2}
-              id="cat-name"
+              rows={3}
+              id="cat-desc"
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="es. Drink e Tapas creati con cura e passione"
-              autoFocus
+              placeholder="Breve descrizione che apparirà sotto il titolo..."
+              className="resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex items-center justify-between rounded-lg border p-4 bg-slate-50">
             <div className="space-y-0.5">
-              <Label className="text-base">Visibile</Label>
-              <div className="text-sm text-muted-foreground">
-                Mostra questa categoria ai clienti
+              <Label className="text-base">Visibilità</Label>
+              <div className="text-xs text-muted-foreground">
+                Rendi questa categoria visibile nel menu pubblico
               </div>
             </div>
-            <Checkbox checked={isVisible} onCheckedChange={(checked) => setIsVisible(checked as boolean)} />
+            <Switch checked={isVisible} onCheckedChange={setIsVisible} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Salvataggio...' : (category ? 'Salva Cambiamenti' : 'Crea Categoria')}
+          <Button onClick={handleSubmit} disabled={loading || !name.trim()}>
+            {loading ? 'Salvataggio...' : (category ? 'Salva Modifiche' : 'Crea Categoria')}
           </Button>
         </DialogFooter>
       </DialogContent>

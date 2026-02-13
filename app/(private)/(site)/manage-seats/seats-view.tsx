@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocationStore } from '@/store/location-store';
 import { FloorPlanList } from '@/app/(private)/(site)/manage-seats/components/floor-plan-list';
 import { deleteFloorPlan, getFloorPlan } from '@/app/actions/floor-plan';
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Plus, PlusCircle, Store } from 'lucide-react';
@@ -11,6 +12,20 @@ import { v4 as uuidv4 } from 'uuid';
 import ZoneEditor from './components/zone-editor';
 import ConfirmDialog from '@/components/utility/confirm-dialog';
 import PageWrapper from '@/components/private/page-wrapper';
+import ZoneWizard from './components/zone-wizard';
+import { saveFloorPlan, getOrganizationZonesCount } from '@/app/actions/floor-plan';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useOrganization } from '@/components/providers/organization-provider';
+import { PLANS } from '@/lib/plans';
+import { Badge } from '@/components/ui/badge';
+import { Lock } from 'lucide-react';
+import NoItems from '@/components/utility/no-items';
+
+const PLAN_LIMITS = {
+  starter: 5,
+  pro: 18,     // Growth
+  business: 35 // Business
+};
 
 interface Zone {
   id: string;
@@ -23,11 +38,19 @@ const SeatsView = () => {
   const { selectedLocationId, getSelectedLocation } = useLocationStore();
   const location = getSelectedLocation();
 
-  const [mode, setMode] = useState<'list' | 'editor'>('list');
+  const [mode, setMode] = useState<'list' | 'editor' | 'wizard'>('list');
+  const { organization } = useOrganization();
   const [zones, setZones] = useState<Zone[]>([]);
   const [allTables, setAllTables] = useState<any[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const [orgZoneCount, setOrgZoneCount] = useState<number>(0);
+
+  // Determine current limit based on plan
+  const currentPlan = PLANS.find(p => p.priceIdMonth === organization?.stripe_price_id || p.priceIdYear === organization?.stripe_price_id);
+  const planId = currentPlan?.id || 'starter'; // Default to starter if no plan found (e.g. Free)
+  const maxZones = PLAN_LIMITS[planId as keyof typeof PLAN_LIMITS] || 5;
+  const isLimitReached = orgZoneCount >= maxZones;
 
   // State for delete confirmation
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
@@ -42,25 +65,68 @@ const SeatsView = () => {
       setZones(data.zones);
       setAllTables(data.tables);
 
-      // If we are in list mode and no zones exist, we show empty state (handled in render).
+      if (organization) {
+        const count = await getOrganizationZonesCount(organization.id);
+        setOrgZoneCount(count);
+      }
     } catch (error) {
       console.error(error);
       toast.error('Errore nel caricamento delle mappe');
     } finally {
       setLoading(false);
     }
-  }, [selectedLocationId]);
+  }, [selectedLocationId, organization]);
+
+  useRealtimeRefresh('zones', {
+    filter: selectedLocationId ? `location_id=eq.${selectedLocationId}` : undefined,
+    onUpdate: loadZones
+  })
+
+  useRealtimeRefresh('tables', {
+    filter: selectedLocationId ? `location_id=eq.${selectedLocationId}` : undefined,
+    onUpdate: loadZones
+  })
 
   useEffect(() => {
     loadZones();
   }, [loadZones]);
 
   const handleCreate = () => {
-    // When creating, we want to start fresh. 
-    // ZoneEditor handles creation if ID is missing or not found, but we can also pass a generated ID if we want to be explicit.
-    // For now, let's pass a NEW ID so the editor initializes a new zone.
-    setSelectedZoneId(uuidv4());
-    setMode('editor');
+    // Switch to wizard mode for creation
+    setMode('wizard');
+  };
+
+  const handleWizardComplete = async (zone: Zone, tables: any[]) => {
+    if (!selectedLocationId) return;
+
+    setLoading(true);
+    try {
+      // Save the new zone and its tables
+      // Note: saveFloorPlan typically handles upsert/sync. 
+      // We pass the new zone and tables.
+      // If the backend implementation replaces all zones for the location, this needs to be cautious.
+      // Assuming getFloorPlan logic: it fetches all.
+      // We should probably merge with existing zones if saveFloorPlan is destructive to others, 
+      // but based on typical implementation of `saveFloorPlan(locationId, zones, tables)` it likely syncs.
+      // To be safe, let's include existing zones/tables + new ones if we want to preserve them,
+      // OR rely on the fact that we might only be sending what changed?
+      // Re-checking use-zone-editor: it sends [zoneToSave] and tablesToSave.
+      // This implies it might be an upsert or it might rely on the backend to handle it.
+      // Let's attempt to just save the NEW one.
+
+      await saveFloorPlan(selectedLocationId, [zone], tables);
+
+      toast.success('Sala creata con successo');
+      await loadZones(); // Refresh local state
+
+      setSelectedZoneId(zone.id);
+      setMode('editor');
+    } catch (error) {
+      console.error(error);
+      toast.error('Errore nel salvataggio della nuova sala');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (zone: Zone) => {
@@ -75,9 +141,9 @@ const SeatsView = () => {
   };
 
   const handleSaveSuccess = () => {
-    // Optional: Stay in editor or go back? Usually stay in editor after save is better UX, user can click back manually.
-    // But we should refresh list in background if needed.
     loadZones();
+    setMode('list');
+    setSelectedZoneId(undefined);
   };
 
   const confirmDelete = async () => {
@@ -104,45 +170,98 @@ const SeatsView = () => {
 
   return (
     <div className='h-full'>
+      {mode === 'wizard' && (
+        <PageWrapper className="h-full overflow-hidden">
+          <ZoneWizard
+            onComplete={handleWizardComplete}
+            onCancel={() => setMode('list')}
+          />
+        </PageWrapper>
+      )}
+
       {mode === 'list' && (
-        <PageWrapper>
-          <div className="flex items-center justify-between">
+        <PageWrapper className='relative'>
+          <div className="flex items-center justify-between xl:hidden">
             <div>
               <h1 className="text-3xl font-bold">Gestione Sala</h1>
               <p className="text-muted-foreground">L{zones.length < 2 ? 'a' : 'e'} tu{zones.length < 2 ? 'a' : 'e'} mapp{zones.length < 2 ? 'a' : 'e'} dell{zones.length < 2 ? 'a' : 'e'} sal{zones.length < 2 ? 'a' : 'e'} per {location.name}.</p>
             </div>
             {zones.length > 0 && (
-              <Button onClick={handleCreate}>
-                <PlusCircle className="mr-2 h-4 w-4" />
+              <Button onClick={handleCreate} disabled={isLimitReached}>
+                {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Nuova Mappa
               </Button>
             )}
           </div>
 
-          {!loading && zones.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 border border-dashed bg-neutral-50 dark:bg-neutral-950/50 min-h-[400px]">
-              <div className="bg-neutral-100 dark:bg-neutral-800 p-4 mb-4">
-                <Store className="w-10 h-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Non hai mappe della sala</h3>
-              <p className="text-muted-foreground mb-6 text-center max-w-md">
-                Crea la tua prima mappa per gestire i tavoli e le prenotazioni.
-                Potrai creare diverse disposizioni per eventi o sale differenti.
-              </p>
-              <Button onClick={handleCreate} size="lg">
-                <Plus className="h-5 w-5" />
-                Crea Nuova Mappa
-              </Button>
+          <div className='flex flex-col gap-4'>
+            <div className='grid grid-cols-3 gap-4'>
+              <Card className='gap-2 bg-card/80 shadow-none'>
+                <CardHeader>
+                  <CardTitle>Totale coperti</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className='text-3xl font-bold'>
+                    {allTables.reduce((acc, table) => acc + (table.seats || 0), 0)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className='gap-2 bg-card/80 shadow-none'>
+                <CardHeader>
+                  <CardTitle>Capienza Sede</CardTitle>
+                </CardHeader>
+                <CardContent className='flex items-end gap-1.5'>
+                  <p className='text-3xl font-bold'>
+                    {location.seats}
+                  </p>
+                  <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
+                    coperti
+                  </span>
+                </CardContent>
+              </Card>
+              <Card className='gap-2 bg-card/80 shadow-none'>
+                <CardHeader>
+                  <CardTitle>Mappe create</CardTitle>
+                </CardHeader>
+                <CardContent className='flex items-end gap-1.5'>
+                  <p className='text-3xl font-bold'>
+                    {orgZoneCount}/{maxZones}
+                  </p>
+                  <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
+                    mappe
+                  </span>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <FloorPlanList
-              zones={zones}
-              tables={allTables}
-              location={location}
-              onEdit={handleEdit}
-              onDelete={(zone) => setZoneToDelete(zone as any)}
-            />
+            
+            {!loading && zones.length === 0 ? (
+              <NoItems
+                icon={<Store className="w-10 h-10 text-foreground" />}
+                title="Non hai mappe della sala"
+                description="Crea la tua prima mappa per gestire i tavoli e le prenotazioni. Potrai creare diverse disposizioni per eventi o sale differenti."
+                button={<Button onClick={handleCreate} size="lg" disabled={isLimitReached}>
+                  {isLimitReached ? <Lock className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                  {isLimitReached ? "Limite Raggiunto" : "Crea Nuova Mappa"}
+                </Button>}
+              />
+            ) : (
+              <FloorPlanList
+                zones={zones}
+                tables={allTables}
+                location={location}
+                onEdit={handleEdit}
+                onDelete={(zone) => setZoneToDelete(zone as any)}
+              />
+            )}
+          </div>
+
+          {zones.length > 0 && (
+            <Button onClick={handleCreate} disabled={isLimitReached} className='absolute right-6 bottom-6 z-50 xl:flex hidden'>
+              {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              Nuova Mappa
+            </Button>
           )}
+
         </PageWrapper>
       )}
 

@@ -67,6 +67,15 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
               offsetX={table.width! / 2}
               offsetY={table.height! / 2}
             />
+            {/* Middle Piece (Mask) */}
+            <Rect
+              x={table.width! / 3}
+              width={table.width! / 3} height={table.height}
+              fill={colors.paperBg}
+              strokeWidth={0}
+              offsetX={table.width! / 2}
+              offsetY={table.height! / 2}
+            />
             {/* Right Piece */}
             <Rect
               x={(table.width! * 2) / 3}
@@ -183,24 +192,24 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
       {renderShape()}
 
       {/* Label */}
-      {table.type !== 'wall' && 
-        table.type !== 'plant' && 
-        table.type !== 'booth' && 
+      {table.type !== 'wall' &&
+        table.type !== 'plant' &&
+        table.type !== 'booth' &&
         table.type !== 'door' &&
         table.type !== 'column' && (
-        <Text
-          text={table.label}
-          fontSize={12}
-          fill={colors.text}
-          align="center"
-          verticalAlign="middle"
-          width={!table.radius ? table.width : (table.radius * 2)}
-          height={!table.radius ? table.height : (table.radius * 2)}
-          offsetX={!table.radius ? table.width! / 2 : table.radius}
-          offsetY={!table.radius ? table.height! / 2 : table.radius}
-          pointerEvents="none"
-        />
-      )}
+          <Text
+            text={table.label}
+            fontSize={12}
+            fill={colors.text}
+            align="center"
+            verticalAlign="middle"
+            width={!table.radius ? table.width : (table.radius * 2)}
+            height={!table.radius ? table.height : (table.radius * 2)}
+            offsetX={!table.radius ? table.width! / 2 : table.radius}
+            offsetY={!table.radius ? table.height! / 2 : table.radius}
+            pointerEvents="none"
+          />
+        )}
 
       {/* Controls */}
       {isSelected && (
@@ -208,15 +217,37 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
           {/* Rotate Handle */}
           <Group
             x={0}
-            y={!table.radius ? -(table.height! / 2) - 20 : -(table.radius!) - 20}
+            y={!table.radius ? -(table.height! / 2) - 25 : -(table.radius!) - 25}
             onClick={(e) => { e.cancelBubble = true; onRotate(table.uniqueId); }}
             onTap={(e) => { e.cancelBubble = true; onRotate(table.uniqueId); }}
+            onMouseEnter={(e) => {
+              const container = e.target.getStage()?.container();
+              if (container) container.style.cursor = 'pointer';
+            }}
+            onMouseLeave={(e) => {
+              const container = e.target.getStage()?.container();
+              if (container) container.style.cursor = 'default';
+            }}
           >
-            <Circle radius={10} fill={colors.selectedFill} stroke={colors.selectedStroke} strokeWidth={1} />
+            {/* Hit Area */}
+            <Circle radius={15} fill="transparent" />
+
+            {/* Button bg */}
+            <Circle
+              radius={12}
+              fill="white"
+              stroke="#e2e8f0"
+              strokeWidth={1}
+              shadowColor="black" shadowBlur={5} shadowOpacity={0.1}
+            />
+            {/* Icon */}
             <Path
               data="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8 M21 3v5h-5"
-              stroke="white" strokeWidth={2} scaleX={0.5} scaleY={0.5}
-              x={-6} y={-6} lineCap="round" lineJoin="round"
+              stroke="#0f172a"
+              strokeWidth={2}
+              scaleX={0.45} scaleY={0.45}
+              x={-5.5} y={-5.5}
+              lineCap="round" lineJoin="round"
             />
           </Group>
 
@@ -226,35 +257,101 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
             y={!table.radius ? -(table.height! / 2) : -(table.radius!)}
             onClick={(e) => { e.cancelBubble = true; onDelete(table.uniqueId); }}
             onTap={(e) => { e.cancelBubble = true; onDelete(table.uniqueId); }}
+            onMouseEnter={(e) => {
+              const container = e.target.getStage()?.container();
+              if (container) container.style.cursor = 'pointer';
+            }}
+            onMouseLeave={(e) => {
+              const container = e.target.getStage()?.container();
+              if (container) container.style.cursor = 'default';
+            }}
           >
-            <Circle radius={10} fill="red" stroke="white" strokeWidth={2} />
+            {/* Hit Area */}
+            <Circle radius={15} fill="transparent" />
+
+            {/* Button bg */}
+            <Circle
+              radius={12}
+              fill="#ef4444"
+              stroke="white"
+              strokeWidth={2}
+              shadowColor="black" shadowBlur={5} shadowOpacity={0.2}
+            />
+            {/* Icon */}
             <Path
-              data="M5 5 L19 19 M19 5 L5 19"
-              stroke="white" strokeWidth={2} scaleX={0.5} scaleY={0.5}
-              x={-6} y={-6} lineCap="round" lineJoin="round"
+              data="M18 6L6 18M6 6l12 12"
+              stroke="white" strokeWidth={2.5}
+              scaleX={0.45} scaleY={0.45}
+              x={-5.5} y={-5.5}
+              lineCap="round" lineJoin="round"
             />
           </Group>
 
           {/* Wall Extension Handles */}
           {table.type === 'wall' && onWallExtendStart && (
             <>
+              {/* Start Handle */}
               <Group
-                x={table.width! > table.height! ? -(table.width! / 2) - 20 : 0}
-                y={table.width! > table.height! ? 0 : -(table.height! / 2) - 20}
+                x={table.width! > table.height! ? -(table.width! / 2) - 25 : 0}
+                y={table.width! > table.height! ? 0 : -(table.height! / 2) - 25}
                 onClick={(e) => { e.cancelBubble = true; onWallExtendStart(e, table, 'start') }}
                 onTap={(e) => { e.cancelBubble = true; onWallExtendStart(e, table, 'start') }}
+                onMouseEnter={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'pointer';
+                }}
+                onMouseLeave={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'default';
+                }}
               >
-                <Circle radius={8} fill={colors.selectedStroke} />
-                <Text text="+" fontSize={12} fill="white" align="center" verticalAlign="middle" offsetX={3} offsetY={5} fontStyle="bold" />
+                <Circle radius={15} fill="transparent" />
+                <Circle
+                  radius={12}
+                  fill="#3b82f6"
+                  stroke="white"
+                  strokeWidth={2}
+                  shadowColor="black" shadowBlur={5} shadowOpacity={0.2}
+                />
+                <Path
+                  data="M12 5v14M5 12h14"
+                  stroke="white" strokeWidth={3}
+                  scaleX={0.5} scaleY={0.5}
+                  x={-6} y={-6}
+                  lineCap="round" lineJoin="round"
+                />
               </Group>
+
+              {/* End Handle */}
               <Group
-                x={table.width! > table.height! ? (table.width! / 2) + 20 : 0}
-                y={table.width! > table.height! ? 0 : (table.height! / 2) + 20}
+                x={table.width! > table.height! ? (table.width! / 2) + 25 : 0}
+                y={table.width! > table.height! ? 0 : (table.height! / 2) + 25}
                 onClick={(e) => { e.cancelBubble = true; onWallExtendStart(e, table, 'end') }}
                 onTap={(e) => { e.cancelBubble = true; onWallExtendStart(e, table, 'end') }}
+                onMouseEnter={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'pointer';
+                }}
+                onMouseLeave={(e) => {
+                  const container = e.target.getStage()?.container();
+                  if (container) container.style.cursor = 'default';
+                }}
               >
-                <Circle radius={8} fill={colors.selectedStroke} />
-                <Text text="+" fontSize={12} fill="white" align="center" verticalAlign="middle" offsetX={3} offsetY={5} fontStyle="bold" />
+                <Circle radius={15} fill="transparent" />
+                <Circle
+                  radius={12}
+                  fill="#3b82f6"
+                  stroke="white"
+                  strokeWidth={2}
+                  shadowColor="black" shadowBlur={5} shadowOpacity={0.2}
+                />
+                <Path
+                  data="M12 5v14M5 12h14"
+                  stroke="white" strokeWidth={3}
+                  scaleX={0.5} scaleY={0.5}
+                  x={-6} y={-6}
+                  lineCap="round" lineJoin="round"
+                />
               </Group>
             </>
           )}

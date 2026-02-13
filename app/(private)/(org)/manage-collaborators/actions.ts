@@ -1,10 +1,11 @@
 "use server";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { Resend } from "resend";
 import InviteEmail from "@/emails/invite";
 import { render } from "@react-email/components";
+import { revalidatePath } from "next/cache";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -56,7 +57,6 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
 
     // Point directly to the client page. Supabase will append the hash fragment.
     const redirectUrl = `${siteUrl}/accept-invite`;
-    console.log("Generating invite link with redirect:", redirectUrl);
 
     // 3. Generate Invite Link
     const { data: inviteData, error: inviteError } =
@@ -117,6 +117,7 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
       return { error: "Invito creato ma errore nell'invio dell'email" };
     }
 
+    revalidatePath("/(private)/(org)/manage-collaborators");
     return { success: true };
   } catch (err) {
     console.error("Unexpected error:", err);

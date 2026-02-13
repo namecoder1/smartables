@@ -7,6 +7,7 @@ import { mapBookingStatus } from '@/lib/maps'
 import { Button } from '../ui/button'
 import { it } from 'date-fns/locale'
 import { CircleQuestionMark } from 'lucide-react'
+import NoItems from '../utility/no-items'
 
 const ReservationsTable = ({
   data,
@@ -22,9 +23,9 @@ const ReservationsTable = ({
   setOpen?: (open: boolean) => void
 }) => {
   return (
-    <div className='bg-card'>
+    <div>
       {data && data.length > 0 ? (
-        <div className="rounded-md border">
+        <div className="rounded-xl border bg-card">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm">
               <thead className="[&_tr]:border-b">
@@ -74,15 +75,11 @@ const ReservationsTable = ({
           </div>
         </div>
       ) : (
-        <div className="flex py-20 shrink-0 items-center justify-center rounded-md border border-dashed">
-          <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-            <CircleQuestionMark className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">Nessuna prenotazione</h3>
-            <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              Non ci sono prenotazioni per questo periodo.
-            </p>
-          </div>
-        </div>
+        <NoItems 
+          icon={<CircleQuestionMark className="w-10 h-10 text-foreground" />}
+          title="Nessuna prenotazione"
+          description="Non ci sono prenotazioni per questo periodo."
+        />
       )}
     </div>
   )

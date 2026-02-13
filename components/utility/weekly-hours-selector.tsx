@@ -76,7 +76,7 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
       <div className="space-y-4">
         <input type="hidden" name="openingHours" value={JSON.stringify(schedule)} />
 
-        <div className="rounded-md border p-4">
+        <div className="rounded-xl dark:bg-input/30 bg-background border p-4">
           {DAYS.map((day) => (
             <div
               key={day}
@@ -127,12 +127,14 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
                         value={slot.open}
                         onChange={(val) => updateSlot(day, index, "open", val)}
                         label="Apertura"
+                        context={context}
                         className="flex-1"
                       />
                       <TimePicker
                         value={slot.close}
                         onChange={(val) => updateSlot(day, index, "close", val)}
                         label="Chiusura"
+                        context={context}
                         className="flex-1"
                       />
                     </div>
@@ -156,14 +158,14 @@ export function WeeklyHoursSelector({ initialData, context, onChange }: WeeklyHo
   }
 
   return (
-    <div className="space-y-4 border-neutral-200 border bg-[#f4f4f480]">
+    <div className="space-y-4 border-2 bg-white rounded-xl border-neutral-200">
       <input type="hidden" name="openingHours" value={JSON.stringify(schedule)} />
 
-      <ScrollArea className="h-[400px] rounded-md border p-4">
+      <ScrollArea className="h-[400px] px-4">
         {DAYS.map((day) => (
           <div
             key={day}
-            className="mb-4 flex flex-col gap-2 border-b pb-4 last:mb-0 last:border-0 last:pb-0 p-1"
+            className="mb-4 flex flex-col gap-2 border-b border-neutral-200 first:pt-4 pb-4 last:mb-0 last:border-0 last:pb-4 p-1"
           >
             <div className="flex items-center justify-between">
               <span className="w-24 font-medium capitalize text-black">{day}</span>

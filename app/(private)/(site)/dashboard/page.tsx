@@ -1,5 +1,5 @@
 import ComplianceAlert from "@/components/utility/compliance-alert"
-import { createClient } from "@/supabase/server"
+import { createClient } from "@/utils/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, formatDistanceToNow } from "date-fns"
 import { SummaryCards } from "@/app/(private)/(site)/dashboard/summary-cards"
@@ -11,6 +11,8 @@ import { User } from "lucide-react"
 import { it } from "date-fns/locale"
 import { Reservations } from "@/app/(private)/(site)/dashboard/reservations"
 import PageWrapper from "@/components/private/page-wrapper"
+import { DashboardRealtimeUpdater } from "@/components/dashboard/dashboard-realtime-updater"
+import { EmptyChartState } from "@/components/analytics/empty-chart-state"
 
 export const metadata = {
   title: 'Dashboard',
@@ -160,19 +162,23 @@ export default async function DashboardPage() {
     <PageWrapper>
       {organization && (
         <ComplianceAlert
-          organizationId={organization.id}
+          context="page"
           status={organization.activation_status || 'pending'}
           managedAccountId={locations.find(l => l.id === activeLocationId)?.telnyx_managed_account_id}
         />
       )}
-      <div className="space-y-4">
+      <div className="space-y-6">
+        <div className="xl:hidden flex items-start">
+          <h2 className="text-2xl font-bold tracking-tighter">Dashboard</h2>
+          <p className="text-muted-foreground">Panoramica sulle attvitià</p>
+        </div>
         <SummaryCards
           reservationsToday={reservationsToday}
           reservationsWeek={reservationsWeek}
           coversToday={coversToday}
         />
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Metodi prenotazioni</CardTitle>
@@ -181,25 +187,32 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DonutPie data={analysisBookings} />
+              {analysisBookings.length > 0 ? (
+                <DonutPie data={analysisBookings} />
+              ) : (
+                <EmptyChartState className="h-[250px] border-none bg-transparent" />
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
               <CardTitle>I clienti di oggi</CardTitle>
               <CardDescription>
-                Analizza le fonti da cui arrivano i tuoi clienti
+                Riepilogo delle prenotazioni odierne
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div>
                 {todaysBookings.length === 0 ? (
-                  <p className="text-muted-foreground text-sm py-4">Nessuna prenotazione per oggi.</p>
+                  <EmptyChartState
+                    message="Nessuna prenotazione per oggi."
+                    className="h-[250px] border-none bg-transparent"
+                  />
                 ) : (
                   todaysBookings.map((booking) => (
-                    <Card key={booking.id} className="mb-4 py-4">
+                    <Card key={booking.id} className="mb-4 py-4 bg-background">
                       <CardHeader className="flex items-center gap-3 px-4">
-                        <div className="bg-neutral-200 dark:bg-neutral-800 w-fit p-2">
+                        <div className="bg-neutral-200/40 border dark:bg-neutral-800 w-fit p-2">
                           <User />
                         </div>
                         <div>
@@ -221,11 +234,15 @@ export default async function DashboardPage() {
             <CardHeader>
               <CardTitle>Giorni & orari più affollati</CardTitle>
               <CardDescription>
-                Analizza le fonti da cui arrivano i tuoi clienti
+                Statistiche sui momenti di maggiore affluenza
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <BookingProgressChart data={analysisBookings} />
+              {analysisBookings.length > 0 ? (
+                <BookingProgressChart data={analysisBookings} />
+              ) : (
+                <EmptyChartState className="h-[250px] border-none bg-transparent" />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -234,14 +251,22 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Dettagli prenotazioni</CardTitle>
             <CardDescription>
-              Analizza le fonti da cui arrivano i tuoi clienti
+              Lista dettagliata delle ultime prenotazioni
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Reservations data={analysisBookings} />
+            {analysisBookings.length > 0 ? (
+              <Reservations data={analysisBookings} />
+            ) : (
+              <EmptyChartState className="h-[250px] border-none bg-transparent" />
+            )}
           </CardContent>
         </Card>
       </div>
+      <DashboardRealtimeUpdater
+        organizationId={profile.organization_id}
+        locationId={activeLocationId}
+      />
     </PageWrapper>
   )
 }

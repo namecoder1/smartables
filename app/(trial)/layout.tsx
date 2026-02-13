@@ -3,7 +3,7 @@ import { SidebarProvider } from '@/components/ui/sidebar'
 import TrialSidebar from '@/components/private/sidebar'
 import TrialNavbar from '@/components/private/navbar'
 import { OrganizationProvider } from '@/components/providers/organization-provider'
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { LocationInitializer } from '@/components/private/location-initializer'
 

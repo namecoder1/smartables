@@ -12,11 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "./switch"
+import { cn } from "@/lib/utils"
 
 export function ModeToggle({
-  variant = 'default'
+  variant = 'default',
+  className
 }: {
-  variant?: 'default' | 'mini'
+  variant?: 'default' | 'mini',
+  className?: string
 }) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
@@ -36,7 +39,7 @@ export function ModeToggle({
   
   if (variant === 'mini') {
     return (
-      <div className="flex items-center gap-2 p-2 justify-between">
+      <div className={cn("flex items-center gap-2 p-2 justify-between", className)} >
         <p className="text-sm text-foreground">Dark mode</p>
         <Switch checked={theme === 'dark'} onCheckedChange={(value) => setTheme(value ? 'dark' : 'light')} />
       </div>
@@ -46,7 +49,7 @@ export function ModeToggle({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className={cn(className)}>
           <div className="scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90 flex items-center gap-2">
             <Sun className="h-[1.2rem] w-[1.2rem]" />
             <p>Light</p>

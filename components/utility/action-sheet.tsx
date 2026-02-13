@@ -9,23 +9,25 @@ const ActionSheet = ({
   description,
   children,
   formAction,
-  submitButton,
+  actionButtons,
   open,
   onOpenChange
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
-  formAction: (formData: FormData) => void;
-  submitButton: React.ReactNode;
+  formAction?: (formData: FormData) => void;
+  actionButtons?: React.ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
 
+  const ContentWrapper = formAction ? 'form' : 'div';
+  const contentProps = formAction ? { action: formAction } : {};
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl flex flex-col gap-0 p-0">
+      <SheetContent className="w-full sm:max-w-xl bg-background dark:bg-[#1a1813] flex flex-col gap-0 p-0">
         <SheetHeader className="p-4 border-b">
           <SheetTitle>{title}</SheetTitle>
           <SheetDescription>
@@ -33,16 +35,18 @@ const ActionSheet = ({
           </SheetDescription>
         </SheetHeader>
 
-        <form action={formAction} className="flex flex-col flex-1 overflow-hidden">
+        <ContentWrapper {...contentProps} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {children}
           </div>
 
-          <div className="flex justify-end gap-2 p-4 border-t bg-background mt-auto">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-            {submitButton}
+          <div className="flex justify-end gap-2 p-4 border-t mt-auto">
+            {formAction && (
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+            )}
+            {actionButtons}
           </div>
-        </form>
+        </ContentWrapper>
       </SheetContent>
     </Sheet>
   )

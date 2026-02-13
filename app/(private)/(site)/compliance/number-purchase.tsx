@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import ConfirmDialog from "@/components/utility/confirm-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx"; // W
 // and import it here.
 
 import { searchNumbersAction, buyNumberAction } from "@/app/actions/telnyx-numbers";
+import { resetComplianceAction } from "@/app/actions/compliance-reset";
 
 interface NumberPurchaseProps {
   locationId: string;
@@ -34,9 +36,12 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
   const [numbers, setNumbers] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [confirmingNumber, setConfirmingNumber] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSearch = async () => {
     setSearching(true);
+    setErrorMessage(null);
     try {
       // Use the area code from compliance
       const results = await searchNumbersAction("IT", areaCode);
@@ -48,17 +53,39 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
     }
   };
 
-  const handleBuy = async (phoneNumber: string) => {
-    if (!confirm(`Sei sicuro di voler acquistare il numero ${phoneNumber}?`)) return;
+  const handleBuyClick = (phoneNumber: string) => {
+    setConfirmingNumber(phoneNumber);
+  };
 
+  const handleReset = async () => {
+    try {
+      await resetComplianceAction(locationId);
+      toast.success("Stato verifica resettato. Puoi ricompilare il modulo.");
+      window.location.reload();
+    } catch (error: any) {
+      toast.error("Errore reset: " + error.message);
+    }
+  };
+
+  const handleConfirmBuy = async () => {
+    if (!confirmingNumber) return;
+    const phoneNumber = confirmingNumber;
+    setConfirmingNumber(null);
     setPurchasing(phoneNumber);
+    setErrorMessage(null);
+
     try {
       await buyNumberAction(phoneNumber, locationId, requirementGroupId);
       toast.success(`Numero ${phoneNumber} acquistato e collegato alla sede!`);
       // Refresh page or update state
       window.location.reload();
     } catch (error: any) {
-      toast.error("Errore acquisto: " + error.message);
+      console.error(error);
+      if (error.message.includes("missing one or more required values") || error.message.includes("10027")) {
+        setErrorMessage("I documenti inviati sembrano incompleti per Telnyx (Errore 10027). È necessario ricompilare il modulo con tutti i dati richiesti.");
+      } else {
+        toast.error("Errore acquisto: " + error.message);
+      }
     } finally {
       setPurchasing(null);
     }
@@ -69,11 +96,20 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
       <CardHeader>
         <CardTitle>Acquista Numero Locale</CardTitle>
         <CardDescription>
-          La tua verifica per il prefisso <strong>{areaCode}</strong> è stata approvata.
-          Scegli un numero da attivare.
+          La tua verifica per il prefisso <strong>{areaCode}</strong> è stata inviata.
+          Acquista un numero per completare l'attivazione.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {errorMessage && (
+          <div className="p-4 bg-red-50 text-red-800 rounded-md border border-red-200">
+            <p className="mb-3 font-medium text-sm">{errorMessage}</p>
+            <Button variant="destructive" size="sm" onClick={handleReset}>
+              Ricomincia Verifica
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <Button onClick={handleSearch} disabled={searching}>
             {searching ? <Loader2 className="animate-spin mr-2" /> : <Search className="mr-2" />}
@@ -91,7 +127,7 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
               </div>
               <Button
                 size="sm"
-                onClick={() => handleBuy(num.phoneNumber)}
+                onClick={() => handleBuyClick(num.phoneNumber)}
                 disabled={!!purchasing}
               >
                 {purchasing === num.phoneNumber ? (
@@ -109,6 +145,16 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
           )}
         </div>
       </CardContent>
+
+      <ConfirmDialog
+        open={!!confirmingNumber}
+        onOpenChange={(open) => !open && setConfirmingNumber(null)}
+        title="Conferma Acquisto"
+        description={`Sei sicuro di voler acquistare il numero ${confirmingNumber}? L'operazione potrebbe avere un costo mensile.`}
+        confirmLabel="Acquista"
+        cancelLabel="Annulla"
+        onConfirm={handleConfirmBuy}
+      />
     </Card>
   );
 }

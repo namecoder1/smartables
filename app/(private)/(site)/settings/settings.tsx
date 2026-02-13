@@ -12,7 +12,7 @@ import ColorPicker from '@/components/ui/color-picker'
 import { toast } from 'sonner'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { ImageUpload } from '@/components/private/image-upload'
-import { createClient } from '@/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa'
 
@@ -44,7 +44,7 @@ const faqs = [
   }
 ]
 
-const Settings = ({ locations }: { locations: any[] }) => {
+const SettingsView = ({ locations }: { locations: any[] }) => {
   const location = locations && locations.length > 0 ? locations[0] : undefined
   const [formData, setFormData] = useState<Partial<Location>>({})
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -207,7 +207,7 @@ const Settings = ({ locations }: { locations: any[] }) => {
           {/* Collapsible Sections */}
           <Accordion type='multiple' defaultValue={['branding']} className="w-full h-full space-y-4">
             {/* Branding Section */}
-            <AccordionItem value="branding" className="border px-4 bg-background dark:bg-input/30">
+            <AccordionItem value="branding" className="border px-4 rounded-xl bg-input/10">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/30">
@@ -223,7 +223,7 @@ const Settings = ({ locations }: { locations: any[] }) => {
                 <div className="space-y-2 w-full">
                   <Label className="text-sm">Colori del brand</Label>
                   <div className="grid grid-rows-3 gap-2">
-                    <div className="flex justify-between h-fit p-2 items-center gap-2 border bg-muted/30">
+                    <div className="flex justify-between rounded-2xl h-fit p-2 items-center gap-2 border bg-muted/30">
                       <ColorPicker
                         shape="square"
                         color={branding.colors.primary}
@@ -231,7 +231,7 @@ const Settings = ({ locations }: { locations: any[] }) => {
                       />
                       <span className="text-xs text-muted-foreground">Primario</span>
                     </div>
-                    <div className="flex justify-between h-fit p-2 items-center gap-2 border bg-muted/30">
+                    <div className="flex justify-between rounded-2xl h-fit p-2 items-center gap-2 border bg-muted/30">
                       <ColorPicker
                         shape="square"
                         color={branding.colors.secondary}
@@ -239,7 +239,7 @@ const Settings = ({ locations }: { locations: any[] }) => {
                       />
                       <span className="text-xs text-muted-foreground">Secondario</span>
                     </div>
-                    <div className="flex justify-between h-fit p-2 items-center gap-2 border bg-muted/30">
+                    <div className="flex justify-between rounded-2xl h-fit p-2 items-center gap-2 border bg-muted/30">
                       <ColorPicker
                         shape="square"
                         color={branding.colors.accent}
@@ -266,7 +266,7 @@ const Settings = ({ locations }: { locations: any[] }) => {
             </AccordionItem>
 
             {/* Social Media Section */}
-            <AccordionItem value="social" className="border px-4 border-b! bg-background dark:bg-input/30">
+            <AccordionItem value="social" className="border px-4 border-b! rounded-xl bg-input/10">
               <AccordionTrigger className="hover:no-underline">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30">
@@ -352,4 +352,4 @@ const SettingsFAQ = () => {
   )
 }
 
-export default Settings
+export default SettingsView

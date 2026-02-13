@@ -120,6 +120,7 @@ export async function addNumberToWaba(
           cc: phoneNumber.substring(0, 2), // Assuming IT +39. Need better parsing if global.
           phone_number: phoneNumber.substring(2), // Remove CC
           display_name: displayName,
+          verified_name: displayName, // REQUIRED: This field is mandatory
           verify_code: false, // We will verify later via Voice
         }),
       },

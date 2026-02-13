@@ -30,7 +30,7 @@ export function EditorHelpDialog() {
           {/* Section 1: Capacità */}
           <div>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <span className="bg-primary/10 text-primary p-1 rounded">1</span> Gestione Capacità
+              <span className="bg-primary/10 border border-primary/50 text-primary h-8 w-8 flex items-center justify-center">1</span> Gestione Capacità
             </h3>
             <p className="text-sm text-muted-foreground mb-3">
               Ogni tavolo ha 3 valori di capacità che influenzano le prenotazioni automatiche:
@@ -56,22 +56,22 @@ export function EditorHelpDialog() {
           {/* Section 2: Tools */}
           <div>
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-              <span className="bg-primary/10 text-primary p-1 rounded">2</span> Strumenti Editor
+              <span className="bg-primary/10 border border-primary/50 text-primary h-8 w-8 flex items-center justify-center">2</span> Strumenti Editor
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-              <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="bg-input/30 p-3 rounded-lg">
                 <h4 className="font-medium text-foreground mb-1">Snapping Intelligente</h4>
                 Gli oggetti si allineano automaticamente alla griglia e agli altri oggetti. L'allineamento funziona sia per il centro che per i bordi.
               </div>
-              <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="bg-input/30 p-3 rounded-lg">
                 <h4 className="font-medium text-foreground mb-1">Muri Personalizzabili</h4>
                 Trascina un muro base e usa le maniglie <span className="text-primary font-bold">+</span> alle estremità per allungarlo o accorciarlo.
               </div>
-              <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="bg-input/30 p-3 rounded-lg">
                 <h4 className="font-medium text-foreground mb-1">Rotazione</h4>
                 Seleziona un oggetto e clicca sull'icona di rotazione (o usa il tasto <kbd className="border rounded px-1 text-xs">R</kbd> se disponibile) per ruotarlo di 90°.
               </div>
-              <div className="bg-muted/30 p-3 rounded-lg">
+              <div className="bg-input/30 p-3 rounded-lg">
                 <h4 className="font-medium text-foreground mb-1">Zoom & Pan</h4>
                 Usa la rotella del mouse per zoomare. Tieni premuto e trascina lo sfondo per muoverti nella sala.
               </div>

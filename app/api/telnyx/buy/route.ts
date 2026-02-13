@@ -1,5 +1,5 @@
 import { purchasePhoneNumber } from "@/lib/telnyx";
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -58,12 +58,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Compliance: No approved Regulatory Requirement found for this location.",
+            "Compliance: No Regulatory Requirement Group found. Please submit documents first.",
         },
         { status: 400 },
       );
     }
 
+    // PROVISIONING FLOW: Verification happens AFTER purchase for Italian numbers (async)
+    // We link the (likely unapproved) requirement group to the order.
     const purchaseResult = await purchasePhoneNumber(
       phoneNumber,
       requirementGroupId,
@@ -74,9 +76,7 @@ export async function POST(request: Request) {
       .from("locations")
       .update({
         telnyx_phone_number: phoneNumber,
-        // If we get an ID from purchaseResult, we can save it too.
-        // purchaseResult usually contains id or similar references.
-        // For now trusting the phone number is the key reference.
+        activation_status: "provisioning", // Locked until webhook confirms 'active' or 'verified'
       })
       .eq("id", locationId);
 

@@ -43,7 +43,7 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete }: Tab
   const maxOptions = Array.from({ length: 5 }, (_, i) => table.seats + i);
 
   return (
-    <div className="absolute top-4 right-4 w-64 bg-card border rounded-xl shadow-lg p-4 z-50 animate-in slide-in-from-right-10 fade-in duration-200">
+    <div className="absolute top-2 right-2 w-64 rounded-xl bg-card border shadow-lg p-4 z-50 animate-in slide-in-from-right-10 fade-in duration-200">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-sm">Proprietà</h3>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>

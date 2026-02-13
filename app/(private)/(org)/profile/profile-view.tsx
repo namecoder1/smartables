@@ -8,19 +8,33 @@ import {
   Shield,
   Calendar,
   Download,
-  FileJson,
   FileText,
   FileSpreadsheet,
   Sun,
   Moon,
   Monitor,
-  Check
+  Check,
+  Trash2,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import PageWrapper from "@/components/private/page-wrapper";
+import { deleteAccountAction } from "./actions";
 
 interface ProfileData {
   id: string;
@@ -38,6 +52,10 @@ interface ProfileViewProps {
 const ProfileView = ({ profile }: ProfileViewProps) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -69,19 +87,18 @@ const ProfileView = ({ profile }: ProfileViewProps) => {
     return role === "admin" ? "Amministratore" : "Staff";
   };
 
-  // Export functions
-  const exportAsJSON = () => {
-    const data = {
-      nome_completo: profile.full_name,
-      email: profile.email,
-      ruolo: profile.role,
-      data_creazione: profile.created_at,
-      organization_id: profile.organization_id,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    downloadFile(blob, "profilo.json");
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccountAction();
+    } catch (error: any) {
+      setDeleteError(error.message || "Errore durante l'eliminazione");
+      setIsDeleting(false);
+    }
   };
 
+  // Export functions
   const exportAsCSV = () => {
     const headers = "Nome Completo,Email,Ruolo,Data Creazione,Organization ID";
     const values = `"${profile.full_name || ""}","${profile.email}","${profile.role}","${profile.created_at}","${profile.organization_id || ""}"`;
@@ -210,10 +227,10 @@ Esportato il: ${new Date().toLocaleString("it-IT")}
                     <Monitor className="h-4 w-4 text-primary" />
                   )}
                 </div>
-                Tema dell'interfaccia
+                Tema dell&apos;interfaccia
               </CardTitle>
               <CardDescription>
-                Scegli come vuoi visualizzare l'interfaccia della piattaforma.
+                Scegli come vuoi visualizzare l&apos;interfaccia della piattaforma.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -317,11 +334,114 @@ Esportato il: ${new Date().toLocaleString("it-IT")}
 
               <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 p-3">
                 <p className="text-xs text-blue-800 dark:text-blue-300">
-                  <span className="font-semibold">Nota:</span> I file scaricati contengono solo le informazioni del tuo profilo, non i dati dell'organizzazione.
+                  <span className="font-semibold">Nota:</span> I file scaricati contengono solo le informazioni del tuo profilo, non i dati dell&apos;organizzazione.
                 </p>
               </div>
             </CardContent>
           </Card>
+
+          {/* Danger Zone — only for admin */}
+          {profile.role === "admin" && (
+            <Card className="border-red-200 dark:border-red-900/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg text-red-600 dark:text-red-400">
+                  <div className="h-8 w-8 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 flex items-center justify-center">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                  </div>
+                  Zona pericolosa
+                </CardTitle>
+                <CardDescription>
+                  Azioni irreversibili che riguardano il tuo account e la tua organizzazione.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 p-3">
+                  <p className="text-xs text-red-800 dark:text-red-300">
+                    <span className="font-semibold">Attenzione:</span> L&apos;eliminazione del tuo account cancellerà permanentemente tutti i dati dell&apos;organizzazione, le attività, i menu, le prenotazioni, i clienti e tutti i file caricati.
+                  </p>
+                </div>
+
+                <AlertDialog open={dialogOpen} onOpenChange={(open) => {
+                  setDialogOpen(open);
+                  if (!open) {
+                    setDeleteConfirmation("");
+                    setDeleteError(null);
+                  }
+                }}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina account e organizzazione
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertTriangle className="h-5 w-5" />
+                        Sei sicuro di voler eliminare tutto?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3">
+                          <p>
+                            Questa azione è <strong>irreversibile</strong>. Verranno eliminati permanentemente:
+                          </p>
+                          <ul className="list-disc list-inside space-y-1 text-sm">
+                            <li>Il tuo account e profilo</li>
+                            <li>L&apos;organizzazione e tutti i collaboratori</li>
+                            <li>L&apos;abbonamento Stripe (con rimborso se applicabile)</li>
+                            <li>Tutte le attività (location)</li>
+                            <li>Tutti i menu, categorie e prodotti</li>
+                            <li>Tutte le prenotazioni e i clienti</li>
+                            <li>Tutti i file caricati (loghi, documenti, immagini)</li>
+                          </ul>
+                          <div className="pt-2">
+                            <p className="text-sm font-medium mb-2">
+                              Scrivi <strong className="text-red-600 dark:text-red-400">ELIMINA</strong> per confermare:
+                            </p>
+                            <Input
+                              value={deleteConfirmation}
+                              onChange={(e) => setDeleteConfirmation(e.target.value)}
+                              placeholder="Scrivi ELIMINA"
+                              className="font-mono"
+                              disabled={isDeleting}
+                            />
+                          </div>
+                          {deleteError && (
+                            <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                              {deleteError}
+                            </p>
+                          )}
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+                      <Button
+                        variant="destructive"
+                        disabled={deleteConfirmation !== "ELIMINA" || isDeleting}
+                        onClick={handleDeleteAccount}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Eliminazione in corso...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Elimina tutto definitivamente
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </PageWrapper>

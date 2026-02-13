@@ -1,133 +1,124 @@
-.dark .rbc-calendar {
+.rbc-calendar {
   color: var(--foreground);
-  background-color: var(--background);
+  background-color: var(--card);
 }
 
 .dark .rbc-off-range-bg {
   background-color: var(--muted);
+  opacity: 0.1;
 }
 
-.dark .rbc-off-range {
-  color: var(--muted-foreground);
-}
-
-.dark .rbc-header {
-  border-bottom-color: var(--border);
-}
-
-.dark .rbc-header + .rbc-header {
-  border-left-color: var(--border);
-}
-
-.dark .rbc-month-view,
-.dark .rbc-time-view,
-.dark .rbc-agenda-view {
-  border-color: var(--border);
-}
-
-.dark .rbc-month-row + .rbc-month-row {
-  border-top-color: var(--border);
-}
-
-.dark .rbc-day-bg + .rbc-day-bg {
-  border-left-color: var(--border);
-}
-
-.dark .rbc-time-header-content {
-  border-left-color: var(--border);
-}
-
-.dark .rbc-time-content {
-  border-top-color: var(--border);
-}
-
-.dark .rbc-time-content > * + * > * {
-  border-left-color: var(--border);
-}
-
-.dark .rbc-timeslot-group {
-  border-bottom-color: var(--border);
-}
-
-.dark .rbc-day-slot .rbc-time-slot {
-  border-top-color: var(--border);
-}
-
-/* Off-range days (previous/next month) - more subtle */
 .rbc-off-range-bg {
-  background-color: rgba(0, 0, 0, 0.02) !important;
-}
-
-.rbc-off-range {
-  color: rgba(0, 0, 0, 0.25) !important;
-}
-
-.dark .rbc-off-range-bg {
-  background-color: rgba(255, 255, 255, 0.02) !important;
+  background-color: var(--muted);
+  opacity: 0.3;
 }
 
 .dark .rbc-off-range {
-  color: rgba(255, 255, 255, 0.25) !important;
+  color: var(--muted-foreground) !important;
+  opacity: 0.5;
+}
+
+.rbc-header {
+  border-bottom: 2px solid var(--border);
+}
+
+.rbc-header + .rbc-header {
+  border-left: 2px solid var(--border);
+}
+
+.rbc-month-view,
+.rbc-time-view,
+.rbc-agenda-view {
+  border: none;
+  border-top: 2px solid var(--border);
+}
+
+.rbc-month-row + .rbc-month-row {
+  border-top: 2px solid var(--border);
+}
+
+.rbc-day-bg + .rbc-day-bg {
+  border-left: 2px solid var(--border);
+}
+
+.rbc-time-header-content {
+  border-left: 2px solid var(--border);
+}
+
+.rbc-time-content {
+  border-top: 2px solid var(--border);
+}
+
+.rbc-time-content > * + * > * {
+  border-left: 2px solid var(--border);
+}
+
+.rbc-timeslot-group {
+  border-bottom: 2px solid var(--border);
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 2px solid var(--border);
 }
 
 /* Today highlight color - Month and Week views */
 .rbc-today {
-  background-color: rgba(255, 213, 159, 0.19) !important;
-}
-
-.dark .rbc-today {
-  background-color: rgba(254, 149, 15, 0.2) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--primary),
+    transparent 85%
+  ) !important;
 }
 
 /* Day View - more subtle background for today */
 .rbc-time-view .rbc-today {
-  background-color: rgba(255, 213, 159, 0.08) !important;
-}
-
-.dark .rbc-time-view .rbc-today {
-  background-color: rgba(254, 149, 15, 0.08) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--primary),
+    transparent 92%
+  ) !important;
 }
 
 /* Today's date number in Month View header */
 .rbc-month-view .rbc-now .rbc-button-link {
-  color: #FE950F !important;
+  color: var(--primary) !important;
   font-weight: 700 !important;
 }
 
 /* Today's date number in Week View header */
 .rbc-time-view .rbc-header.rbc-today .rbc-button-link {
-  color: #FE950F !important;
+  color: var(--primary) !important;
   font-weight: 700 !important;
 }
 
 /* Also style the day number in month row */
 .rbc-date-cell.rbc-now .rbc-button-link {
-  color: #FE950F !important;
+  color: var(--primary) !important;
   font-weight: 700 !important;
 }
 
-.dark .rbc-event {
+.rbc-event {
   background-color: var(--primary);
   color: var(--primary-foreground);
 }
 
 /* Customizing the time gutter */
-.dark .rbc-time-gutter .rbc-timeslot-group {
-    border-color: var(--border);
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 2px solid var(--border);
 }
 
 /* Ensure buttons in toolbar look good if they use default rbc classes (though we replaced toolbar) */
-.dark .rbc-toolbar button {
+.rbc-toolbar button {
   color: var(--foreground);
   border-color: var(--border);
 }
 
-.dark .rbc-toolbar button:active,
-.dark .rbc-toolbar button.rbc-active {
+.rbc-toolbar button:active,
+.rbc-toolbar button.rbc-active {
   background-color: var(--accent);
   border-color: var(--accent);
 }
 
-.dark .rbc-toolbar button:hover {
+.rbc-toolbar button:hover {
   background-color: var(--muted);
 }

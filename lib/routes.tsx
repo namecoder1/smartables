@@ -1,6 +1,11 @@
-import { BookCopy, Calendar, ChartSpline, CreditCard, Home, ListTodo, LogOut, Settings, Store, Users } from "lucide-react"
+import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users } from "lucide-react"
 import { GiTable } from "react-icons/gi";
+import { PiForkKnifeFill, PiToolboxFill } from "react-icons/pi";
 import { MdMenuBook } from "react-icons/md";
+import { MdDashboardCustomize } from "react-icons/md";
+import { HiDotsHorizontal } from "react-icons/hi";
+import { RiTeamFill } from "react-icons/ri";
+import { IoBookSharp } from "react-icons/io5";
 import { GrDocumentUser } from "react-icons/gr";
 
 export type RouteItem = {
@@ -34,20 +39,21 @@ export const isRouteGroup = (entry: RouteEntry): entry is RouteGroup => {
 export const routes = {
   platform: [
     {
-      label: "Dashboard",
-      url: "/dashboard",
-      icon: Home,
-    },
-    {
       label: "Prenotazioni",
+      icon: PiForkKnifeFill,
       items: [
         {
-          title: "Prenotazioni",
+          title: "Dashboard",
+          url: "/dashboard",
+          icon: Home,
+        },
+        {
+          title: "Gestione prenotazioni",
           url: "/reservations",
           icon: ListTodo,
         },
         {
-          title: "Calendario",
+          title: "Calendario prenotazioni",
           url: "/calendar",
           icon: Calendar,
         },
@@ -55,21 +61,23 @@ export const routes = {
     },
     {
       label: "Gestione",
+      icon: MdDashboardCustomize,
       items: [
         {
-          title: "Gestione Sala",
+          title: "Gestione sale",
           url: "/manage-seats",
           icon: GiTable,
         },
         {
-          title: "Gestione Menù",
+          title: "Gestione menù",
           url: "/manage-menus",
           icon: MdMenuBook,
         },
       ],
     },
     {
-      label: "Altro",
+      label: "Strumenti",
+      icon: PiToolboxFill,
       items: [
         {
           title: "Analitiche",
@@ -82,7 +90,7 @@ export const routes = {
           icon: GrDocumentUser,
         },
         {
-          title: "Impostazioni Sede",
+          title: "Impostazioni sede",
           url: "/settings",
           icon: Settings,
         },
@@ -92,6 +100,7 @@ export const routes = {
   organization: [
     {
       label: "Organizzazione",
+      icon: RiTeamFill,
       items: [
         {
           title: "Gestisci sedi",
@@ -116,12 +125,18 @@ export const routes = {
       ],
     },
     {
-      label: "Altro",
+      label: "Impara",
+      icon: IoBookSharp,
       items: [
         {
-          title: "Guida Veloce",
-          url: "/faq",
+          title: "Guide pratiche",
+          url: "/guides",
           icon: BookCopy,
+        },
+        {
+          title: "FAQ",
+          url: "/faqs",
+          icon: BadgeQuestionMark,
         },
       ],
     },

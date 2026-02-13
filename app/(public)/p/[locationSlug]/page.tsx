@@ -1,4 +1,4 @@
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import { BookingForm } from "./booking-form";
 

@@ -1,4 +1,4 @@
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import MenuEditor from './menu-editor'
 

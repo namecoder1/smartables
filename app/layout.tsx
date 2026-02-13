@@ -3,6 +3,8 @@ import "./globals.css";
 import { Manrope } from 'next/font/google'
 import { ThemeProvider } from "@/components/utility/theme-provider";
 import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -15,6 +17,9 @@ export const metadata: Metadata = {
   title: {
     default: "Smartables | Mai più tavoli vuoti",
     template: "%s | Smartables"
+  },
+  icons: {
+    icon: "/favicon.ico",
   },
   description: "Mai più tavoli vuoti. Trasforma le chiamate perse in prenotazioni confermate.",
   openGraph: {
@@ -56,7 +61,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+          <Toaster richColors position="top-center" />
         </ThemeProvider>
         <Analytics />
       </body>

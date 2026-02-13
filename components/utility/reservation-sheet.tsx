@@ -7,10 +7,11 @@ import { DateTimePicker } from '@/components/ui/datetime-picker'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { createBooking } from '@/app/actions/bookings'
+import { createBooking, updateBooking } from '@/app/actions/bookings'
 import { searchCustomers } from '@/app/actions/customers'
 import { Check, ChevronsUpDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+// import { BookingWithCustomer } from '@/types/components' // Assuming this type exists or we define it
 
 import {
   Command,
@@ -22,6 +23,10 @@ import {
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import ActionSheet from './action-sheet'
+import { NumberInput } from '../ui/number-input'
+
+// TODO: Import this from a shared types file
+type BookingWithCustomer = any
 
 type Customer = {
   id: string
@@ -33,19 +38,21 @@ interface ReservationSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  booking?: BookingWithCustomer | null // Optional booking to edit
 }
 
 const ReservationSheet = ({
   open,
   onOpenChange,
   onSuccess,
+  booking
 }: ReservationSheetProps) => {
   const [isPending, startTransition] = useTransition()
 
   // Form State
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [guests, setGuests] = useState('')
+  const [guests, setGuests] = useState<number | undefined>(undefined)
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [notes, setNotes] = useState('')
 
@@ -72,20 +79,51 @@ const ReservationSheet = ({
     return () => clearTimeout(timer)
   }, [customerSearch, isKnownCustomer])
 
-  // Reset form when sheet closes
+  // Reset form when sheet closes or booking changes
   useEffect(() => {
-    if (!open) {
-      setName('')
-      setPhone('')
-      setGuests('')
-      setDate(undefined)
-      setNotes('')
-      setIsKnownCustomer(false)
-      setSelectedCustomer(null)
-      setCustomerSearch('')
-      setCustomers([])
+    if (open) {
+      if (booking) {
+        // Edit Mode
+        setName(booking.guest_name || '')
+        setPhone(booking.guest_phone || '')
+        setGuests(booking.guests_count || undefined)
+        setDate(booking.booking_time ? new Date(booking.booking_time) : undefined)
+        setNotes(booking.notes || '')
+
+        if (booking.customer_id) {
+          setIsKnownCustomer(true)
+          setSelectedCustomer(booking.customer_id)
+          // Ideally we should pre-fetch the customer name if it's not in booking.guest_name exactly as we want?
+          // But booking.guest_name should be correct.
+          // We set the search value to the name so it shows up in combobox trigger if logic uses it?
+          // The Combobox logic above uses `customers.find` which might be empty initially.
+          // We need to initialize the customers list or at least handle the display of selectedCustomer.
+          // Hack: we can push the current customer into the list so it displays correctly
+          if (booking.customer) {
+            setCustomers([{
+              id: booking.customer.id,
+              name: booking.customer.name,
+              phone: booking.customer.phone_number
+            }])
+          }
+        } else {
+          setIsKnownCustomer(false)
+          setSelectedCustomer(null)
+        }
+      } else {
+        // Create Mode - Reset
+        setName('')
+        setPhone('')
+        setGuests(undefined)
+        setDate(undefined)
+        setNotes('')
+        setIsKnownCustomer(false)
+        setSelectedCustomer(null)
+        setCustomerSearch('')
+        setCustomers([])
+      }
     }
-  }, [open])
+  }, [open, booking])
 
   const handleSubmit = async (formData: FormData) => {
     // Aggiungi i valori dello state controllato al FormData
@@ -93,19 +131,24 @@ const ReservationSheet = ({
     if (selectedCustomer) formData.set('selectedCustomer', selectedCustomer)
     formData.set('name', name)
     formData.set('phone', phone)
-    formData.set('guests', guests)
+    formData.set('guests', String(guests || ''))
     if (date) formData.set('date', date.toISOString())
     formData.set('notes', notes)
 
     startTransition(async () => {
-      const result = await createBooking({}, formData)
+      let result;
+      if (booking) {
+        result = await updateBooking(booking.id, {}, formData)
+      } else {
+        result = await createBooking({}, formData)
+      }
 
       if (result.success) {
-        toast.success("Prenotazione aggiunta con successo")
+        toast.success(booking ? "Prenotazione modificata" : "Prenotazione aggiunta con successo")
         onOpenChange(false)
         if (onSuccess) onSuccess()
       } else {
-        toast.error(result.error || "Errore durante la creazione della prenotazione")
+        toast.error(result.error || "Errore durante il salvataggio")
       }
     })
   }
@@ -114,15 +157,15 @@ const ReservationSheet = ({
     <ActionSheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Aggiungi prenotazione"
-      description="Inserisci le informazioni per la prenotazione"
+      title={booking ? "Modifica prenotazione" : "Aggiungi prenotazione"}
+      description={booking ? "Modifica i dettagli della prenotazione" : "Inserisci le informazioni per la prenotazione"}
       formAction={handleSubmit}
-      submitButton={<Button type="submit" disabled={isPending}>{isPending ? 'Salvataggio...' : 'Aggiungi'}</Button>}
+      actionButtons={<Button type="submit" disabled={isPending}>{isPending ? 'Salvataggio...' : (booking ? 'Salva modifiche' : 'Aggiungi')}</Button>}
     >
       <div className='flex flex-col gap-4'>
-        <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+        <div className="flex flex-row items-center rounded-xl dark:bg-input/30 bg-background justify-between border p-3 shadow-sm">
           <div className="space-y-0.5">
-            <Label className='text-base'>Conosco già il cliente</Label>
+            <Label className='text-base'>Cliente conosciuto?</Label>
           </div>
           <div className='flex gap-1.5'>
             <Button
@@ -159,13 +202,13 @@ const ReservationSheet = ({
                     className="w-full justify-between"
                   >
                     {selectedCustomer
-                      ? customers.find((customer) => customer.id === selectedCustomer)?.name
+                      ? customers.find((customer) => customer.id === selectedCustomer)?.name || name // Fallback to name if not in list yet
                       : "Seleziona cliente..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align='start' className="w-[268px] p-0">
-                  <Command>
+                <PopoverContent align='start' className="w-[268px] p-0 bg-card!">
+                  <Command className='bg-background dark:bg-card/30 rounded-xl'>
                     <CommandInput
                       placeholder="Cerca cliente..."
                       value={customerSearch}
@@ -229,6 +272,7 @@ const ReservationSheet = ({
                 value={phone}
                 onChange={setPhone}
                 defaultCountry="IT"
+                className='rounded-l-none'
                 placeholder="+39 333 1234567"
                 required
               />
@@ -236,16 +280,18 @@ const ReservationSheet = ({
           </div>
         )}
 
-        <div className='grid grid-cols-2 gap-2'>
+        <div className='grid sm:grid-cols-2 gap-2'>
           <div className='flex flex-col items-start gap-2'>
             <Label>Numero di coperti</Label>
-            <Input
-              type="number"
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
+            <NumberInput
+              id='guests'
+              name='guests'
               placeholder="2"
-              min="1"
               required
+              value={guests}
+              onValueChange={setGuests}
+              context="default"
+              min={1}
             />
           </div>
           <DateTimePicker

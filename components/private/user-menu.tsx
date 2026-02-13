@@ -8,7 +8,7 @@ import { LuCircleUserRound } from "react-icons/lu";
 import Link from 'next/link'
 import { ModeToggle } from '../ui/mode-toggle'
 import { Profile } from '@/types/general'
-import { logout } from '@/supabase/actions'
+import { logout } from '@/utils/supabase/actions'
 import { useTheme } from 'next-themes'
 
 export const UserMenu = ({ user, email }: { user: Profile | null, email: string | undefined }) => {
@@ -21,7 +21,7 @@ export const UserMenu = ({ user, email }: { user: Profile | null, email: string 
 
   if (!mounted) {
     return (
-      <div className='bg-[#FF9710] p-4 shrink-0 size-10 flex items-center justify-center opacity-0'>
+      <div className='bg-[#FF9710] p-4 shrink-0 size-10 flex items-center justify-center opacity-0 rounded-lg'>
       </div>
     )
   }
@@ -29,11 +29,11 @@ export const UserMenu = ({ user, email }: { user: Profile | null, email: string 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className='p-1 bg-background dark:bg-input border hover:bg-[#eaeaea] dark:hover:bg-neutral-700/50'>
-          <LuCircleUserRound size={26} color={resolvedTheme === 'dark' ? 'white' : 'gray'} />
+        <button className='group p-1 bg-card/10 dark:bg-card data-[state=open]:border-primary/60 border-2 rounded-lg dark:hover:bg-primary/10 border-border/10 dark:border-border hover:bg-primary/10 hover:border-primary/60'>
+          <LuCircleUserRound size={26} className='text-white group-data-[state=open]:text-primary group-hover:text-primary/90' />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side='bottom' align='end' className='w-52 bg-background dark:bg-[#2F2F2F]'>
+      <DropdownMenuContent side='bottom' align='end' className='w-52'>
         <DropdownMenuLabel className='flex flex-col gap-2'>
           <p className='flex flex-col'>
             <span className='text-foreground font-semibold'>Loggato come:</span>
@@ -46,12 +46,12 @@ export const UserMenu = ({ user, email }: { user: Profile | null, email: string 
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Button variant='outline' asChild className='w-full justify-start mb-0.5'>
+          <Button variant='ghost' asChild className='w-full justify-start mb-0.5'>
             <Link href='/profile' className='cursor-pointer'>Il tuo Profilo</Link>
           </Button>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Button variant='outline' asChild className='w-full justify-start'>
+          <Button variant='ghost' asChild className='w-full justify-start'>
             <Link href='/billing' className='cursor-pointer'>Gestisci Fatturazione</Link>
           </Button>
         </DropdownMenuItem>

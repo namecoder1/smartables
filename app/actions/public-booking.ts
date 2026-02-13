@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -12,7 +12,7 @@ export type CreateBookingState = {
 
 export async function createPublicBooking(
   prevState: CreateBookingState,
-  formData: FormData
+  formData: FormData,
 ): Promise<CreateBookingState> {
   const supabase = await createClient();
 

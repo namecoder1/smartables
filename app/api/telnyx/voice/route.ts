@@ -1,7 +1,7 @@
 import { rejectCall, answerCall, startRecording } from "@/lib/telnyx";
 import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
 import { registerNumberWithMeta } from "@/lib/meta-registration";
-import { createAdminClient } from "@/supabase/admin";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 

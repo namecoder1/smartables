@@ -9,13 +9,13 @@ interface TimePickerProps {
   onChange?: (value: string) => void
   label?: string
   className?: string,
-  context?: 'onboarding' | 'settings'
+  context: 'onboarding' | 'settings'
 }
 
-export function TimePicker({ value, onChange, label = "Time", className, context = 'settings' }: TimePickerProps) {
+export function TimePicker({ value, onChange, label = "Time", className, context }: TimePickerProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {label && <Label className="px-1 text-xs text-black">{label}</Label>}
+      {label && <Label className={context === 'onboarding' ? 'px-1 text-xs text-black' : 'px-1 text-xs text-foreground/80'}>{label}</Label>}
       <Input
         type="time"
         step="60" // 1 minute precision usually enough

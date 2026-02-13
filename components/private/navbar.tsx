@@ -5,14 +5,22 @@ import { cn } from '@/lib/utils'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '../ui/sheet'
 import PrivateSidebar from './sidebar'
 import { UserMenu } from './user-menu'
-import { createClient } from '@/supabase/server'
+import PageTitle from './page-title'
+import { createClient } from '@/utils/supabase/server'
 import { Profile } from '@/types/general'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
 import { TbHelpSquareRounded } from "react-icons/tb";
 import Link from 'next/link'
 import Image from 'next/image'
 
-const Navbar = async (props: React.HTMLAttributes<HTMLDivElement>) => {
+interface NavbarProps extends React.HTMLAttributes<HTMLDivElement> {
+  organizationId?: string
+  activationStatus?: string
+  managedAccountId?: string | null
+  starredPages?: { id: string; url: string; title: string }[]
+}
+
+const Navbar = async ({ organizationId, activationStatus, managedAccountId, starredPages, ...props }: NavbarProps) => {
   const supabase = await createClient()
 
   const { data: auth } = await supabase.auth.getUser()
@@ -20,26 +28,34 @@ const Navbar = async (props: React.HTMLAttributes<HTMLDivElement>) => {
 
 
   return (
-    <nav {...props} className={cn('flex  items-center justify-between w-full px-4 shrink-0', props.className)}>
-      <div className='flex items-center gap-4 md:gap-0'>
+    <nav {...props} className={cn('flex items-center justify-between w-full px-5 xl:px-1 xl:pr-3 py-2 sm:py-0 xl:py-1.5 shrink-0', props.className)}>
+      <div className='flex items-center gap-4 xl:gap-0'>
         <Sheet>
-          <SheetTrigger className='lg:hidden'>
-            <Menu size={20} />
+          <SheetTrigger className='xl:hidden'>
+            <Menu size={20} className='text-white dark:text-foreground' />
           </SheetTrigger>
           <SheetContent side="left" className="w-64" showClose={false}>
             <SheetTitle className='hidden'>
               <div className='sm:hidden flex items-center gap-1.5'>
                 <Image src='/logo.png' width={30} height={30} alt='logo' />
-                <p className='text-2xl font-bold tracking-tighter'>Smartables</p>
+                <p className='text-2xl font-bold tracking-tighter text-white dark:text-foreground'>Smartables</p>
               </div>
             </SheetTitle>
-            <PrivateSidebar collapsible="none" className="bg-transparent border-none w-full h-full" />
+            <PrivateSidebar
+              collapsible="none"
+              className="bg-[#252525] dark:bg-[#262626] border-none! w-full h-full"
+              organizationId={organizationId}
+              activationStatus={activationStatus}
+              managedAccountId={managedAccountId}
+              starredPages={starredPages}
+            />
           </SheetContent>
         </Sheet>
-        <div className='sm:hidden flex items-center gap-1.5'>
+        <div className='xl:hidden flex items-center gap-1.5'>
           <Image src='/logo.png' width={30} height={30} alt='logo' />
-          <p className='text-2xl font-bold tracking-tighter'>Smartables</p>
+          <p className='text-2xl font-bold tracking-tighter text-white dark:text-foreground'>Smartables</p>
         </div>
+        <PageTitle starredPages={starredPages} />
       </div>
       <div className='flex items-center gap-2'>
         <NavbarSearch />
@@ -53,8 +69,8 @@ const Navbar = async (props: React.HTMLAttributes<HTMLDivElement>) => {
 const SupportDropdown = () => {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className='p-1 bg-background dark:bg-input border dark:hover:bg-neutral-700/50 hover:bg-[#eaeaea]'>
-        <TbHelpSquareRounded size={26} className='text-[#808080] dark:text-white' />
+      <DropdownMenuTrigger className='group p-1 bg-card/10 dark:bg-card data-[state=open]:border-primary/60 border-2 rounded-lg dark:hover:bg-primary/10 border-border/10 dark:border-border hover:bg-primary/10 hover:border-primary/60'>
+        <TbHelpSquareRounded size={26} className='text-white group-data-[state=open]:text-primary group-hover:text-primary/90' />
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' >
         <DropdownMenuItem>

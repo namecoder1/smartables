@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react'
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { createStripePortalSession } from '@/stripe/actions'
+import { createStripePortalSession } from '@/utils/stripe/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Check, Zap, CreditCard, CalendarDays, ShieldCheck } from 'lucide-react'
@@ -9,10 +9,12 @@ import { PLANS } from '@/lib/plans'
 import { Separator } from '@/components/ui/separator'
 import PlansSwitcher from './plans-switcher'
 import { Badge } from '@/components/ui/badge'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { RefreshOnSuccess } from './refresh-on-success'
+
 import PageWrapper from '@/components/private/page-wrapper'
 import { Metadata } from 'next'
+import { BillingSuccessCheck } from './billing-success-check'
+import { FeedbackForm } from './feedback-form'
+import FaqSection from '@/components/private/faq-section'
 
 export const metadata: Metadata = {
   title: "Fatturazione",
@@ -21,39 +23,6 @@ export const metadata: Metadata = {
 
 // Force dynamic rendering - no caching, always fresh data
 export const dynamic = 'force-dynamic'
-
-const faqs = [
-  {
-    id: 1,
-    title: 'Perchè non posso pagare con un metodo di pagamento diverso?',
-    text: 'Per motivi di sicurezza, non possiamo accettare pagamenti con metodi di pagamento diversi da quelli supportati da Stripe.'
-  },
-  {
-    id: 2,
-    title: 'Il rinnovo automatico è attivo di default?',
-    text: 'Il rinnovo automatico è disattivato non appena inizi la tua prova gratuita, una volta che la prova termina e un nuovo piano viene scelto, il rinnovo automatico sarà attivato di default.'
-  },
-  {
-    id: 3,
-    title: 'Cosa succede se sforo i limiti di un piano?',
-    text: 'Se sfori i tuoi limiti ti consigliamo di passare al piano successivo. Per non incorrere nello spegnimento del servizio puoi fare l\'upgrade al piano successivo pagando la differenza tra i due piani, considerando però che dal mese successivo pagherai il prezzo pieno del nuovo piano.'
-  },
-  {
-    id: 4,
-    title: 'Perchè non posso pagare con un metodo di pagamento diverso?',
-    text: 'Per motivi di sicurezza, non possiamo accettare pagamenti con metodi di pagamento diversi da quelli supportati da Stripe.'
-  },
-  {
-    id: 5,
-    title: 'Perchè non posso pagare con un metodo di pagamento diverso?',
-    text: 'Per motivi di sicurezza, non possiamo accettare pagamenti con metodi di pagamento diversi da quelli supportati da Stripe.'
-  },
-  {
-    id: 6,
-    title: 'Perchè non posso pagare con un metodo di pagamento diverso?',
-    text: 'Per motivi di sicurezza, non possiamo accettare pagamenti con metodi di pagamento diversi da quelli supportati da Stripe.'
-  },
-]
 
 export default async function BillingPage({
   searchParams,
@@ -77,13 +46,31 @@ export default async function BillingPage({
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, name, stripe_customer_id, stripe_subscription_id, stripe_price_id, stripe_status, stripe_current_period_end, stripe_cancel_at_period_end')
+    .select('id, name, stripe_customer_id, stripe_subscription_id, stripe_price_id, stripe_status, stripe_current_period_end, stripe_cancel_at_period_end, current_billing_cycle_start')
     .eq('id', profile.organization_id)
     .single()
 
   const sp = await searchParams
   const success = sp.success === 'true'
   const canceled = sp.canceled === 'true'
+
+  // If subscription is canceled (refunded), show only plans
+  const isCanceled = org?.stripe_status === 'canceled'
+
+  if (isCanceled) {
+    return (
+      <PageWrapper>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Riattiva il tuo abbonamento</h1>
+          <p className="text-muted-foreground">
+            Il tuo abbonamento è stato cancellato. I tuoi dati sono ancora al sicuro — scegli un piano per riprendere da dove hai lasciato.
+          </p>
+        </div>
+        <PlansSwitcher plans={PLANS} currentPriceId={null} stripeStatus={org?.stripe_status} />
+        <FeedbackForm />
+      </PageWrapper>
+    )
+  }
 
   // Find active plan
   const currentPlan = PLANS.find(p => p.priceIdMonth === org?.stripe_price_id || p.priceIdYear === org?.stripe_price_id)
@@ -92,6 +79,8 @@ export default async function BillingPage({
   const isYearlyActive = currentPlan?.priceIdYear === org?.stripe_price_id
   const currentPrice = isYearlyActive ? currentPlan?.priceYear : currentPlan?.priceMonth
   const currentPeriod = isYearlyActive ? '/anno' : '/mese'
+
+
 
   return (
     <PageWrapper>
@@ -104,7 +93,7 @@ export default async function BillingPage({
         <div className='col-span-2'>
           <div className="space-y-4">
             {success && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 p-4  flex items-center gap-3 border border-emerald-200 dark:border-emerald-800 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="bg-emerald-50 mb-4 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 p-4 rounded-xl flex items-center gap-3 border border-emerald-200 dark:border-emerald-800 shadow-sm animate-in fade-in slide-in-from-top-2">
                 <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-full">
                   <Check className="h-5 w-5" />
                 </div>
@@ -113,13 +102,13 @@ export default async function BillingPage({
                   <p className="text-sm opacity-90">Grazie per aver scelto il piano {currentPlan?.name}.</p>
                 </div>
                 <Suspense fallback={null}>
-                  <RefreshOnSuccess />
+                  <BillingSuccessCheck initialPriceId={org?.stripe_price_id} />
                 </Suspense>
               </div>
             )}
 
             {canceled && (
-              <div className="bg-amber-50 text-amber-800 p-4 rounded-xl flex items-center gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="bg-amber-50 mb-4 text-amber-800 p-4 rounded-xl flex items-center gap-3 border border-amber-200 shadow-sm animate-in fade-in slide-in-from-top-2">
                 <div className="bg-amber-100 p-2 rounded-full">
                   <Zap className="h-5 w-5" />
                 </div>
@@ -132,10 +121,7 @@ export default async function BillingPage({
           </div>
           <Card className="border-border shadow-sm overflow-hidden py-0">
             <div className="bg-muted/30 border-b p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <ShieldCheck className="h-6 w-6 text-primary" />
-                </div>
+              <div className="flex items-center gap-4 flex-1">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Piano Attuale</p>
                   <div className="flex items-center gap-2">
@@ -148,12 +134,15 @@ export default async function BillingPage({
                   </div>
                 </div>
               </div>
-              <form action={createStripePortalSession}>
-                <Button size="lg" className="shadow-sm">
-                  <CreditCard className="h-4 w-4" />
-                  Gestisci
-                </Button>
-              </form>
+              <div className="flex items-center gap-1">
+                <form action={createStripePortalSession}>
+                  <Button size="sm" variant="outline" className="shadow-sm">
+                    <CreditCard className="h-4 w-4" />
+                    Gestisci
+                  </Button>
+                </form>
+
+              </div>
             </div>
 
             <CardContent className="px-6 pb-6 grid md:grid-cols-2 gap-8">
@@ -183,6 +172,8 @@ export default async function BillingPage({
                     I limiti delle risorse (es. messaggi) sono vincolati al piano. Non è possibile acquistare pacchetti extra singolarmente.
                   </p>
                 </div>
+
+
               </div>
 
               <div>
@@ -203,33 +194,11 @@ export default async function BillingPage({
             </CardContent>
           </Card>
           <Separator />
-          <PlansSwitcher plans={PLANS} />
+          <PlansSwitcher plans={PLANS} currentPriceId={org?.stripe_price_id} stripeStatus={org?.stripe_status} />
         </div>
-        <BillingFAQ />
+        <FaqSection topic="billing" />
       </div>
 
     </PageWrapper>
-  )
-}
-
-const BillingFAQ = () => {
-  return (
-    <Card className="h-fit gap-2">
-      <CardHeader>
-        <CardTitle className="text-lg">Domande Frequenti</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {faqs.map((faq) => (
-          <Accordion key={faq.id} type="single" collapsible className="w-full">
-            <AccordionItem value={`item-${faq.id}`}>
-              <AccordionTrigger>{faq.title}</AccordionTrigger>
-              <AccordionContent>
-                {faq.text}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        ))}
-      </CardContent>
-    </Card>
   )
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/supabase/admin";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { Resend } from "resend";
-import { purchasePhoneNumber } from "@/lib/telnyx";
+import { purchasePhoneNumber, answerCall, startRecording } from "@/lib/telnyx";
+import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
+import { registerNumberWithMeta } from "@/lib/meta-registration";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
         );
       }
 
-      // 2. If Approved, Purchase Number & Activate Location & Register with Meta
+      // 2. If Approved, Activate Location & Register with Meta
       if (status === "approved" && reqGroup?.location_id) {
         // Fetch Location to get the phone number
         const { data: location, error: locationFetchError } = await supabase
@@ -57,21 +59,13 @@ export async function POST(req: Request) {
 
         try {
           console.log(
-            `Purchasing number ${location.telnyx_phone_number} for req group ${id}...`,
+            `Requirement ${id} Approved. Activating number ${location.telnyx_phone_number}...`,
           );
-          // 2a. Purchase Number (Connection ID is handled in lib/telnyx now)
-          await purchasePhoneNumber(location.telnyx_phone_number, id);
-          console.log("Number purchased successfully.");
 
-          // 2b. Add to Meta WABA
-          /* 
-             NOTE: To add a number to WABA via API, the number must be under our control.
-             It might take a moment for Telnyx to provision it. 
-             If immediate Meta registration fails, we might need a delay or a retry mechanism (e.g. queue).
-             For MVP, we try immediately.
-           */
-          // Parse CC and clean number for Meta? Library does simple substring(0,2).
-          // Assuming format is +39... -> 39...
+          // Number was already purchased in 'buy' flow. status should be 'provisioning'.
+          // We now update it to 'active'.
+
+          // 2a. Add to Meta WABA
           const cleanNumber = location.telnyx_phone_number.replace("+", "");
 
           console.log(`Adding ${cleanNumber} to Meta WABA...`);
@@ -82,25 +76,26 @@ export async function POST(req: Request) {
           const metaPhoneId = await addNumberToWaba(cleanNumber, location.name);
           console.log(`Meta Phone ID obtained: ${metaPhoneId}`);
 
-          // 2c. Update Location with Status & Meta ID
+          // 2b. Update Location with Status & Meta ID
           const { error: locError } = await supabase
             .from("locations")
             .update({
               activation_status: "active",
               meta_phone_id: metaPhoneId,
-              // We don't have telnyx_connection_id explicitly returned from purchase, but it matches env.
-              // If we wanted to store it: telnyx_connection_id: process.env.TELNYX_CONNECTION_ID
             })
             .eq("id", reqGroup.location_id);
 
           if (locError) throw locError;
 
-          // 2d. Trigger Voice Verification
+          // 2c. Trigger Voice Verification
           console.log("Requesting Voice Verification Code from Meta...");
           await requestVerificationCode(metaPhoneId, "VOICE");
           console.log("Verification Code Requested!");
         } catch (error: any) {
-          console.error("Failed in automation flow (Purchase/Meta):", error);
+          console.error(
+            "Failed in automation flow (Meta Registration):",
+            error,
+          );
           // Don't error the webhook response to Telnyx, they don't care about our Meta issues.
           // But we should log or alert admin.
           return NextResponse.json(
@@ -109,14 +104,68 @@ export async function POST(req: Request) {
           );
         }
       }
-    } else if (eventType === "number_order.status_updated") {
-      // number_order.status_updated
-      // payload: { id: "...", status: "success" | "pending" | "failed", requirements_status: ... }
-      // This is for the purchase order itself.
-      const status = payload.status;
-      // We might not be storing the order ID, but we might associate via other means?
-      // Usually we care about the phone number status.
-      // But let's log it for now.
+    } else if (eventType === "call.initiated") {
+      // INCOMING CALL from Meta
+      const callControlId = payload.call_control_id;
+      const to = payload.to;
+      console.log(`Incoming call to ${to}, answering...`);
+
+      // 1. Answer Call
+      await answerCall(callControlId);
+
+      // 2. Start Recording immediately (Meta speaks code quickly)
+      // Note: Telnyx answer webhook might need a slight delay or wait for 'call.answered' event
+      // But typically we can command record right after answer command.
+      await startRecording(callControlId);
+      console.log("Call answered and recording started.");
+    } else if (eventType === "call.recording.saved") {
+      // RECORDING SAVED
+      const recordingUrl = payload.recording_urls?.mp3;
+      const to = payload.to; // The Telnyx number
+      // We need to find which location corresponds to this number to get the Meta Phone ID.
+      console.log(`Recording saved for call to ${to}. Transcribing...`);
+
+      if (recordingUrl) {
+        try {
+          // 1. Transcribe
+          const transcription = await transcribeAudio(recordingUrl);
+          console.log("Transcription:", transcription);
+
+          // 2. Extract Code
+          const code = extractVerificationCode(transcription);
+          console.log("Extracted Code:", code);
+
+          if (code) {
+            // 3. Find Location & Meta ID
+            // Telnyx numbers in DB are usually +39...
+            // Payload 'to' might be +39... or 39...
+            const { data: location } = await supabase
+              .from("locations")
+              .select("id, meta_phone_id, telnyx_phone_number")
+              .eq("telnyx_phone_number", to) // Ensure format matches
+              .single();
+
+            if (location && location.meta_phone_id) {
+              // 4. Register with Meta
+              console.log(
+                `Registering code ${code} for location ${location.id}...`,
+              );
+              await registerNumberWithMeta(location.meta_phone_id, code);
+              console.log("Number verified with Meta!");
+
+              // 5. Update Status
+              await supabase
+                .from("locations")
+                .update({ activation_status: "verified" })
+                .eq("id", location.id);
+            } else {
+              console.error("Could not find location/meta_id for number:", to);
+            }
+          }
+        } catch (error) {
+          console.error("Error processing recording/verification:", error);
+        }
+      }
     }
 
     return NextResponse.json({ received: true });

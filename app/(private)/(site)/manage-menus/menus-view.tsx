@@ -1,23 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle, CardFooter, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash, ChevronRight, FileText, MapPin, Globe, Settings, Edit, Link, LayersPlus } from 'lucide-react'
+import { Plus, Trash, ChevronRight, FileText, MapPin, Globe, Settings, Edit, Link, LayersPlus, Map, MapIcon, PlusCircle } from 'lucide-react'
 import { createMenu, deleteMenu, assignMenuToLocations, updateMenu } from '@/app/actions/settings'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { MenusViewProps } from '@/types/components'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Checkbox } from '../../../../components/ui/checkbox'
-import { createClient } from '@/supabase/client'
+import { createClient } from '@/utils/supabase/client'
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 import { PdfUpload } from '../../../../components/private/pdf-upload'
 import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import GroupedActions from '../../../../components/utility/grouped-actions'
 import { Menu } from '@/types/general'
+import NoItems from '@/components/utility/no-items'
+import { useOrganization } from '@/components/providers/organization-provider'
+import { PLANS } from '@/lib/plans'
+import { Lock } from 'lucide-react'
+import PageWrapper from '@/components/private/page-wrapper'
+
+const MENU_LIMITS = {
+  starter: 5,
+  pro: 15,     // Growth
+  business: 25 // Business
+}
 
 type MenuDialogMode = 'create' | 'edit' | null
 
@@ -45,6 +57,13 @@ const initialDialogState: MenuDialogState = {
 
 const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
   const router = useRouter()
+  const { organization } = useOrganization()
+
+  // Determine current limit based on plan
+  const currentPlan = PLANS.find(p => p.priceIdMonth === organization?.stripe_price_id || p.priceIdYear === organization?.stripe_price_id);
+  const planId = currentPlan?.id || 'starter'; // Default to starter if no plan found
+  const maxMenus = MENU_LIMITS[planId as keyof typeof MENU_LIMITS] || 5;
+  const isLimitReached = menus.length >= maxMenus;
   // Navigation / Context State
   const [workingLocationId, setWorkingLocationId] = useState<string>(
     locations && locations.length > 0 ? locations[0].id : ''
@@ -53,6 +72,11 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
   // Unified Menu Dialog State
   const [menuDialog, setMenuDialog] = useState<MenuDialogState>(initialDialogState)
   const [isSavingMenu, setIsSavingMenu] = useState(false)
+
+  // Realtime Refresh
+  useRealtimeRefresh('menus', {
+    filter: organizationId ? `organization_id=eq.${organizationId}` : undefined
+  })
 
   // Manage Locations State
   const [managingMenuId, setManagingMenuId] = useState<string | null>(null)
@@ -241,28 +265,72 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className='flex items-center justify-between'>
+    <PageWrapper className="relative">
+      <div className='xl:hidden flex items-center justify-between gap-10'>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">I tuoi Menù</h2>
-          <p className="text-muted-foreground">Crea e gestisci i menù per le tue sedi.</p>
+          <p className="text-muted-foreground max-w-3xl">Crea e gestisci i menù per le tue sedi.</p>
         </div>
-        <Button size="sm" className="w-full sm:w-fit" onClick={openCreateDialog}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button size="sm" className="w-full sm:w-fit" onClick={openCreateDialog} disabled={isLimitReached}>
+          {isLimitReached ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
           Crea Menu
         </Button>
       </div>
 
+      <div className='grid grid-cols-3 gap-4'>
+        <Card className='gap-2 bg-card/80 shadow-none'>
+          <CardHeader>
+            <CardTitle>Totale menù</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-3xl font-bold'>
+              {menus.length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className='gap-2 bg-card/80 shadow-none'>
+          <CardHeader>
+            <CardTitle>Menù attivi</CardTitle>
+          </CardHeader>
+          <CardContent className='flex items-end gap-1.5'>
+            <p className='text-3xl font-bold'>
+              {menus.filter(m => m.is_active).length}
+            </p>
+            <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
+              attivi
+            </span>
+          </CardContent>
+        </Card>
+        <Card className='gap-2 bg-card/80 shadow-none'>
+          <CardHeader>
+            <CardTitle>Menù creati</CardTitle>
+          </CardHeader>
+          <CardContent className='flex items-end gap-1.5'>
+            <p className='text-3xl font-bold'>
+              {menus.length}/{maxMenus}
+            </p>
+            <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
+              menù
+            </span>
+          </CardContent>
+        </Card>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {visibleMenus.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center p-10 border border-dashed rounded-lg text-muted-foreground bg-muted/10">
-            <FileText className="w-10 h-10 mb-4 opacity-20" />
-            <p>Nessun menu disponibile per {currentWorkingLocation?.name}.</p>
-            <Button variant="link" onClick={openCreateDialog}>Crea il primo menu</Button>
-          </div>
-        ) : (
-          visibleMenus.map((menu) => (
+      {visibleMenus.length === 0 ? (
+        <NoItems
+          icon={<MapIcon />}
+          title="Non hai ancora creato un menù"
+          description="Crea il tuo primo menù e attivalo per mostrarlo ai tuoi clienti. Puoi caricare un PDF gia esistente o inserire i tuoi piatti a mano."
+          button={
+            <Button onClick={openCreateDialog} disabled={isLimitReached}>
+              {isLimitReached ? <Lock className="w-4 h-4 mr-2" /> : null}
+              {isLimitReached ? "Limite Raggiunto" : "Crea Nuovo Menu"}
+            </Button>
+          }
+        />
+      ) : (
+        visibleMenus.map((menu) => (
+          <div key={menu.id} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <MenuCard
               key={menu.id}
               menu={menu}
@@ -270,9 +338,10 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
               openEditMenu={openEditDialog}
               handleDelete={handleDelete}
             />
-          ))
-        )}
-      </div>
+          </div>
+        ))
+      )}
+
 
       {/* Manage Locations Dialog */}
       <Dialog open={!!managingMenuId} onOpenChange={(open) => !open && setManagingMenuId(null)}>
@@ -409,7 +478,13 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
         </DialogContent>
       </Dialog>
 
-    </div>
+      {menus.length > 0 && (
+        <Button onClick={openCreateDialog} disabled={isLimitReached} className='absolute right-6 bottom-6 z-50 xl:flex hidden'>
+          {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+          Nuovo Menù
+        </Button>
+      )}
+    </PageWrapper>
   )
 }
 
@@ -438,7 +513,7 @@ const MenuCard = ({
               {menu.name}
             </span>
           </CardTitle>
-          <Badge variant="outline" style={{ backgroundColor: menu.is_active ? 'green' : 'red' }} className="text-white text-xs px-2 py-1">
+          <Badge variant="outline" style={{ backgroundColor: menu.is_active ? 'green' : 'red' }} className="text-white text-xs px-2 py-1 rounded-xl">
             {menu.is_active ? 'Attivo' : 'Inattivo'}
           </Badge>
         </div>

@@ -13,6 +13,7 @@ import { Booking, CalendarEvent } from '@/types/general'
 import { BookingWithCustomer } from '@/types/components'
 import DetailsSheet from '@/components/private/details-sheet'
 import { useLocationStore } from '@/store/location-store'
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 
 const locales = {
   'it': it,
@@ -27,6 +28,8 @@ const localizer = dateFnsLocalizer({
   locales,
 })
 
+
+import ReservationSheet from '@/components/utility/reservation-sheet'
 
 // Custom Toolbar Component
 const CustomToolbar = (toolbar: any) => {
@@ -76,45 +79,45 @@ const CustomToolbar = (toolbar: any) => {
   }
 
   return (
-    <div className='border bg-card'>
-      <div className="flex flex-col gap-2 p-2 border-b md:flex-row md:items-center md:justify-between">
-        <div className="md:hidden w-full text-center pb-2 border-b border-border/50">
+    <div className='bg-card rounded-t-2xl'>
+      <div className="flex flex-col gap-2 p-2 border-b-2 md:flex-row md:items-center md:justify-between">
+        <div className="md:hidden w-full text-center pb-2 border-b-2 border-border/50">
           {label()}
         </div>
 
         <div className="flex items-center justify-between w-full gap-4">
-          <div className="flex items-center gap-1 p-1 border bg-background">
-            <Button variant="outline" size="icon" onClick={goToBack} className="h-8 w-8">
+          <div className="flex items-center gap-1 p-1 border-2 bg-input/30 dark:bg-card rounded-xl">
+            <Button variant="outline" size="icon" onClick={goToBack} className="h-8 w-8 border-2">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={goToCurrent} className="h-8 px-2 text-xs">
+            <Button variant="outline" size="sm" onClick={goToCurrent} className="h-8 px-2 text-xs border-2">
               Oggi
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNext} className="h-8 w-8">
+            <Button variant="outline" size="icon" onClick={goToNext} className="h-8 w-8 border-2">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="hidden md:block flex-1 text-center min-w-[200px] text-lg font-semibold tracking-tight p-1 bg-background w-fit border">
+          <div className="hidden rounded-xl md:block flex-1 text-center min-w-[200px] text-lg font-semibold tracking-tight p-1.5 bg-input/30 dark:bg-card border-2 border-border w-fit">
             {label()}
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-background border">
+          <div className="flex items-center gap-1 p-1 bg-input/30 dark:bg-card border-2 border-border rounded-xl">
             <button
               onClick={() => goToView('month')}
-              className={cn("h-7 px-2 text-xs border border-transparent", toolbar.view === 'month' && "bg-card/60 border-border text-foreground shadow-sm")}
+              className={cn("h-7 px-2 text-xs border-2 rounded-lg border-transparent", toolbar.view === 'month' && "bg-primary/40 border-primary/70 text-foreground shadow-sm")}
             >
               Mese
             </button>
             <button
               onClick={() => goToView('week')}
-              className={cn("h-7 px-2 text-xs border border-transparent", toolbar.view === 'week' && "bg-card/60 border-border text-foreground shadow-sm")}
+              className={cn("h-7 px-2 text-xs border-2 rounded-lg border-transparent", toolbar.view === 'week' && "bg-primary/40 border-primary/70 text-foreground shadow-sm")}
             >
               Settimana
             </button>
             <button
               onClick={() => goToView('day')}
-              className={cn("h-7 px-2 text-xs border border-transparent", toolbar.view === 'day' && "bg-card/60 border-border text-foreground shadow-sm")}
+              className={cn("h-7 px-2 text-xs border-2 rounded-lg border-transparent", toolbar.view === 'day' && "bg-primary/40 border-primary/70 text-foreground shadow-sm")}
             >
               Giorno
             </button>
@@ -142,7 +145,7 @@ const CustomToolbar = (toolbar: any) => {
 // Custom Event Component
 const CustomEvent = ({ event }: { event: CalendarEvent }) => {
   return (
-    <div className='flex h-full items-center px-1 text-xs gap-1 overflow-hidden'>
+    <div className='flex flex-col h-full items-start justify-center px-1 text-xs gap-1 overflow-hidden'>
       <span className='font-semibold truncate'>{event.resource.guest_name}</span>
       <span className='opacity-90 whitespace-nowrap text-[10px]'>({event.resource.guests_count} pers.)</span>
     </div>
@@ -156,6 +159,8 @@ const CalendarView = () => {
   const [date, setDate] = useState(new Date())
   const [selectedBooking, setSelectedBooking] = useState<BookingWithCustomer | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isReservationSheetOpen, setIsReservationSheetOpen] = useState(false)
+  const [bookingToEdit, setBookingToEdit] = useState<BookingWithCustomer | null>(null)
 
   const { selectedLocationId } = useLocationStore()
 
@@ -206,6 +211,23 @@ const CalendarView = () => {
     fetchData()
   }, [fetchData])
 
+  // Effect to close sheet if selected booking is no longer in events (e.g. deleted by realtime)
+  useEffect(() => {
+    if (selectedBooking && events) {
+      // Events wrap the booking in 'resource'
+      const stillExists = events.find(e => e.resource.id === selectedBooking.id)
+      if (!stillExists) {
+        setIsSheetOpen(false)
+        setSelectedBooking(null)
+      }
+    }
+  }, [events, selectedBooking])
+
+  useRealtimeRefresh('bookings', {
+    filter: selectedLocationId ? `location_id=eq.${selectedLocationId}` : undefined,
+    onUpdate: fetchData
+  })
+
   const eventStyleGetter = (event: CalendarEvent) => {
     let backgroundColor = '#ef4444' // Default Red (No Customer)
 
@@ -221,11 +243,11 @@ const CalendarView = () => {
 
     return {
       style: {
+        border: '1px solid #fff',
         backgroundColor,
         borderRadius: '6px',
         opacity: 0.9,
         color: 'white',
-        border: '0px',
         display: 'block',
         fontSize: '0.8rem'
       }
@@ -237,19 +259,26 @@ const CalendarView = () => {
     setIsSheetOpen(true)
   }
 
+  const handleEdit = (booking: BookingWithCustomer) => {
+    setBookingToEdit(booking)
+    setIsSheetOpen(false)
+    setIsReservationSheetOpen(true)
+  }
+
   return (
-    <div className="h-[calc(100vh-200px)] min-h-[600px] w-full relative">
+    <div className="h-[calc(100vh-220px)] min-h-[600px] w-full relative rounded-xl">
       {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center rounded-xl">
+        <div className="absolute inset-0 bg-[#fff8e8] dark:bg-[#232119] backdrop-blur-xs rounded-xl z-50 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
-      <div className="h-full w-full">
+      <div className="h-full w-full rounded-2xl border-0">
         <Calendar
           localizer={localizer}
           events={events}
           startAccessor="start"
           endAccessor="end"
+          className='rounded-2xl border-2 overflow-hidden'
           style={{ height: '100%', minHeight: '500px' }}
           views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA, Views.WORK_WEEK]}
           view={view}
@@ -278,6 +307,17 @@ const CalendarView = () => {
         isSheetOpen={isSheetOpen}
         setIsSheetOpen={setIsSheetOpen}
         selectedBooking={selectedBooking}
+        onBookingDeleted={fetchData}
+        onEdit={handleEdit}
+      />
+      <ReservationSheet
+        open={isReservationSheetOpen}
+        onOpenChange={(isOpen) => {
+          setIsReservationSheetOpen(isOpen)
+          if (!isOpen) setBookingToEdit(null)
+        }}
+        onSuccess={fetchData}
+        booking={bookingToEdit}
       />
     </div>
   )

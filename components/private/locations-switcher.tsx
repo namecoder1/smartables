@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import Link from "next/link"
 import { setLocationCookie } from "@/app/actions/set-location-cookie"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export const LocationsSwitcher = () => {
   const router = useRouter()
@@ -37,30 +38,38 @@ export const LocationsSwitcher = () => {
   // Safety check
   if (!activeLocation) return null
 
+  console.log(activeLocation.branding?.logo_url)
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <Popover>
           <PopoverTrigger asChild>
             <button
-              className="w-full flex items-center gap-2 bg-background dark:bg-[#1e1e1e] p-3 border rounded-none border-border"
+              className="w-full flex items-center gap-2 bg-card/10 dark:bg-card p-3 border-2 rounded-xl border-border/10 dark:border-border"
             >
-              <div className="flex aspect-square size-9 items-center justify-center bg-[#FD9710] text-white">
-                <div className="font-bold">
-                  {activeLocation.name.charAt(0).toUpperCase()}
+              {activeLocation.branding?.logo_url ? (
+                <div className="border">
+                  <Image src={activeLocation.branding.logo_url} alt={activeLocation.name} width={36} height={36} />
                 </div>
-              </div>
+              ) : (
+                <div className="flex aspect-square rounded-lg size-9 items-center justify-center bg-[#FD9710] text-white">
+                  <div className="font-bold">
+                    {activeLocation.name.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              )}
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-foreground">{activeLocation.name}</span>
-                <span className="truncate text-xs text-muted-foreground">Clicca per cambiare sede</span>
+                <span className="truncate font-semibold text-white dark:text-foreground">{activeLocation.name}</span>
+                <span className="truncate text-xs text-white/70 dark:text-muted-foreground">Clicca per cambiare sede</span>
               </div>
-              <ChevronsUpDown className="ml-auto" size={16} />
+              <ChevronsUpDown className="ml-auto text-white dark:text-foreground" size={16} />
             </button>
           </PopoverTrigger>
           <PopoverContent
-            className=" border min-w-56 w-full p-0 bg-background dark:bg-[#1e1e1e]"
-            align="start"
-            side="top"
+            className="border border-border/20  min-w-56 w-full p-0 bg-[#3B3B3B] dark:bg-card"
+            align="center"
+            side="right"
             sideOffset={4}
           >
             {orgLocations.length > 1 ? (
@@ -89,12 +98,12 @@ export const LocationsSwitcher = () => {
             <div className="p-2">
               <Link
                 href="/manage-activities"
-                className="flex w-full cursor-pointer items-center gap-2 px-2 py-2 text-sm border border-transparent outline-none hover:bg-muted/40 hover:border-border"
+                className="flex w-full cursor-pointer rounded-lg items-center gap-2 p-3 text-sm border border-transparent outline-none hover:bg-[#3B3B3B] hover:border-border/20"
               >
-                <div className="flex size-6 items-center justify-center bg-[#FD9710]">
+                <div className="flex rounded-md size-6 items-center justify-center bg-[#FD9710]">
                   <Plus className="size-4" color="white" />
                 </div>
-                <div className="font-medium">Aggiungi sede</div>
+                <div className="font-medium text-white dark:text-foreground">Aggiungi sede</div>
               </Link>
             </div>
           </PopoverContent>

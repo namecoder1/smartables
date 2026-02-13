@@ -1,4 +1,4 @@
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { updatePhoneNumber } from "@/lib/telnyx";
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!phoneNumber || !locationId || !phoneNumberId) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (locationError || !location) {
       return NextResponse.json(
         { error: "Location not found or access denied" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     if (!membership) {
       return NextResponse.json(
         { error: "Unauthorized access to location" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

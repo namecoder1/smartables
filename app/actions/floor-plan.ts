@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function getFloorPlan(locationId: string) {
@@ -58,7 +58,39 @@ export async function saveFloorPlan(
 
   if (zonesError) throw new Error(zonesError.message);
 
-  // 2. Upsert Tables
+  // 2. Handle deletions (Soft delete tables not in the current payload)
+  const zoneIds = zones.map((z) => z.id);
+
+  // Get all currently active tables for these zones
+  const { data: existingTables } = await supabase
+    .from("restaurant_tables")
+    .select("id")
+    .in("zone_id", zoneIds)
+    .eq("is_active", true);
+
+  if (existingTables) {
+    // IDs present in the new payload
+    const payloadIds = new Set(tables.map((t) => t.uniqueId || t.id));
+
+    // Find tables that are in DB but not in payload
+    const tablesToDelete = existingTables
+      .filter((t) => !payloadIds.has(t.id))
+      .map((t) => t.id);
+
+    if (tablesToDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("restaurant_tables")
+        .update({ is_active: false })
+        .in("id", tablesToDelete);
+
+      if (deleteError) {
+        console.error("Error soft-deleting tables:", deleteError);
+        throw new Error("Failed to delete removed tables");
+      }
+    }
+  }
+
+  // 3. Upsert Tables
   const { error: tablesError } = await supabase
     .from("restaurant_tables")
     .upsert(
@@ -77,6 +109,8 @@ export async function saveFloorPlan(
         // Schema has width/height. We can store radius as width/2 or use specific column if added.
         // For now using width/height for both.
         is_active: true,
+        min_capacity: t.seats > 0 ? (t.min_capacity ?? 1) : null,
+        max_capacity: t.seats > 0 ? (t.max_capacity ?? t.seats) : null,
       })),
     );
 
@@ -98,4 +132,30 @@ export async function deleteFloorPlan(zoneId: any) {
 
   revalidatePath("/(private)/(platform)/settings/floor-plan");
   return { success: true };
+}
+
+export async function getOrganizationZonesCount(organizationId: string) {
+  const supabase = await createClient();
+
+  // Get all locations for this organization
+  const { data: locations, error: locError } = await supabase
+    .from("locations")
+    .select("id")
+    .eq("organization_id", organizationId);
+
+  if (locError) throw new Error(locError.message);
+
+  if (!locations || locations.length === 0) return 0;
+
+  const locationIds = locations.map((l) => l.id);
+
+  // Count zones in these locations
+  const { count, error: countError } = await supabase
+    .from("restaurant_zones")
+    .select("*", { count: "exact", head: true })
+    .in("location_id", locationIds);
+
+  if (countError) throw new Error(countError.message);
+
+  return count || 0;
 }

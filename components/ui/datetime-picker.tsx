@@ -49,8 +49,8 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
   }
 
   return (
-    <div className="flex w-full items-center justify-center gap-4">
-      <div className="flex w-full flex-1 flex-col gap-3">
+    <div className="flex w-full items-center justify-center gap-2">
+      <div className="flex w-full flex-1 flex-col gap-2">
         <Label htmlFor="date-picker" className="px-1">
           Data
         </Label>
@@ -59,7 +59,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
             <Button
               variant="outline"
               id="date-picker"
-              className="w-full flex-1 justify-between font-normal"
+              className="w-full flex-1 rounded-xl justify-between font-normal"
             >
               {value ? value.toLocaleDateString() : "Seleziona data"}
               <ChevronDownIcon />
@@ -76,7 +76,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
           </PopoverContent>
         </Popover>
       </div>
-      <div className="flex w-full flex-1 flex-col gap-3">
+      <div className="flex w-full flex-1 flex-col gap-2">
         <Label htmlFor="time-picker" className="px-1">
           Ora
         </Label>

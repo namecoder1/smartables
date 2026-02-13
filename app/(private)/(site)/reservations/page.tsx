@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 const ReservationsPage = () => {
   return (
     <PageWrapper>
-      <div>
+      <div className='xl:hidden'>
         <h1 className='text-3xl font-bold tracking-tight'>Prenotazioni</h1>
         <p className='text-muted-foreground'>Gestisci, visualizza e modifica le prenotazioni per i tuoi tavoli</p>
       </div>

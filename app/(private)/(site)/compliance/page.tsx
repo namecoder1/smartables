@@ -1,6 +1,7 @@
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { DocumentForm } from "@/app/(private)/(site)/compliance/document-form";
 import { NumberPurchase } from "@/app/(private)/(site)/compliance/number-purchase";
+import { BrandingForm } from "@/app/(private)/(site)/compliance/branding-form";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -12,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Clock, XCircle } from "lucide-react";
 import PageWrapper from "@/components/private/page-wrapper";
+import { getFaqsByTopic } from "@/utils/sanity/queries";
 
 const faqs = [
   {
@@ -69,7 +71,8 @@ export default async function CompliancePage() {
         name, 
         address,
         telnyx_phone_number,
-        regulatory_requirement_id
+        regulatory_requirement_id,
+        activation_status
       )
     `)
     .eq("created_by", user.id)
@@ -89,7 +92,8 @@ export default async function CompliancePage() {
   }
 
   const isApproved = complianceData?.status === 'approved';
-  const isPendingTelnyx = complianceData?.status === 'pending';
+  // Telnyx statuses can be 'pending', 'in-progress', 'pending-approval'
+  const isPendingTelnyx = ['pending', 'in-progress', 'pending-approval', 'unapproved'].includes(complianceData?.status || '');
   const isPendingReview = complianceData?.status === 'pending_review';
   const isRejected = complianceData?.status === 'rejected';
   const hasNumber = !!primaryLocation?.telnyx_phone_number;
@@ -116,17 +120,23 @@ export default async function CompliancePage() {
               </AlertTitle>
               <AlertDescription className={isApproved ? "text-green-700" : (isPendingTelnyx || isPendingReview) ? "text-blue-700" : ""}>
                 {isApproved && "I tuoi documenti sono stati approvati. Puoi procedere all'acquisto del numero."}
-                {isPendingTelnyx && "Telnyx sta controllando i tuoi documenti. Riceverai una mail appena completato (24-48h)."}
+                {isPendingTelnyx && "Telnyx sta controllando i tuoi documenti. Puoi gia acquistare un numero, sarà attivato non appena i tuoi documenti verranno confermati."}
                 {isPendingReview && "I tuoi documenti sono stati inviati e sono in attesa di approvazione da parte del nostro team."}
                 {isRejected && `La verifica è stata respinta: ${complianceData.rejection_reason || "Documenti non validi"}. Riprova.`}
               </AlertDescription>
             </Alert>
           )}
 
-          {hasNumber ? (
+          {hasNumber && primaryLocation.activation_status !== 'pending' ? (
             <div className="p-6 border rounded-lg bg-green-50">
               <h3 className="text-lg font-bold text-green-800 mb-2">Numero Attivo!</h3>
               <p className="text-green-700">Il tuo numero <strong>{primaryLocation.telnyx_phone_number}</strong> è attivo e collegato a questa sede.</p>
+            </div>
+          ) : hasNumber && primaryLocation.activation_status === 'pending' ? (
+            <div className="p-6 border rounded-lg bg-yellow-50">
+              <h3 className="text-lg font-bold text-yellow-800 mb-2">Numero Riservato</h3>
+              <p className="text-yellow-700 mb-2">Abbiamo riservato il numero <strong>{primaryLocation.telnyx_phone_number}</strong> per te.</p>
+              <p className="text-sm text-yellow-700">Il numero sarà attivo non appena la verifica dei documenti sarà completata da Telnyx (24-48h). Nel frattempo puoi configurare il resto della piattaforma.</p>
             </div>
           ) : (
             <>
@@ -143,6 +153,12 @@ export default async function CompliancePage() {
                   areaCode={complianceData.area_code}
                 />
               )}
+
+              {primaryLocation && primaryLocation.activation_status === 'verified' && (
+                <div className="mt-8">
+                  <BrandingForm locationId={primaryLocation.id} />
+                </div>
+              )}
             </>
           )}
 
@@ -153,7 +169,8 @@ export default async function CompliancePage() {
           )}
 
         </div>
-        <div>
+        <div className="space-y-6">
+          <ComplianceGuide />
           <ComplianceFAQ />
         </div>
       </div>
@@ -161,7 +178,51 @@ export default async function CompliancePage() {
   );
 }
 
-const ComplianceFAQ = () => {
+const ComplianceGuide = () => {
+  return (
+    <Card className="h-fit">
+      <CardHeader>
+        <CardTitle className="text-lg">Guida alla Compilazione</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="ditta-individuale">
+            <AccordionTrigger className="text-left">Ditta Indiv. / Libero Prof.</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground space-y-2">
+              <p><strong>Nome Azienda:</strong> Inserisci il nome completo (es. "Mario Rossi" o "Bar Sport di Mario Rossi").</p>
+              <p><strong>Partita IVA:</strong> Le 11 cifre della tua P.IVA.</p>
+              <p><strong>Codice Fiscale:</strong> Il tuo Codice Fiscale personale (alfanumerico, es. RSSMRI80A01H501U).</p>
+              <p><strong>Documento:</strong> Carica la tua Carta d'Identità o Patente valida.</p>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="societa-persone">
+            <AccordionTrigger className="text-left">Società di Persone (S.n.c., S.a.s.)</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground space-y-2">
+              <p><strong>Nome Azienda:</strong> Ragione Sociale completa (es. "Ristorante Da Mario S.n.c.").</p>
+              <p><strong>Partita IVA / CF:</strong> Solitamente coincidono e sono numerici (11 cifre).</p>
+              <p><strong>Rappresentante:</strong> Inserisci i dati di un socio amministratore.</p>
+              <p><strong>Documento:</strong> Visura Camerale recente + Documento d'identità del socio amministratore.</p>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="societa-capitali">
+            <AccordionTrigger className="text-left">Società di Capitali (S.r.l., S.p.A.)</AccordionTrigger>
+            <AccordionContent className="text-sm text-muted-foreground space-y-2">
+              <p><strong>Nome Azienda:</strong> Ragione Sociale completa (es. "Ristorante Da Mario S.r.l.").</p>
+              <p><strong>Partita IVA / CF:</strong> Solitamente coincidono e sono numerici (11 cifre).</p>
+              <p><strong>Rappresentante:</strong> Inserisci i dati dell'Amministratore Unico o del Legale Rappresentante.</p>
+              <p><strong>Documento:</strong> Visura Camerale recente + Documento d'identità dell'amministratore.</p>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
+  )
+}
+
+const ComplianceFAQ = async () => {
+  const faqs = await getFaqsByTopic('whatsapp')
+
+
   return (
     <Card className="h-fit gap-2">
       <CardHeader>
@@ -169,11 +230,11 @@ const ComplianceFAQ = () => {
       </CardHeader>
       <CardContent>
         {faqs.map((faq) => (
-          <Accordion key={faq.id} type="single" collapsible className="w-full">
-            <AccordionItem value={`item-${faq.id}`}>
-              <AccordionTrigger>{faq.title}</AccordionTrigger>
+          <Accordion key={faq._id} type="single" collapsible className="w-full">
+            <AccordionItem value={`item-${faq._id}`}>
+              <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
               <AccordionContent>
-                {faq.text}
+                {faq.answer}
               </AccordionContent>
             </AccordionItem>
           </Accordion>

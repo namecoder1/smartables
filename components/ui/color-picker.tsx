@@ -13,13 +13,13 @@ const ColorPicker = ({ color, onChange, label, shape = 'square' }: ColorPickerPr
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "padding-0 border flex items-center justify-between flex-1 w-full min-w-28 text-right font-normal",
+              "padding-0 border flex items-center justify-between rounded-xl flex-1 w-full min-w-28 text-right font-normal",
               !color && "text-muted-foreground"
             )}
             style={shape === 'circle' ? { backgroundColor: color, borderColor: color } : {}}
           >
             <div
-              className="w-5 h-5 mr-2 border-r p-4"
+              className="w-5 h-5 mr-2 border-r p-4 rounded-l-xl"
               style={{ backgroundColor: color }}
             />
             <span className="truncate flex-1 pr-2">{color}</span>

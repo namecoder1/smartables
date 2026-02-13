@@ -7,9 +7,13 @@ import { cn } from '@/lib/utils'
 import { Sparkles } from 'lucide-react'
 
 const PlansSwitcher = ({
-  plans
+  plans,
+  currentPriceId,
+  stripeStatus,
 }: {
   plans: any[]
+  currentPriceId?: string | null
+  stripeStatus?: string | null
 }) => {
   const [isAnnual, setIsAnnual] = useState(true)
 
@@ -23,7 +27,7 @@ const PlansSwitcher = ({
           </p>
         </div>
 
-        <div className='relative flex items-center p-1 bg-muted/50 border shadow-inner'>
+        <div className='relative flex items-center rounded-xl p-1 bg-muted/50 border shadow-inner'>
           <button
             onClick={() => setIsAnnual(false)}
             className={cn(
@@ -43,7 +47,7 @@ const PlansSwitcher = ({
             Annuale
           </button>
           <motion.div
-            className="absolute top-1 bottom-1 left-1 bg-background shadow-sm border"
+            className="absolute top-1 rounded-lg bottom-1 left-1 bg-background shadow-sm border"
             initial={false}
             animate={{
               x: isAnnual ? "100%" : "0%",
@@ -55,7 +59,7 @@ const PlansSwitcher = ({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute -top-3 right-0 md:-right-1 bg-green-500 text-white px-1 py-0.5 text-xs font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap"
+            className="absolute -top-3 right-0 rounded-md md:-right-1 bg-green-500 text-white px-1 py-0.5 text-xs font-bold shadow-lg flex items-center gap-1.5 whitespace-nowrap"
           >
             +2 Mesi
           </motion.div>
@@ -64,7 +68,8 @@ const PlansSwitcher = ({
 
       <div className='grid lg:grid-cols-3 gap-4 items-start'>
         {plans.map((plan) => (
-          <PricingCard key={plan.id} plan={plan} isAnnual={isAnnual} context="private" />
+          <PricingCard key={plan.id} plan={plan} isAnnual={isAnnual} context="private"
+            currentPriceId={currentPriceId} stripeStatus={stripeStatus} />
         ))}
       </div>
     </div>

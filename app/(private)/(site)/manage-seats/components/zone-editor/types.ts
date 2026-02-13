@@ -10,6 +10,14 @@ export interface TableInstance extends TablePreset {
   max_capacity?: number;
 }
 
+export interface DrawingWallState {
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  originalId?: string;
+}
+
 export interface Zone {
   id: string;
   name: string;

@@ -1,7 +1,8 @@
-import { createClient } from '@/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import Settings from './settings'
 import { Metadata } from 'next'
+import SettingsView from './settings'
+import PageWrapper from '@/components/private/page-wrapper'
 
 export const metadata: Metadata = {
   title: 'Impostazioni Sede'
@@ -28,14 +29,14 @@ const SettingsPage = async () => {
     .order('created_at')
 
   return (
-    <div className="p-6 space-y-4">
+    <PageWrapper>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Impostazioni</h1>
         <p className="text-muted-foreground">Gestisci le informazioni della tua sede, i suoi menu e le varie categorie e elementi.</p>
       </div>
 
-      <Settings locations={locations || []} />
-    </div>
+      <SettingsView locations={locations || []} />
+    </PageWrapper>
   )
 }
 

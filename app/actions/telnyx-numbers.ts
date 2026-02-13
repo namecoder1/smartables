@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx";
 import { revalidatePath } from "next/cache";
 
@@ -51,36 +51,29 @@ export async function buyNumberAction(
 
     // 2. Purchase on Telnyx
     // We pass the requirementGroupId to satisfy regulatory compliance
-    // MOCK PURCHASE FOR TESTING (To save $)
-    // const purchase = await purchasePhoneNumber(phoneNumber, requirementGroupId);
-    const purchase = { id: "mock_order_id", status: "pending" };
+    // Telnyx allows linking 'pending'/'unapproved' bundles to the order.
+    const purchase = await purchasePhoneNumber(phoneNumber, requirementGroupId);
 
-    // 2. Save to Locations table
-    // We also want to save the 'connection_id' if we created one?
-    // For now, let's assume we just save the number.
-    // Also update activation_status.
-
+    // 3. Save to Locations table
+    // Set status to 'provisioning' because we are waiting for the Regulatory Bundle to match and be approved.
+    // The Webhook will flip this to 'active' and trigger Meta WABA.
     await supabase
       .from("locations")
       .update({
         telnyx_phone_number: phoneNumber,
-        // If we get an ID from purchase, we might save it?
-        // purchase response usually has order details.
-        // We'll update status to 'active' definitively if not already.
-        // We set it to 'pending' initially. The webhook will flip it to 'active'
-        // once the requirement group is fully approved (if not already).
-        activation_status: purchase.status === "active" ? "active" : "pending",
+        activation_status: "provisioning",
       })
       .eq("id", locationId);
 
     revalidatePath("/compliance");
     return { success: true };
   } catch (error: any) {
+    console.error("Buy Number Error:", error);
     // Revert lock if purchased failed
     const supabase = await createClient(); // Re-init if needed or reuse
     await supabase
       .from("locations")
-      .update({ activation_status: "active" }) // Revert to active so user can try again. 'active' means 'compliance approved' in this context map.
+      .update({ activation_status: "pending" }) // Revert to pending so user can try again.
       .eq("id", locationId)
       .eq("activation_status", "purchasing"); // Only revert if still purchasing
 

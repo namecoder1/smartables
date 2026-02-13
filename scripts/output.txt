@@ -1,0 +1,226 @@
+Fetching requirements from: https://api.telnyx.com/v2/requirements?country_code=IT&phone_number_type=local&action=ordering
+Requirements:
+{
+  "id": "a2aee2ef-17fe-4ad9-947b-4ccb04b1d5d1",
+  "record_type": "requirement",
+  "action": "ordering",
+  "updated_at": "2026-01-22T10:06:13Z",
+  "country_code": "MY",
+  "locality": null,
+  "phone_number_type": "toll_free",
+  "requirement_types": [
+    {
+      "id": "0ba49bfa-8a0b-4e38-95ba-f1291507fad4",
+      "name": "Proof of Address (National)",
+      "type": "document",
+      "description": "A recent invoice or utility bill showing proof of address within the country in PDF format",
+      "record_type": "requirement_type",
+      "updated_at": "2025-08-27T03:26:34Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Utility bill or invoice in PDF format",
+      "created_at": "2021-06-24T13:57:43Z"
+    },
+    {
+      "id": "0e84f7f9-d195-4d02-9873-9ac4b99c276d",
+      "name": "Address (national)",
+      "type": "address",
+      "description": "Please provide a valid physical address located in the same country as the phone number you are purchasing. The address does not need to match the specific city or region of the phone number, as long as it is within the national borders.",
+      "record_type": "requirement_type",
+      "updated_at": "2025-12-08T16:25:58Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": null,
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "If you are ordering a phone number in Spain, you must provide an address in Spain.",
+      "created_at": "2021-06-28T13:53:57Z"
+    },
+    {
+      "id": "2708e569-696a-4fc7-9305-5fdb3eb9c7dd",
+      "name": "Contact Info",
+      "type": "textual",
+      "description": "Provide the name, business name, and contact phone numbers of the business/end user",
+      "record_type": "requirement_type",
+      "updated_at": "2024-09-25T18:36:58Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Name, business name, and contact phone numbers",
+      "created_at": "2021-04-30T15:48:58Z"
+    }
+  ],
+  "created_at": "2026-01-22T10:06:13Z"
+}
+{
+  "id": "b52918ab-516b-45c2-869f-919453e48ee5",
+  "record_type": "requirement",
+  "action": "ordering",
+  "updated_at": "2026-01-21T01:26:05Z",
+  "country_code": "ZM",
+  "locality": null,
+  "phone_number_type": "mobile",
+  "requirement_types": [
+    {
+      "id": "0ba49bfa-8a0b-4e38-95ba-f1291507fad4",
+      "name": "Proof of Address (National)",
+      "type": "document",
+      "description": "A recent invoice or utility bill showing proof of address within the country in PDF format",
+      "record_type": "requirement_type",
+      "updated_at": "2025-08-27T03:26:34Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Utility bill or invoice in PDF format",
+      "created_at": "2021-06-24T13:57:43Z"
+    },
+    {
+      "id": "2708e569-696a-4fc7-9305-5fdb3eb9c7dd",
+      "name": "Contact Info",
+      "type": "textual",
+      "description": "Provide the name, business name, and contact phone numbers of the business/end user",
+      "record_type": "requirement_type",
+      "updated_at": "2024-09-25T18:36:58Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Name, business name, and contact phone numbers",
+      "created_at": "2021-04-30T15:48:58Z"
+    },
+    {
+      "id": "3b64428a-1bb8-4bdf-810a-6252dcc22a49",
+      "name": "Service Usage Description",
+      "type": "textual",
+      "description": "Description of service use case",
+      "record_type": "requirement_type",
+      "updated_at": "2024-02-06T01:03:07Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Description of service use case",
+      "created_at": "2021-07-04T07:35:20Z"
+    },
+    {
+      "id": "55cf622a-b226-4c19-ad16-89196f73b898",
+      "name": "ID or Passport Copy/Company Registration Certificate",
+      "type": "document",
+      "description": "If the number belongs to a company, please provide the company registration certificate \nIf the number does not belong to a company, please provide a copy of your ID or Passport",
+      "record_type": "requirement_type",
+      "updated_at": "2024-02-06T01:06:18Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "Passport copy or copy of company registration",
+      "created_at": "2021-10-22T14:55:25Z"
+    },
+    {
+      "id": "b0075437-6966-4c79-ae8d-39e981e55ac7",
+      "name": "Address (National)",
+      "type": "address",
+      "description": "Please provide a valid physical address located in the same country as the phone number you are purchasing. The address does not need to match the specific city or region of the phone number, as long as it is within the national borders.",
+      "record_type": "requirement_type",
+      "updated_at": "2025-12-08T16:26:27Z",
+      "acceptance_criteria": {
+        "max_length": null,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": null,
+        "locality_limit": null,
+        "min_length": null,
+        "time_limit": null
+      },
+      "example": "If you are ordering a phone number in Spain, you must provide an address in Spain.",
+      "created_at": "2022-11-23T15:35:10Z"
+    },
+    {
+      "id": "bf1cb27c-3693-41af-bbf6-ff4de8d41006",
+      "name": "Contact E-mail",
+      "type": "textual",
+      "description": "E-mail of End Client",
+      "record_type": "requirement_type",
+      "updated_at": "2025-02-04T13:03:07Z",
+      "acceptance_criteria": {
+        "max_length": 150,
+        "regex": null,
+        "case_sensitive": true,
+        "acceptable_characters": null,
+        "acceptable_values": [],
+        "locality_limit": null,
+        "min_length": 1,
+        "time_limit": null
+      },
+      "example": "test@company.com",
+      "created_at": "2022-02-08T15:49:40Z"
+    }
+  ],
+  "created_at": "2026-01-21T01:26:05Z"
+}
+Unknown: a2aee2ef-17fe-4ad9-947b-4ccb04b1d5d1
+Unknown: b52918ab-516b-45c2-869f-919453e48ee5
+Unknown: 9f0d4fb6-405f-4253-8f73-3252a328490f
+Unknown: 52baf071-347a-4a83-a1cf-0c1930f1abea
+Unknown: b69e5f0c-53b7-48c9-863f-83073d1c5525
+Unknown: 527ff34e-391e-4f32-a127-2965d8138fb8
+Unknown: 939066cf-fabe-4c0d-a9ea-6b78e5ea960c
+Unknown: ce1048e7-16b5-461c-995c-730075070345
+Unknown: 2bdad0ed-9128-4618-b825-fe19c8a43421
+Unknown: ff9a6e60-7553-435d-880e-8df24314de66
+Unknown: 2716791b-23c4-4985-9206-3318795562d9
+Unknown: 3e7c898d-2933-4762-b5b7-3a995ec270bc
+Unknown: 1071ac2a-fa33-4b13-8166-e8142a9f5f27
+Unknown: 0a04b964-a31d-4ace-b42d-9c62b96b23fc
+Unknown: 53420172-124d-4ef1-b15e-a4bfb36ffa3d
+Unknown: 90d8d01f-cf0b-4549-b221-86ee3a264d73
+Unknown: aa356afa-353a-44c4-9518-89946afd2ea1
+Unknown: a4a57305-25bc-4603-8d54-35ff20f891bb
+Unknown: 9e7f4238-bb22-44fa-9b86-5ac0e63c9405
+Unknown: 8265457d-3739-4532-88a2-7663d6b4c6a0

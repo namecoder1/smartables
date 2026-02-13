@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, CheckCircle, Loader2 } from "lucide-react";
-import { createClient } from "@/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { updateLocationStatus } from "@/app/actions/locations";
 import { ITALIAN_AREA_CODES } from "@/lib/constants/italian-area-codes";
@@ -170,6 +170,9 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
 
       setUploadSuccess(true);
       toast.success("Richiesta inviata con successo!");
+
+      // Force refresh to allow parent component to re-fetch status and show NumberPurchase
+      window.location.reload();
     } catch (error: any) {
       console.error(error);
       toast.error("Errore: " + error.message);
@@ -218,7 +221,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                   type="button"
                   variant={customerType === 'legal_entity' ? 'default' : 'outline'}
                   onClick={() => setCustomerType('legal_entity')}
-                  className="flex-1"
+                  className="flex-1 rounded-r-none"
                 >
                   Azienda / P.IVA
                 </Button>
@@ -226,7 +229,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                   type="button"
                   variant={customerType === 'natural_person' ? 'default' : 'outline'}
                   onClick={() => setCustomerType('natural_person')}
-                  className="flex-1"
+                  className="flex-1 rounded-l-none"
                 >
                   Privato
                 </Button>
@@ -246,7 +249,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Codice Fiscale (Azienda)</Label>
-                    <Input placeholder="Spesso uguale alla P.IVA" value={taxCode} onChange={e => setTaxCode(e.target.value)} required />
+                    <Input placeholder="Spesso uguale alla P.IVA" value={taxCode} onChange={e => setTaxCode(e.target.value.toUpperCase())} className="uppercase" required />
                   </div>
                 </div>
               </>
@@ -264,7 +267,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>Codice Fiscale</Label>
-                  <Input placeholder="Es. MROSRI80A01H501L" value={taxCode} onChange={e => setTaxCode(e.target.value)} required />
+                  <Input placeholder="Es. MROSRI80A01H501L" value={taxCode} onChange={e => setTaxCode(e.target.value.toUpperCase())} className="uppercase" required />
                 </div>
               </>
             )}
@@ -292,7 +295,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
               </div>
               <div className="space-y-2">
                 <Label>Numero Documento</Label>
-                <Input placeholder="Es. MROSRI80A01H501L" value={idNumber} onChange={e => setIdNumber(e.target.value)} required />
+                <Input placeholder="Es. MROSRI80A01H501L" value={idNumber} onChange={e => setIdNumber(e.target.value.toUpperCase())} className="uppercase" required />
               </div>
               <div className="space-y-2">
                 <Label>Ente Rilascio</Label>
@@ -348,11 +351,11 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
               </div>
               <div className="space-y-2">
                 <Label>Provincia (Sigla)</Label>
-                <Input placeholder="Es. RM" value={province} maxLength={2} className="uppercase" onChange={e => setProvince(e.target.value)} required />
+                <Input placeholder="Es. RM" value={province} maxLength={2} className="uppercase" onChange={e => setProvince(e.target.value.toUpperCase())} required />
               </div>
             </div>
 
-            <div className="space-y-2 dark:bg-muted/30 bg-background p-4 border flex items-center justify-between">
+            <div className="space-y-2 dark:bg-muted/30 rounded-3xl bg-background p-4 border flex items-center justify-between">
               <div className="flex flex-col space-y-1">
                 <Label>Prefisso Telefonico Desiderato</Label>
                 <p className="text-xs text-muted-foreground">Il numero verrà attivato con questo prefisso.</p>
@@ -374,7 +377,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
               {/* Identity File */}
               <div className="space-y-2">
                 <Label>Copia Documento Identità</Label>
-                <div className="relative border-2 border-dashed bg-background dark:bg-input/30 p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 cursor-pointer h-40">
+                <div className="relative border-2 rounded-xl border-dashed bg-background dark:bg-input/30 p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 cursor-pointer h-40">
                   <Input type="file" accept=".pdf,.jpg,.jpeg,.png" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-50" onChange={e => handleFileChange(e, setIdentityFile)} />
                   {identityFile ? (
                     <div className="flex flex-col items-center text-green-600">
@@ -393,7 +396,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
               {/* Address File */}
               <div className="space-y-2">
                 <Label>Prova Indirizzo (Bolletta/Visura)</Label>
-                <div className="relative border-2 border-dashed bg-background dark:bg-input/30 p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 cursor-pointer h-40">
+                <div className="relative border-2 rounded-xl border-dashed bg-background dark:bg-input/30 p-6 flex flex-col items-center justify-center text-center hover:bg-muted/50 cursor-pointer h-40">
                   <Input type="file" accept=".pdf,.jpg,.jpeg,.png" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-50" onChange={e => handleFileChange(e, setAddressFile)} />
                   {addressFile ? (
                     <div className="flex flex-col items-center text-green-600">

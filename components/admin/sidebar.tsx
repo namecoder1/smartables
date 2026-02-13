@@ -24,7 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { logout } from "@/supabase/actions"
+import { logout } from "@/utils/supabase/actions"
 import { Button } from "../ui/button"
 
 const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar>) => {

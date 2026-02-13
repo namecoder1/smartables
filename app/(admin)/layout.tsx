@@ -1,7 +1,6 @@
 import Navbar from '@/components/admin/navbar'
 import Sidebar from '@/components/admin/sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { Toaster } from '@/components/ui/sonner'
 import React from 'react'
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
@@ -19,7 +18,6 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             <main className="flex-1 overflow-y-auto bg-background border border-border lg:m-2 h-full">
               {children}
             </main>
-            <Toaster richColors position="top-center" />
           </div>
         </div>
       </SidebarProvider>

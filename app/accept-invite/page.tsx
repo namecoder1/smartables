@@ -1,10 +1,15 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import PasswordInput from "@/components/ui/password-input"
-import { createClient } from "@/supabase/client"
+import { ModeToggle } from "@/components/ui/mode-toggle"
+import { Separator } from "@/components/ui/separator"
+
+import PasswordStrength, { isPasswordValid } from "@/components/utility/password-strength"
+import { createClient } from "@/utils/supabase/client"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -17,11 +22,11 @@ export default function AcceptInvitePage() {
   const supabase = createClient()
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [password, setPassword] = useState("")
 
   useEffect(() => {
     // Check for error in hash (Supabase returns errors in hash for implicit flow)
     const hash = window.location.hash
-    console.log("AcceptInvite: Current Hash:", hash)
 
     if (hash && hash.includes('error=')) {
       const params = new URLSearchParams(hash.substring(1)) // remove #
@@ -38,7 +43,6 @@ export default function AcceptInvitePage() {
     const init = async () => {
       // 1. Check for session (handles Implicit Flow #hash automatically)
       const { data: { session } } = await supabase.auth.getSession()
-      console.log("AcceptInvite: Initial Session Check:", session ? "Found" : "Null")
 
       if (session?.user) {
         setUser(session.user)
@@ -48,8 +52,6 @@ export default function AcceptInvitePage() {
 
       // If no session but we have an access_token in hash, try to manually set the session
       if (hash && hash.includes('access_token')) {
-        console.log("AcceptInvite: Hash contains access_token, attempting manual session set...")
-
         const params = new URLSearchParams(hash.substring(1))
         const access_token = params.get('access_token')
         const refresh_token = params.get('refresh_token')
@@ -63,7 +65,6 @@ export default function AcceptInvitePage() {
           if (error) {
             console.error("Manual setSession error:", error)
           } else if (data.session?.user) {
-            console.log("Manual setSession success:", data.session.user)
             setUser(data.session.user)
             setLoading(false)
             return
@@ -79,7 +80,6 @@ export default function AcceptInvitePage() {
 
     // Listen for auth state changes (e.g. after hash parsing)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("AcceptInvite: Auth State Change:", event, session ? "User Present" : "No User")
       if (session?.user) {
         setUser(session.user)
         setLoading(false)
@@ -95,19 +95,13 @@ export default function AcceptInvitePage() {
 
     const formData = new FormData(event.currentTarget)
     const fullName = formData.get("fullName") as string
-    const password = formData.get("password") as string
-    const confirmPassword = formData.get("confirmPassword") as string
+    const newPassword = formData.get("password") as string
 
-    if (password !== confirmPassword) {
-      toast.error("Le password non coincidono")
-      setSubmitting(false)
-      return
-    }
 
     try {
       // 1. Update Password
       const { error: passwordError } = await supabase.auth.updateUser({
-        password: password
+        password: newPassword
       })
 
       if (passwordError) throw passwordError
@@ -122,7 +116,7 @@ export default function AcceptInvitePage() {
       if (profileError) throw profileError
 
       toast.success("Profilo completato! Benvenuto.")
-      router.push("/dashboard")
+      router.push("/home")
 
     } catch (error: any) {
       console.error("Error:", error)
@@ -160,78 +154,74 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-xl shadow-sm border">
-        <div>
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#e9e9e9] dark:bg-[#262626]">
+      <Card className="w-full max-w-md rounded-xl shadow-sm border-2">
+        <CardHeader>
           <img
             className="mx-auto h-12 w-auto"
             src="/logo.png"
             alt="Smartables"
           />
-          <h2 className="mt-6 text-center text-3xl tracking-tighter font-extrabold text-gray-900">
+          <h2 className="mt-2 text-center text-3xl tracking-tighter font-extrabold text-gray-900">
             Benvenuto in Smartables
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-gray-600">
             Completa il tuo profilo per iniziare
           </p>
+        </CardHeader>
+
+        <CardContent>
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="text"
+                  value={user.email}
+                  disabled
+                  className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="fullName">Nome Completo</Label>
+                <Input
+                  id="fullName"
+                  name="fullName"
+                  type="text"
+                  required
+                  placeholder="Mario Rossi"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="password">Crea Password</Label>
+                <PasswordStrength
+                  id="password"
+                  name="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="********"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Button type="submit" className="w-full" disabled={submitting || !isPasswordValid(password)}>
+                {submitting ? "Salvataggio..." : "Completa Registrazione"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+      <div className="flex flex-col items-center mt-4 gap-2">
+        <ModeToggle className="w-fit" />
+        <Separator />
+        <div className="flex items-center gap-2">
+          <Link href='/privacy-policy' className="text-xs hover:text-primary hover:underline underline-offset-2">Politica sulla privacy</Link>
+          <Link href='/terms-of-service' className="text-xs hover:text-primary hover:underline underline-offset-2">Termini di servizio</Link>
         </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="text"
-                value={user.email}
-                disabled
-                className="bg-gray-100 text-gray-500 cursor-not-allowed mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="fullName">Nome Completo</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                type="text"
-                required
-                className="mt-1"
-                placeholder="Mario Rossi"
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Crea Password</Label>
-              <PasswordInput
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="mt-1"
-                placeholder="********"
-                minLength={6}
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirmPassword">Conferma Password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                className="mt-1"
-                placeholder="********"
-                minLength={6}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Salvataggio..." : "Completa Registrazione"}
-            </Button>
-          </div>
-        </form>
       </div>
-    </div>
+    </div >
   )
 }

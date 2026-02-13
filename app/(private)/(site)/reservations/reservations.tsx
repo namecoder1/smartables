@@ -31,6 +31,7 @@ import ReservationsTable from '@/components/private/reservations-table'
 import ReservationsFloorPlan from '@/components/reservations/reservations-floor-plan'
 
 import { DateNavigator } from '@/components/reservations/date-navigator'
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 
 const Reservations = () => {
   const [open, setOpen] = React.useState(false)
@@ -66,13 +67,50 @@ const Reservations = () => {
     fetchData()
   }, [fetchData])
 
+  // Effect to close sheet if selected booking is no longer in data (e.g. deleted by realtime)
+  React.useEffect(() => {
+    if (selectedBooking && data) {
+      const stillExists = data.find(b => b.id === selectedBooking.id)
+      if (!stillExists) {
+        setIsSheetOpen(false)
+        setSelectedBooking(null)
+      } else {
+        // Optional: Update selected booking with fresh data (e.g. status change)
+        // casting to any because Booking vs BookingWithCustomer types might mismatch slightly
+        // or just keep it simple. If we want live updates in the sheet:
+        // setSelectedBooking(stillExists as BookingWithCustomer)
+      }
+    }
+  }, [data, selectedBooking])
+
+  useRealtimeRefresh('bookings', {
+    filter: selectedLocationId ? `location_id=eq.${selectedLocationId}` : undefined,
+    onUpdate: fetchData
+  })
+
   const handleRowClick = (booking: BookingWithCustomer) => {
     setSelectedBooking(booking)
     setIsSheetOpen(true)
   }
 
+
+
+  const [bookingToEdit, setBookingToEdit] = React.useState<BookingWithCustomer | null>(null)
+
+  const handleEdit = (booking: BookingWithCustomer) => {
+    setBookingToEdit(booking)
+    setIsSheetOpen(false) // Close details
+    setOpen(true) // Open create/edit sheet
+  }
+
   return (
     <div>
+
+      {viewMode !== 'map' && data && data.length > 0 && (
+        <div>
+          ciao
+        </div>
+      )}
       <div className='flex justify-between items-center mb-4'>
         <div className="flex gap-2">
           <ButtonGroup>
@@ -145,7 +183,10 @@ const Reservations = () => {
             <DateNavigator date={selectedDate} setDate={setSelectedDate} />
           )}
         </div>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => {
+          setBookingToEdit(null)
+          setOpen(true)
+        }}>
           <Plus className="h-4 w-4 md:hidden " />
           <span className='hidden md:block'>Aggiungi</span>
         </Button>
@@ -176,11 +217,21 @@ const Reservations = () => {
         )
       )}
 
-      <ReservationSheet open={open} onOpenChange={setOpen} onSuccess={fetchData} />
+      <ReservationSheet
+        open={open}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen)
+          if (!isOpen) setBookingToEdit(null)
+        }}
+        onSuccess={fetchData}
+        booking={bookingToEdit}
+      />
       <DetailsSheet
         isSheetOpen={isSheetOpen}
         setIsSheetOpen={setIsSheetOpen}
         selectedBooking={selectedBooking}
+        onBookingDeleted={fetchData}
+        onEdit={handleEdit}
       />
     </div>
   )

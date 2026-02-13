@@ -1,14 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { PLANS } from "@/lib/plans";
-import { createStripeSubscriptionCheckout } from "@/stripe/actions";
+import { createStripeSubscriptionCheckout } from "@/utils/stripe/actions";
 
 export async function submitOnboarding(formData: FormData) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return redirect("/login");
 
   const restaurantName = formData.get("restaurantName") as string;
@@ -17,6 +19,25 @@ export async function submitOnboarding(formData: FormData) {
   const openingHoursRaw = formData.get("openingHours") as string;
   const phoneNumber = formData.get("phoneNumber") as string;
   const address = formData.get("address") as string;
+
+  // Validate form data
+  if (!restaurantName || restaurantName.length < 2) {
+    return redirect("/onboarding?error=Nome del ristorante non valido");
+  }
+  if (!fullName || fullName.length < 2) {
+    return redirect("/onboarding?error=Nome completo non valido");
+  }
+  if (!address || address.length < 5) {
+    return redirect("/onboarding?error=Indirizzo non valido");
+  }
+  if (!phoneNumber || phoneNumber.length < 5) {
+    return redirect("/onboarding?error=Numero di telefono non valido");
+  }
+
+  const seatsInt = parseInt(totalSeats);
+  if (isNaN(seatsInt) || seatsInt <= 0) {
+    return redirect("/onboarding?error=Numero di coperti non valido");
+  }
 
   // 1. Parse Opening Hours
   let openingHours = {};
@@ -48,7 +69,11 @@ export async function submitOnboarding(formData: FormData) {
   // 2. Link User Profile to Organization
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ organization_id: orgData.id, full_name: fullName })
+    .update({
+      organization_id: orgData.id,
+      full_name: fullName,
+      email: user.email,
+    })
     .eq("id", user.id);
 
   if (profileError) {
@@ -92,7 +117,6 @@ export async function submitOnboarding(formData: FormData) {
         ? selectedPlan.priceIdYear
         : selectedPlan.priceIdMonth;
 
-
       if (priceId) {
         // Trigger checkout
         await createStripeSubscriptionCheckout(priceId);
@@ -101,5 +125,5 @@ export async function submitOnboarding(formData: FormData) {
     }
   }
 
-  redirect("/dashboard");
+  redirect("/home");
 }

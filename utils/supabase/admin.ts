@@ -9,6 +9,6 @@ export const createAdminClient = () => {
         autoRefreshToken: false,
         persistSession: false,
       },
-    },
+    }
   );
 };

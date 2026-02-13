@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Info } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { createStripeSubscriptionCheckout } from '@/stripe/actions'
+import { createStripeSubscriptionCheckout } from '@/utils/stripe/actions'
 import { PLANS } from '@/lib/plans'
 
 export function PlanSelector() {
@@ -68,7 +68,7 @@ export function PlanSelector() {
               <CardFooter>
                 <Button
                   className="w-full"
-                  onClick={() => handleSubscribe(priceId)}
+                  onClick={() => handleSubscribe(priceId as string)}
                   disabled={!!loading}
                 >
                   {loading === priceId ? 'Caricamento...' : isAnnual ? 'Scegli Annuale' : 'Scegli Mensile'}

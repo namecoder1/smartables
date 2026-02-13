@@ -1,5 +1,4 @@
 import { Metadata } from 'next'
-import SettingsView from '../manage-activities/activites-view'
 
 export const metadata: Metadata = {
   title: "Impostazioni Generali",
@@ -8,7 +7,7 @@ export const metadata: Metadata = {
 
 const GeneralSettingsPage = () => {
   return (
-    <SettingsView />
+    <p>ciso</p>
   )
 }
 
