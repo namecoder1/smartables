@@ -9,6 +9,7 @@ import Navbar from "@/components/private/navbar";
 import { getStarredPages } from "@/app/actions/starred-pages";
 import RefundGate from "@/components/private/refund-gate";
 import { PageTitleProvider } from "@/components/providers/page-title-context";
+import { ThemeProvider } from "@/components/utility/theme-provider";
 
 export const metadata = {
   title: {
@@ -59,7 +60,10 @@ export default async function PrivateLayout({
   if (!organizations || organizations.length === 0) {
     redirect('/onboarding')
   }
-  const { data: locations } = await supabase.from("locations").select("*").in("organization_id", organizations?.map(o => o.id) || [])
+  const { data: locations } = await supabase
+    .from("locations")
+    .select("*, telnyx_regulatory_requirements:telnyx_regulatory_requirements!telnyx_regulatory_requirements_location_id_fkey(status)")
+    .in("organization_id", organizations?.map((o) => o.id) || []);
 
   // Check if subscription was canceled (refunded) — gate user to billing only
   const isCanceled = organizations[0]?.stripe_status === "canceled"
@@ -71,43 +75,54 @@ export default async function PrivateLayout({
   const starredPages = await getStarredPages()
 
   return (
-    <div className="fixed inset-0 h-full w-full">
-      <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
-        <OrganizationProvider
-          initialOrganization={organizations && organizations.length > 0 ? organizations[0] : null}
-        >
-          <PageTitleProvider>
-            <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
-            <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525] dark:bg-[#27251f]">
-              <Sidebar
-                collapsible="none"
-                className="hidden xl:flex bg-transparent"
-                organizationId={organizations?.[0]?.id}
-                activationStatus={locations?.[0]?.activation_status}
-                managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
-                starredPages={starredPages}
-              />
-
-              <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
-                <Navbar
-                  className="bg-transparent"
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <div className="fixed inset-0 h-full w-full">
+        <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
+          <OrganizationProvider
+            initialOrganization={organizations && organizations.length > 0 ? organizations[0] : null}
+          >
+            <PageTitleProvider>
+              <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
+              <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525] dark:bg-[#27251f]">
+                <Sidebar
+                  collapsible="none"
+                  className="hidden xl:flex bg-transparent"
                   organizationId={organizations?.[0]?.id}
                   activationStatus={locations?.[0]?.activation_status}
                   managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
                   starredPages={starredPages}
+                  // @ts-ignore
+                  complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
                 />
-                <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-background dark:bg-[#1a1813] border-border h-full">
-                  {isCanceled ? (
-                    <RefundGate>{children}</RefundGate>
-                  ) : (
-                    children
-                  )}
-                </main>
+
+                <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
+                  <Navbar
+                    className="bg-transparent"
+                    organizationId={organizations?.[0]?.id}
+                    activationStatus={locations?.[0]?.activation_status}
+                    managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
+                    starredPages={starredPages}
+                    // @ts-ignore
+                    complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
+                  />
+                  <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-background dark:bg-[#1a1813] border-border h-full">
+                    {isCanceled ? (
+                      <RefundGate>{children}</RefundGate>
+                    ) : (
+                      children
+                    )}
+                  </main>
+                </div>
               </div>
-            </div>
-          </PageTitleProvider>
-        </OrganizationProvider>
-      </SidebarProvider>
-    </div>
+            </PageTitleProvider>
+          </OrganizationProvider>
+        </SidebarProvider>
+      </div>
+    </ThemeProvider>
   );
 }

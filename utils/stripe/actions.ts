@@ -74,7 +74,7 @@ export async function changeSubscription(newPriceId: string) {
     throw new Error("Invalid plan selected");
   }
 
-  // Determine change type for proration behavior
+  // Determine change type for UI feedback/logging
   // Compare by tier first, then by price (annual > monthly within same tier)
   const isUpgrade =
     newPlanIndex > currentPlanIndex ||
@@ -82,11 +82,14 @@ export async function changeSubscription(newPriceId: string) {
       newPriceId === PLANS[newPlanIndex].priceIdYear);
 
   // 4. Update the subscription
+  // We use "always_invoice" for BOTH upgrades and downgrades to ensure proration is applied immediately.
+  // - Upgrades: Customer pays the difference now.
+  // - Downgrades: Customer gets a credit balance for the unused time.
   const updatedSubscription = await stripe.subscriptions.update(
     org.stripe_subscription_id,
     {
       items: [{ id: currentItemId, price: newPriceId }],
-      proration_behavior: isUpgrade ? "always_invoice" : "none",
+      proration_behavior: "always_invoice",
       // Reactivate auto-renewal on plan change
       cancel_at_period_end: false,
     },

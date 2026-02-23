@@ -88,21 +88,33 @@ export async function submitOnboarding(formData: FormData) {
       .replace(/ /g, "-")
       .replace(/[^\w-]+/g, "") + `-${Date.now().toString().slice(-4)}`;
 
-  const { error: locError } = await supabase.from("locations").insert({
-    organization_id: orgData.id,
-    name: restaurantName, // Default name for first location
-    address: address,
-    opening_hours: openingHours,
-    phone_number: phoneNumber,
-    seats: totalSeats,
-    slug: slug,
-  });
+  const { data: locData, error: locError } = await supabase
+    .from("locations")
+    .insert({
+      organization_id: orgData.id,
+      name: restaurantName, // Default name for first location
+      address: address,
+      opening_hours: openingHours,
+      phone_number: phoneNumber,
+      seats: totalSeats,
+      slug: slug,
+    })
+    .select()
+    .single();
 
   if (locError) {
     console.error("Error creating location:", locError);
     // Optional: rollback organization creation? For now, just failing is okay during prototype.
     return redirect("/onboarding?error=Could not create location");
   }
+
+  // Set the admin's accessible_locations to include this new location
+  await supabase
+    .from("profiles")
+    .update({
+      accessible_locations: [locData.id],
+    })
+    .eq("id", user.id);
 
   // 4. Check for Plan Selection and Trigger Checkout
   const planId = formData.get("plan") as string;

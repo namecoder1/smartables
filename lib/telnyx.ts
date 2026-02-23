@@ -195,6 +195,38 @@ export async function rejectCall(callControlId: string) {
   }
 }
 
+export async function transferCall(callControlId: string, to: string) {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  console.log(`[Telnyx Lib] Transferring call ${callControlId} to ${to}`);
+
+  try {
+    const response = await fetch(
+      `${TELNYX_API_URL}/calls/${callControlId}/actions/transfer`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          to: to,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Failed to transfer call", await response.text());
+      throw new Error("Failed to transfer call");
+    }
+    return true;
+  } catch (error) {
+    console.error("Error transferring call:", error);
+    throw error;
+  }
+}
+
 export async function getOwnedNumbers() {
   if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
 

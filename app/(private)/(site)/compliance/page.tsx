@@ -129,8 +129,8 @@ export default async function CompliancePage() {
 
           {hasNumber && primaryLocation.activation_status !== 'pending' ? (
             <div className="p-6 border rounded-lg bg-green-50">
-              <h3 className="text-lg font-bold text-green-800 mb-2">Numero Attivo!</h3>
-              <p className="text-green-700">Il tuo numero <strong>{primaryLocation.telnyx_phone_number}</strong> è attivo e collegato a questa sede.</p>
+              <h3 className="text-lg font-bold text-green-800 mb-2">Numero Acquistato!</h3>
+              <p className="text-green-700">Il tuo numero <strong>{primaryLocation.telnyx_phone_number}</strong> è stato acquistato, riceverai una email non appena sarà attivo e potrai configurarlo.</p>
             </div>
           ) : hasNumber && primaryLocation.activation_status === 'pending' ? (
             <div className="p-6 border rounded-lg bg-yellow-50">

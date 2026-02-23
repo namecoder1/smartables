@@ -18,9 +18,10 @@ interface ZoneEditorProps {
   initialZoneId?: string;
   onBack?: () => void;
   onSaveSuccess?: () => void;
+  locationSlug?: string;
 }
 
-export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: ZoneEditorProps) {
+export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locationSlug }: ZoneEditorProps) {
   const colors = useZoneColors();
   const {
     tables, setTables,
@@ -186,7 +187,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
 
         {/* SIDEBAR - Overlay */}
         {isSidebarOpen && (
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[#fffaef] dark:bg-[#1a1813] border-r flex flex-col z-10 shadow-xl">
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-card dark:bg-[#1a1813] border-r flex flex-col z-10 shadow-xl">
             <div className="p-4 border-b">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase">Elementi</h3>
             </div>
@@ -244,6 +245,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess }: Zon
               }}
               onClose={() => setSelectedId(null)}
               onDelete={deleteTable}
+              locationSlug={locationSlug}
             />
           );
         })()}

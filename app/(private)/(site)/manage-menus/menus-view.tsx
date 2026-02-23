@@ -24,6 +24,7 @@ import { useOrganization } from '@/components/providers/organization-provider'
 import { PLANS } from '@/lib/plans'
 import { Lock } from 'lucide-react'
 import PageWrapper from '@/components/private/page-wrapper'
+import OverviewCards from '@/components/private/overview-cards'
 
 const MENU_LIMITS = {
   starter: 5,
@@ -277,44 +278,25 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
         </Button>
       </div>
 
-      <div className='grid grid-cols-3 gap-4'>
-        <Card className='gap-2 bg-card/80 shadow-none'>
-          <CardHeader>
-            <CardTitle>Totale menù</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-3xl font-bold'>
-              {menus.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className='gap-2 bg-card/80 shadow-none'>
-          <CardHeader>
-            <CardTitle>Menù attivi</CardTitle>
-          </CardHeader>
-          <CardContent className='flex items-end gap-1.5'>
-            <p className='text-3xl font-bold'>
-              {menus.filter(m => m.is_active).length}
-            </p>
-            <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
-              attivi
-            </span>
-          </CardContent>
-        </Card>
-        <Card className='gap-2 bg-card/80 shadow-none'>
-          <CardHeader>
-            <CardTitle>Menù creati</CardTitle>
-          </CardHeader>
-          <CardContent className='flex items-end gap-1.5'>
-            <p className='text-3xl font-bold'>
-              {menus.length}/{maxMenus}
-            </p>
-            <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
-              menù
-            </span>
-          </CardContent>
-        </Card>
-      </div>
+      <OverviewCards
+        data={[
+          {
+            title: 'Totale menù',
+            value: menus.length,
+            description: 'menù'
+          },
+          {
+            title: 'Menù attivi',
+            value: menus.filter(m => m.is_active).length,
+            description: 'attivi'
+          },
+          {
+            title: 'Menù creati',
+            value: menus.length,
+            description: 'menù'
+          }
+        ]}
+      />
 
       {visibleMenus.length === 0 ? (
         <NoItems
@@ -329,8 +311,8 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
           }
         />
       ) : (
-        visibleMenus.map((menu) => (
-          <div key={menu.id} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {visibleMenus.map((menu) => (
             <MenuCard
               key={menu.id}
               menu={menu}
@@ -338,8 +320,8 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
               openEditMenu={openEditDialog}
               handleDelete={handleDelete}
             />
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
 
@@ -416,7 +398,7 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
             </div>
 
             <div className='flex items-center gap-2'>
-              <div className="flex items-center gap-2 w-full border p-3 rounded-md bg-muted/10">
+              <div className="flex items-center gap-2 w-full border p-3 rounded-md bg-background dark:bg-input/30">
                 <Checkbox
                   id="menu-isActive"
                   checked={menuDialog.isActive}
@@ -425,7 +407,7 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
                 <Label htmlFor="menu-isActive" className="cursor-pointer font-medium">Attivo</Label>
               </div>
 
-              <div className="flex items-center gap-2 w-full border p-3 rounded-md bg-muted/10">
+              <div className="flex items-center gap-2 w-full border p-3 rounded-md bg-background dark:bg-input/30">
                 <Checkbox
                   id="menu-isPdf"
                   checked={menuDialog.isPdf}

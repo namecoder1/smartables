@@ -28,6 +28,7 @@ import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import GroupedActions from "@/components/utility/grouped-actions";
 import { NumberInput } from "@/components/ui/number-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import OverviewCards from "@/components/private/overview-cards";
 
 const ActivitiesView = () => {
   const { organization } = useOrganization();
@@ -131,8 +132,6 @@ const ActivitiesView = () => {
     );
   }
 
-  console.log(organization.billing_tier)
-
   return (
     <PageWrapper className="relative">
       {/* Header */}
@@ -145,6 +144,26 @@ const ActivitiesView = () => {
           <Plus className="h-4 w-4" /> Aggiungi
         </Button>
       </div>
+
+      <OverviewCards
+        data={[
+          {
+            title: 'Totale sedi',
+            value: locations.length,
+            description: 'sedi'
+          },
+          {
+            title: 'Sedi massime',
+            value: organization.billing_tier === "starter" ? 1 : organization.billing_tier === "growth" ? 3 : 5,
+            description: 'sedi'
+          },
+          {
+            title: 'Il tuo abbonamento',
+            value: organization.billing_tier.charAt(0).toUpperCase() + organization.billing_tier.slice(1),
+            description: ''
+          }
+        ]}
+      />
 
       <Tooltip>
         <TooltipTrigger asChild>
@@ -164,9 +183,9 @@ const ActivitiesView = () => {
       {/* Info Box */}
       <div className="flex items-start gap-4 rounded-lg border bg-primary/20 p-4 dark:bg-primary/20 dark:text-primary border-primary dark:border-primary">
         <div className="space-y-2">
-          <p className="font-semibold text-lg tracking-tight leading-none">Gestisci piu di un'attività? {organization?.billing_tier === "starter" ? "No" : "Si"}</p>
+          <p className="font-semibold text-lg tracking-tight leading-none">Gestisci piu di una sede?</p>
           <p className="text-sm opacity-90">
-            Ogni attività ha il proprio indirizzo e orari di apertura specifici. Aggiungere un'attività nuova permette di gestire le prenotazioni separatamente.
+            Ogni sede ha il proprio indirizzo e orari di apertura specifici. Aggiungere una sede nuova permette di gestire le prenotazioni separatamente.
           </p>
         </div>
       </div>

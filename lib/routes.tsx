@@ -1,9 +1,8 @@
 import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users } from "lucide-react"
 import { GiTable } from "react-icons/gi";
-import { PiForkKnifeFill, PiToolboxFill } from "react-icons/pi";
+import { PiForkKnifeFill, PiToolboxFill, PiListChecksFill } from "react-icons/pi";
 import { MdMenuBook } from "react-icons/md";
 import { MdDashboardCustomize } from "react-icons/md";
-import { HiDotsHorizontal } from "react-icons/hi";
 import { RiTeamFill } from "react-icons/ri";
 import { IoBookSharp } from "react-icons/io5";
 import { GrDocumentUser } from "react-icons/gr";
@@ -39,7 +38,7 @@ export const isRouteGroup = (entry: RouteEntry): entry is RouteGroup => {
 export const routes = {
   platform: [
     {
-      label: "Prenotazioni",
+      label: "Sala",
       icon: PiForkKnifeFill,
       items: [
         {
@@ -48,19 +47,19 @@ export const routes = {
           icon: Home,
         },
         {
-          title: "Gestione prenotazioni",
+          title: "Gestione sala",
           url: "/reservations",
           icon: ListTodo,
         },
         {
-          title: "Calendario prenotazioni",
+          title: "Calendario",
           url: "/calendar",
           icon: Calendar,
         },
       ],
     },
     {
-      label: "Gestione",
+      label: "Gestisci",
       icon: MdDashboardCustomize,
       items: [
         {

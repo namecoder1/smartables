@@ -21,7 +21,7 @@ const HomePage = async () => {
   // Fetch user's locations/organizations
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id, full_name')
+    .select('organization_id, full_name, role, accessible_locations')
     .eq('id', user.id)
     .single()
 
@@ -29,21 +29,25 @@ const HomePage = async () => {
     return <div>No Organization Found</div>
   }
 
-  const { data: location } = await supabase
+  let locationQuery = supabase
     .from('locations')
     .select('id')
     .eq('organization_id', profile.organization_id)
-    .limit(1)
-    .single()
+
+  if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+    locationQuery = locationQuery.in('id', profile.accessible_locations)
+  }
+
+  const { data: location } = await locationQuery.limit(1).single()
 
   let onboardingData: OnboardingData = {
     documents: false,
     phone: false,
     voice: false,
     branding: false,
-    whatsapp: false,
     test: false,
-    phoneNumber: null
+    phoneNumber: null,
+    activationStatus: "pending"
   }
 
   if (location) {

@@ -18,9 +18,10 @@ interface NavbarProps extends React.HTMLAttributes<HTMLDivElement> {
   activationStatus?: string
   managedAccountId?: string | null
   starredPages?: { id: string; url: string; title: string }[]
+  complianceStatus?: string
 }
 
-const Navbar = async ({ organizationId, activationStatus, managedAccountId, starredPages, ...props }: NavbarProps) => {
+const Navbar = async ({ organizationId, activationStatus, managedAccountId, starredPages, complianceStatus, ...props }: NavbarProps) => {
   const supabase = await createClient()
 
   const { data: auth } = await supabase.auth.getUser()
@@ -48,6 +49,7 @@ const Navbar = async ({ organizationId, activationStatus, managedAccountId, star
               activationStatus={activationStatus}
               managedAccountId={managedAccountId}
               starredPages={starredPages}
+              complianceStatus={complianceStatus}
             />
           </SheetContent>
         </Sheet>

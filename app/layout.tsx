@@ -53,19 +53,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="it" suppressHydrationWarning>
       <body className={`antialiased ${manrope.className}`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-          <Toaster richColors position="top-center" />
-        </ThemeProvider>
+        <TooltipProvider>
+          {children}
+        </TooltipProvider>
+        <Toaster richColors position="top-center" />
         <Analytics />
       </body>
     </html>

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Check, ArrowRight, Circle, Clock, Phone, AlertCircle } from 'lucide-react'
+import { Check, ArrowRight, Circle, Clock, Phone, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { OnboardingData } from '@/actions/get-onboarding-status'
 import { useRouter } from 'next/navigation'
@@ -21,7 +21,6 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
     { id: 'phone', label: 'Acquisto Numero', description: 'Scegli il numero fisso o mobile per il tuo ristorante.', link: '/onboarding/phone', completed: data.phone, time: '1 min' },
     { id: 'voice', label: 'Verifica Vocale', description: 'Rispondi alla chiamata automatica per verificare il numero.', link: '/onboarding/voice', completed: data.voice, time: '2 min' },
     { id: 'brand', label: 'Personalizzazione', description: 'Imposta logo, colori e nome del tuo assistente.', link: '/onboarding/brand', completed: data.branding, time: '5 min' },
-    { id: 'whatsapp', label: 'Connessione WhatsApp', description: 'Collega il numero a WhatsApp Business API.', link: '/onboarding/whatsapp', completed: data.whatsapp, time: '3 min' },
     { id: 'test', label: 'Test Finale', description: 'Invia un messaggio di prova per assicurarti che tutto funzioni.', link: '/onboarding/test', completed: data.test, time: '1 min' },
   ]
 
@@ -109,24 +108,27 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
                   {/* Active Step Actions */}
                   {isActive && (
                     <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {step.id === 'whatsapp' && data.phoneNumber && (
-                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800 flex items-start gap-3">
-                          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                          <div>
-                            Chiama <span className="font-mono font-bold select-all bg-amber-100 px-1 rounded">*67*{data.phoneNumber}#</span> dal tuo telefono per attivare il ponte.
-                          </div>
-                        </div>
-                      )}
-
                       <div className="flex items-center gap-4">
-                        <Button onClick={() => router.push(step.link)} className="font-medium">
-                          Continua
-                          <ArrowRight className="w-4 h-4" />
-                        </Button>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="w-3.5 h-3.5" />
-                          {step.time}
-                        </div>
+                        {step.id === 'voice' && (data.activationStatus === 'pending' || data.activationStatus === 'provisioning' || data.activationStatus === 'purchasing') ? (
+                          <div className="flex flex-col gap-2">
+                            <Button disabled className="font-medium bg-muted text-muted-foreground w-fit">
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Approvazione Documenti in Corso...
+                            </Button>
+                            <p className="text-xs text-amber-600/80 font-medium">Attendi la notifica di sblocco da Telnyx (24-48h)</p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-4">
+                            <Button onClick={() => router.push(step.link)} className="font-medium">
+                              Continua
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Clock className="w-3.5 h-3.5" />
+                              {step.time}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

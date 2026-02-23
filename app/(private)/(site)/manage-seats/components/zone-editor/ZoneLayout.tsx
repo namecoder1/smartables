@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Stage, Layer, Rect, Group, Line as KonvaLine } from 'react-konva';
+import { Stage, Layer, Rect, Group, Line as KonvaLine, Transformer } from 'react-konva';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
@@ -55,7 +55,26 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
   const colors = useZoneColors();
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const trRef = useRef<any>(null);
   const [localGuides, setLocalGuides] = useState<Guide[]>([]);
+
+  useEffect(() => {
+    if (selectedId && trRef.current && stageRef.current) {
+      const stage = stageRef.current.getStage();
+      // We assume CanvasItem uses the uniqueId as the Group ID
+      const selectedNode = stage.findOne('#' + selectedId);
+      if (selectedNode) {
+        trRef.current.nodes([selectedNode]);
+        trRef.current.getLayer().batchDraw();
+      } else {
+        trRef.current.nodes([]);
+      }
+    } else if (trRef.current) {
+      trRef.current.nodes([]);
+      trRef.current.getLayer().batchDraw();
+    }
+  }, [selectedId, tables]);
+
 
   const { scale, setScale, x: positionX, y: positionY, setPosition, setStageDimensions, stageDimensions } = stageParams;
 
@@ -293,7 +312,7 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
   return (
     <div
       ref={setContainerRef}
-      className="relative bg-[#fdf0d2] dark:bg-[#232119] w-full h-full shadow-inner overflow-hidden cursor-crosshair"
+      className="relative bg-card dark:bg-card w-full h-full shadow-inner overflow-hidden cursor-crosshair"
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
     >
@@ -364,6 +383,49 @@ export const ZoneLayout: React.FC<ZoneLayoutProps> = ({
                   onWallExtendStart={handleWallExtendStart}
                 />
               ))}
+
+              <Transformer
+                ref={trRef}
+                boundBoxFunc={(oldBox, newBox) => {
+                  // limit resize
+                  if (newBox.width < 10 || newBox.height < 10) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+                onTransformEnd={(e) => {
+                  const node = trRef.current?.nodes()[0];
+                  if (!node) return;
+
+                  const scaleX = node.scaleX();
+                  const scaleY = node.scaleY();
+
+                  // reset scale to 1
+                  node.scaleX(1);
+                  node.scaleY(1);
+
+                  const table = tables.find(t => t.uniqueId === node.id());
+                  if (!table) return;
+
+                  const updates: Partial<TableInstance> = {
+                    x: node.x(),
+                    y: node.y(),
+                    rotation: node.rotation(),
+                  };
+
+                  if (table.type === 'circle' || table.type === 'plant' || (table.type === 'column' && table.radius)) {
+                    // Update radius
+                    const avgScale = (scaleX + scaleY) / 2;
+                    updates.radius = Math.round((table.radius! * avgScale));
+                  } else {
+                    // Update width/height
+                    updates.width = Math.round(table.width! * scaleX);
+                    updates.height = Math.round(table.height! * scaleY);
+                  }
+
+                  onUpdateTables(tables.map(t => t.uniqueId === table.uniqueId ? { ...t, ...updates } : t));
+                }}
+              />
 
               {/* Drawing Wall Ghost */}
               {drawingWall && (() => {

@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
 import { NumberInput } from '../ui/number-input'
 import { Trash2 } from 'lucide-react'
+import ConfirmDialog from '@/components/utility/confirm-dialog'
 
 interface MenuItemDialogProps {
   open: boolean
@@ -34,6 +35,7 @@ export function MenuItemDialog({
   onSuccess
 }: MenuItemDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   // Item Form State
   const [name, setName] = useState('')
@@ -117,23 +119,25 @@ export function MenuItemDialog({
     }
   }
 
-  const handleDelete = async () => {
-    if (confirm("Sei sicuro di voler eliminare questo articolo?")) {
-      try {
-        await deleteMenuItem(menuId, item.id)
-        toast.success("Articolo eliminato")
-        onSuccess()
-        onOpenChange(false)
-      } catch (e) {
-        toast.error("Errore eliminazione")
-      }
+  const handleDelete = () => {
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteMenuItem(menuId, item.id)
+      toast.success("Articolo eliminato")
+      onSuccess()
+      onOpenChange(false)
+    } catch (e) {
+      toast.error("Errore eliminazione")
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
-        <DialogHeader className="p-6 pb-2 border-b bg-slate-50/50">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>{item ? 'Modifica Piatto' : 'Nuovo Piatto'}</DialogTitle>
           <DialogDescription>
             Inserisci i dettagli, il prezzo e una foto invitante.
@@ -144,8 +148,6 @@ export function MenuItemDialog({
           <div className="flex flex-col md:flex-row gap-6">
             {/* Left: Image */}
             <div className="md:w-1/3 flex flex-col gap-2">
-              <Label>Foto Piatto</Label>
-              <div className="aspect-square w-full">
                 <ImageUpload
                   title="Foto Piatto"
                   value={existingImageUrl}
@@ -154,7 +156,6 @@ export function MenuItemDialog({
                     setExistingImageUrl(url || undefined)
                   }}
                 />
-              </div>
             </div>
 
             {/* Right: Details */}
@@ -169,48 +170,49 @@ export function MenuItemDialog({
                   className="font-medium"
                 />
               </div>
-
+                
               <div className="space-y-2">
-                <Label htmlFor="price">Prezzo (€) <span className="text-red-500">*</span></Label>
-                <div className="w-32">
-                  <NumberInput
-                    id="price"
-                    value={price}
-                    onValueChange={(val) => setPrice(val)}
-                    placeholder="0.00"
-                    min={0}
-                    step={0.50}
-                    context="default"
-                  />
-                </div>
+                <Label htmlFor="description">Descrizione & Allergeni</Label>
+                <Textarea
+                  id="description"
+                  rows={3}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Descrivi gli ingredienti principali..."
+                  className="resize-none"
+                />
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrizione & Allergeni</Label>
-            <Textarea
-              id="description"
-              rows={4}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Descrivi gli ingredienti principali..."
-              className="resize-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-slate-50 mt-2">
-            <div className="space-y-0.5">
-              <Label className="text-base">Disponibilità</Label>
-              <div className="text-xs text-muted-foreground">
-                Se disattivato, apparirà come "Non disponibile"
+          <div className='flex flex-col md:flex-row md:items-start gap-4'>
+            <div className="space-y-2">
+              <Label htmlFor="price">Prezzo (€) <span className="text-red-500">*</span></Label>
+              <div>
+                <NumberInput
+                  id="price"
+                  value={price}
+                  onValueChange={(val) => setPrice(val)}
+                  placeholder="0.00"
+                  min={0}
+                  step={0.50}
+                  context="default"
+                />
               </div>
             </div>
-            <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
+
+            <div className="flex flex-col w-full md:w-1/2 space-y-2">
+              <Label>Disponibilità</Label>
+              <div className='flex items-center justify-between w-full bg-background dark:bg-input/30 border p-2 rounded-xl'>
+                <p className="text-sm text-muted-foreground">{isAvailable ? 'Disponibile' : 'Non disponibile'}</p>
+                <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
+              </div>
+            </div>
           </div>
+
         </div>
 
-        <DialogFooter className="p-6 border-t bg-slate-50/50 flex sm:justify-between items-center w-full">
+        <DialogFooter className="p-6 border-t flex sm:justify-between items-center w-full">
           {item ? (
             <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={handleDelete}>
               <Trash2 className="w-4 h-4 mr-2" />
@@ -226,6 +228,17 @@ export function MenuItemDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Elimina Piatto"
+        description="Sei sicuro di voler eliminare questo articolo? Questa azione non può essere annullata."
+        confirmLabel="Elimina"
+        cancelLabel="Annulla"
+        onConfirm={handleDeleteConfirm}
+        variant="destructive"
+      />
     </Dialog>
   )
 }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Plus, Trash, Edit, Globe, MoreVertical, GripVertical } from 'lucide-react'
+import { ChevronLeft, Plus, Trash, Edit, Globe, MoreVertical, GripVertical, UtensilsCrossed } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteMenu, deleteCategory } from '@/app/actions/settings'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,8 @@ import {
 import { CategoryDialog } from '@/components/private/category-dialog'
 import { MenuItemDialog } from '@/components/private/menu-item-dialog'
 import GroupedActions from '@/components/utility/grouped-actions'
+import NoItems from '@/components/utility/no-items'
+import ConfirmDialog from '@/components/utility/confirm-dialog'
 
 interface MenuEditorProps {
   menu: any
@@ -39,16 +41,22 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
 
+  // Delete Dialog States
+  const [deleteMenuOpen, setDeleteMenuOpen] = useState(false)
+  const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null)
 
-  const handleDeleteMenu = async () => {
-    if (confirm('Are you sure you want to delete this menu? This cannot be undone.')) {
-      try {
-        await deleteMenu(menu.id)
-        toast.success('Menu deleted')
-        router.push('/settings')
-      } catch (error) {
-        toast.error('Failed to delete menu')
-      }
+  const handleDeleteMenu = () => {
+    setDeleteMenuOpen(true)
+  }
+
+  const onConfirmDeleteMenu = async () => {
+    try {
+      await deleteMenu(menu.id)
+      toast.success('Menu deleted')
+      router.push('/settings')
+    } catch (error) {
+      toast.error('Failed to delete menu')
     }
   }
 
@@ -63,14 +71,18 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
     setCategoryDialogOpen(true)
   }
 
-  const handleDeleteCategory = async (id: string) => {
-    if (confirm('Delete this category and all its items?')) {
-      try {
-        await deleteCategory(menu.id, id)
-        toast.success('Category deleted')
-        router.refresh()
-      } catch (e) { toast.error('Failed to delete category') }
-    }
+  const handleDeleteCategory = (id: string) => {
+    setCategoryToDelete(id)
+    setDeleteCategoryOpen(true)
+  }
+
+  const onConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return
+    try {
+      await deleteCategory(menu.id, categoryToDelete)
+      toast.success('Category deleted')
+      router.refresh()
+    } catch (e) { toast.error('Failed to delete category') }
   }
 
   // --- Item Handlers ---
@@ -108,12 +120,12 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className={`flex flex-col ${menu.pdf_url ? 'h-[calc(100vh-100px)]' : 'min-h-screen'}`}>
       {/* Header */}
-      <div className="sticky top-0 z-30 w-full border-b bg-[#fffaef] dark:bg-[#1a1813]">
+      <div className="sticky top-0 z-30 w-full border-b bg-card dark:bg-[#1a1813]">
         <div className=" flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="-ml-2 text-muted-foreground hover:text-foreground">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" asChild className="text-muted-foreground hover:text-foreground">
               <Link href="/manage-menus">
                 <ChevronLeft className="h-5 w-5" />
                 <span className="sr-only">Indietro</span>
@@ -134,31 +146,25 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleOpenPublicLink} className="hidden sm:flex">
-              <Globe className="w-4 h-4 mr-2" />
-              Dettagli Pubblici
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleOpenPublicLink} className="sm:hidden">
-                  <Globe className="w-4 h-4 mr-2" />
-                  Vedi Pubblico
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDeleteMenu} className="text-red-600 focus:text-red-600">
-                  <Trash className="w-4 h-4 mr-2" />
-                  Elimina Menu
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <GroupedActions
+              side='bottom'
+              items={[
+                {
+                  label: 'Guarda',
+                  icon: <Globe />,
+                  action: handleOpenPublicLink
+                },
+                {
+                  label: 'Elimina Menu',
+                  icon: <Trash className='group-hover:text-red-500 dark:group-hover:text-white/80' />,
+                  action: handleDeleteMenu,
+                  variant: 'destructive'
+                }
+              ]}
+            />
 
             <Button size="sm" onClick={openNewCategory}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Categoria
             </Button>
           </div>
@@ -166,35 +172,25 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
       </div>
 
       {/* Main Content */}
-      <div className="flex-1  p-4 md:p-8 space-y-8">
+      <div className={`flex-1 ${menu.pdf_url ? 'overflow-hidden' : 'p-4 md:p-8 space-y-8'}`}>
         {menu.pdf_url ? (
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="bg-white p-8 rounded-xl border shadow-sm text-center max-w-md">
-              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Globe className="w-8 h-8" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Menu PDF</h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Questo è un menu basato su file PDF. Non puoi modificare le singole voci qui.
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <a href={menu.pdf_url} target="_blank" rel="noopener noreferrer">Apri PDF Originale</a>
-              </Button>
-            </div>
-          </div>
+          <iframe
+            src={`${menu.pdf_url}#view=FitH`}
+            className="w-full h-full border-0 bg-transparent block"
+            title="Menu PDF"
+          />
         ) : (
           <>
             {sortedCategories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl bg-white text-center">
-                <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-4">
-                  <Plus className="w-8 h-8" />
-                </div>
-                <h3 className="font-semibold text-lg mb-2">Menu Vuoto</h3>
-                <p className="text-muted-foreground mb-6 max-w-sm">
-                  Inizia aggiungendo la tua prima categoria di prodotti (es. Antipasti, Primi, Drink).
-                </p>
-                <Button onClick={openNewCategory}>Aggiungi Categoria</Button>
-              </div>
+              <NoItems
+                title="Menu Vuoto"
+                description="Inizia aggiungendo la tua prima categoria di prodotti (es. Antipasti, Primi, Drink)."
+                icon={<Plus className="w-8 h-8" />}
+                button={<Button onClick={openNewCategory}>
+                  <Plus className="w-4 h-4" />
+                  Aggiungi Categoria
+                </Button>}
+              />
             ) : (
               <div className="space-y-10">
                 {sortedCategories.map((category: any) => (
@@ -229,11 +225,11 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                       {category.items?.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((item: any) => (
                         <div
                           key={item.id}
-                          className="group relative flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer overflow-hidden"
+                          className="group relative flex flex-col bg-card rounded-xl border-2 shadow-sm hover:shadow-md hover:border-input transition-all cursor-pointer overflow-hidden"
                           onClick={() => openEditItem(item.id, category.id)}
                         >
                           {/* Image Aspect Ratio Container 16:9 or 4:3 */}
-                          <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
+                          <div className="relative aspect-4/3 h-40 w-full bg-card border-b overflow-hidden">
                             {item.image_url ? (
                               <Image
                                 src={item.image_url}
@@ -242,9 +238,9 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                                 className="object-cover transition-transform duration-500 group-hover:scale-105"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                 <div className="text-center">
-                                  <span className="text-4xl">🍽️</span>
+                                  <span className="text-4xl"><UtensilsCrossed /></span>
                                 </div>
                               </div>
                             )}
@@ -262,10 +258,10 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                           </div>
 
                           <div className="p-4 flex-1 flex flex-col gap-1">
-                            <h4 className="font-semibold text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                            <h4 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
                               {item.name}
                             </h4>
-                            <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                               {item.description || <span className="italic text-slate-300">Nessuna descrizione</span>}
                             </p>
                           </div>
@@ -275,12 +271,12 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                       {/* Add Item Button (Card Style) */}
                       <button
                         onClick={() => openNewItem(category.id)}
-                        className="flex flex-col items-center justify-center min-h-[250px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-100/80 hover:border-slate-300 transition-all gap-3 group"
+                        className="flex flex-col items-center justify-center min-h-[250px] bg-card border-2 border-dashed border-border rounded-xl hover:bg-input/30 hover:border-border transition-all gap-3 group"
                       >
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
-                          <Plus className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+                        <div className="w-12 h-12 bg-background/20 rounded-full flex items-center justify-center shadow-sm border border-border group-hover:scale-110 transition-transform">
+                          <Plus className="w-6 h-6 text-primary" />
                         </div>
-                        <span className="text-sm font-medium text-slate-500 group-hover:text-slate-700">Aggiungi Piatto</span>
+                        <span className="text-sm font-medium text-foreground">Aggiungi Piatto</span>
                       </button>
                     </div>
                     {/* <Separator className="my-8 opacity-50" /> */}
@@ -326,6 +322,28 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
           />
         )
       }
+
+      <ConfirmDialog
+        open={deleteMenuOpen}
+        onOpenChange={setDeleteMenuOpen}
+        title="Elimina Menu"
+        description="Sei sicuro di voler eliminare questo menu? Questa azione non può essere annullata."
+        confirmLabel="Elimina Menu"
+        cancelLabel="Annulla"
+        onConfirm={onConfirmDeleteMenu}
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={deleteCategoryOpen}
+        onOpenChange={setDeleteCategoryOpen}
+        title="Elimina Categoria"
+        description="Sei sicuro di voler eliminare questa categoria e tutti i suoi piatti?"
+        confirmLabel="Elimina Categoria"
+        cancelLabel="Annulla"
+        onConfirm={onConfirmDeleteCategory}
+        variant="destructive"
+      />
     </div>
   )
 }

@@ -16,6 +16,7 @@ import {
   LayoutList,
   Map as MapIcon,
   Plus,
+  ScrollText,
 } from "lucide-react"
 import { DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -29,18 +30,19 @@ import { BookingWithCustomer } from '@/types/components'
 import { useLocationStore } from '@/store/location-store'
 import ReservationsTable from '@/components/private/reservations-table'
 import ReservationsFloorPlan from '@/components/reservations/reservations-floor-plan'
+import OrdersList from '@/components/orders/orders-list'
 
 import { DateNavigator } from '@/components/reservations/date-navigator'
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 
-const Reservations = () => {
+const ReservationsView = () => {
   const [open, setOpen] = React.useState(false)
   const [data, setData] = React.useState<Booking[] | null>(null)
   const [viewFilter, setViewFilter] = React.useState<'asc' | 'desc'>('desc')
   const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
   const [selectedBooking, setSelectedBooking] = React.useState<BookingWithCustomer | null>(null)
   const [isSheetOpen, setIsSheetOpen] = React.useState(false)
-  const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list')
+  const [viewMode, setViewMode] = React.useState<'list' | 'map' | 'orders'>('list')
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
 
   const handleViewFilter = (prev: 'asc' | 'desc') => {
@@ -106,7 +108,7 @@ const Reservations = () => {
   return (
     <div>
 
-     
+
       <div className='flex justify-between items-center mb-4'>
         <div className="flex gap-2">
           <ButtonGroup>
@@ -123,6 +125,13 @@ const Reservations = () => {
               size="icon"
             >
               <MapIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'orders' ? 'default' : 'outline'}
+              onClick={() => setViewMode('orders')}
+              size="icon"
+            >
+              <ScrollText className="h-4 w-4" />
             </Button>
           </ButtonGroup>
 
@@ -178,6 +187,7 @@ const Reservations = () => {
           {viewMode === 'map' && (
             <DateNavigator date={selectedDate} setDate={setSelectedDate} />
           )}
+
         </div>
         <Button onClick={() => {
           setBookingToEdit(null)
@@ -196,10 +206,11 @@ const Reservations = () => {
           handleRowClick={handleRowClick}
           setOpen={() => setOpen(false)}
         />
-      ) : (
+      ) : viewMode === 'map' ? (
         selectedLocationId && data && (
           <ReservationsFloorPlan
             locationId={selectedLocationId}
+            selectedDate={selectedDate}
             bookings={data.filter(booking => {
               const bookingDate = new Date(booking.booking_time);
               return (
@@ -210,6 +221,10 @@ const Reservations = () => {
             })}
             onAssignmentChange={fetchData}
           />
+        )
+      ) : (
+        selectedLocationId && (
+          <OrdersList locationId={selectedLocationId} />
         )
       )}
 
@@ -233,4 +248,4 @@ const Reservations = () => {
   )
 }
 
-export default Reservations
+export default ReservationsView

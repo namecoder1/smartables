@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Stage, Layer, Rect, Circle, Group, Text } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Group, Text, Arc } from 'react-konva';
 import { useTheme } from 'next-themes';
 import { getFloorPlan } from '@/app/actions/floor-plan';
 import { toast } from 'sonner';
@@ -10,7 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Users, Clock, ZoomIn, ZoomOut } from 'lucide-react';
+import { Users, Clock, ZoomIn, ZoomOut, Printer, ScrollText } from 'lucide-react';
+import Link from 'next/link';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -26,19 +28,28 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TableOrdersPanel } from "./table-orders-panel";
+import { QRCodeSVG } from 'qrcode.react';
+import { NumberInput } from '../ui/number-input';
 
 
 interface ReservationsFloorPlanProps {
   locationId: string;
+  selectedDate: Date;
   bookings: Booking[];
   onAssignmentChange?: () => void;
 }
 
-export default function ReservationsFloorPlan({ locationId, bookings, onAssignmentChange }: ReservationsFloorPlanProps) {
+export default function ReservationsFloorPlan({ locationId, selectedDate, bookings, onAssignmentChange }: ReservationsFloorPlanProps) {
   const { theme, systemTheme } = useTheme();
   const [zones, setZones] = useState<any[]>([]);
   const [tables, setTables] = useState<any[]>([]);
   const [currentZone, setCurrentZone] = useState<any>(null);
+  const [locationSlug, setLocationSlug] = useState<string>(""); // Added state
+  // ...
+
+  const [activeOrderTableIds, setActiveOrderTableIds] = useState<Set<string>>(new Set());
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(false);
   const [stageDimensions, setStageDimensions] = useState({ width: 0, height: 0 });
@@ -58,7 +69,8 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
     open: boolean;
     booking: Booking | null;
     table: any | null;
-  }>({ open: false, booking: null, table: null });
+    activeTab?: string;
+  }>({ open: false, booking: null, table: null, activeTab: 'booking' });
 
   // Form State for Editing
   const [editForm, setEditForm] = useState({
@@ -99,6 +111,14 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
     // Booth matches Wall
     boothFill: isDark ? '#3f3f46' : '#71717a',
     boothStroke: isDark ? '#27272a' : '#52525b',
+    // New
+    cashierFill: isDark ? '#7c2d12' : '#fdba74', // Orange-900 / Orange-300
+    cashierStroke: isDark ? '#c2410c' : '#f97316', // Orange-700 / Orange-500
+    restroomFill: isDark ? '#1e3a8a' : '#bfdbfe', // Blue-900 / Blue-200
+    restroomStroke: isDark ? '#1d4ed8' : '#3b82f6', // Blue-700 / Blue-500
+    containerFill: isDark ? 'transparent' : 'transparent',
+    containerStroke: isDark ? '#52525b' : '#9ca3af',
+    containerText: isDark ? '#a1a1aa' : '#6b7280',
   };
 
   const loadFloorPlan = useCallback(async () => {
@@ -107,9 +127,7 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
       const data = await getFloorPlan(locationId);
       setZones(data.zones);
       setTables(data.tables);
-      // Only set current zone if not already set or if current zone became invalid
-      // Actually for now let's just keep it simple: if no current zone, set first.
-      // But if we are refreshing, we want to persist the view.
+
       if (!currentZone && data.zones.length > 0) {
         setCurrentZone(data.zones[0]);
       }
@@ -124,6 +142,57 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
   useEffect(() => {
     loadFloorPlan();
   }, [loadFloorPlan]);
+
+  useEffect(() => {
+    const fetchActiveOrders = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data } = await supabase
+        .from('orders')
+        .select('table_id')
+        .eq('location_id', locationId)
+        .in('status', ['pending', 'preparing', 'ready', 'served'])
+        .gte('created_at', startOfDay.toISOString())
+        .lte('created_at', endOfDay.toISOString());
+
+      if (data) {
+        const ids = new Set(data.filter(o => o.table_id).map(o => o.table_id));
+        setActiveOrderTableIds(ids);
+      }
+    };
+    if (locationId) fetchActiveOrders();
+
+    const setupRealtime = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const channel = supabase.channel('orders-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `location_id=eq.${locationId}` }, () => {
+          fetchActiveOrders();
+        })
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+    };
+    setupRealtime();
+
+  }, [locationId, selectedDate]);
+
+  // Fetch Location Slug separately
+  useEffect(() => {
+    const fetchSlug = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data } = await supabase.from('locations').select('slug').eq('id', locationId).single();
+      if (data) setLocationSlug(data.slug);
+    };
+    if (locationId) fetchSlug();
+  }, [locationId]);
 
 
   useRealtimeRefresh('bookings', {
@@ -271,15 +340,24 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
     if (!table.seats || table.seats <= 0) return;
 
     const existingBooking = getBookingForTable(table.id);
+    const hasActiveOrder = activeOrderTableIds.has(table.id);
 
-    if (existingBooking) {
-      setEditDialog({ open: true, booking: existingBooking, table });
-      setEditForm({
-        guest_name: existingBooking.guest_name,
-        guests_count: existingBooking.guests_count,
-        booking_time: format(new Date(existingBooking.booking_time), 'HH:mm'),
-        notes: existingBooking.notes || ''
+    if (existingBooking || hasActiveOrder) {
+      setEditDialog({
+        open: true,
+        booking: existingBooking || null,
+        table,
+        activeTab: existingBooking ? 'booking' : 'orders'
       });
+
+      if (existingBooking) {
+        setEditForm({
+          guest_name: existingBooking.guest_name,
+          guests_count: existingBooking.guests_count,
+          booking_time: format(new Date(existingBooking.booking_time), 'HH:mm'),
+          notes: existingBooking.notes || ''
+        });
+      }
       return;
     }
 
@@ -365,6 +443,15 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
         )}
 
         <div ref={containerRef} className="flex-1 bg-card relative overflow-hidden">
+          <div className="absolute top-4 right-4 flex gap-2 z-10">
+            {locationSlug && (
+              <Link href={`/reservations/print-qr/${locationSlug}`} target="_blank">
+                <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm">
+                  <Printer className="w-4 h-4 mr-2" /> Stampa QR
+                </Button>
+              </Link>
+            )}
+          </div>
           {currentZone && (
             <div className="absolute inset-0">
               <Stage
@@ -393,7 +480,8 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
 
                   {currentTables.map(table => {
                     const booking = getBookingForTable(table.id);
-                    const isOccupied = !!booking;
+                    const hasActiveOrder = activeOrderTableIds.has(table.id);
+                    const isOccupied = !!booking || hasActiveOrder;
                     const isSeatable = table.seats > 0;
 
                     // Safe defaults for width depending on shape (avoid 0 width rendering issues)
@@ -526,6 +614,89 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
                                 </Group>
                               );
 
+                            case 'cashier':
+                              return (
+                                <Group>
+                                  <Rect
+                                    width={safeWidth}
+                                    height={safeHeight}
+                                    fill={colors.cashierFill}
+                                    stroke={colors.cashierStroke}
+                                    strokeWidth={1}
+                                    cornerRadius={4}
+                                    offsetX={safeWidth / 2}
+                                    offsetY={safeHeight / 2}
+                                  />
+                                  <Text
+                                    text="$"
+                                    fontSize={Math.min(safeWidth, safeHeight) * 0.6}
+                                    fill={colors.text}
+                                    align="center"
+                                    verticalAlign="middle"
+                                    width={safeWidth}
+                                    height={safeHeight}
+                                    offsetX={safeWidth / 2}
+                                    offsetY={safeHeight / 2}
+                                    pointerEvents="none"
+                                  />
+                                </Group>
+                              );
+                            case 'restroom':
+                              return (
+                                <Group>
+                                  <Rect
+                                    width={safeWidth}
+                                    height={safeHeight}
+                                    fill={colors.restroomFill}
+                                    stroke={colors.restroomStroke}
+                                    strokeWidth={1}
+                                    cornerRadius={4}
+                                    offsetX={safeWidth / 2}
+                                    offsetY={safeHeight / 2}
+                                  />
+                                  <Text
+                                    text="WC"
+                                    fontSize={Math.min(safeWidth, safeHeight) * 0.4}
+                                    fill={colors.text}
+                                    align="center"
+                                    verticalAlign="middle"
+                                    width={safeWidth}
+                                    height={safeHeight}
+                                    offsetX={safeWidth / 2}
+                                    offsetY={safeHeight / 2}
+                                    pointerEvents="none"
+                                  />
+                                </Group>
+                              );
+
+                            case 'container':
+                              return (
+                                <Rect
+                                  width={safeWidth}
+                                  height={safeHeight}
+                                  fill={colors.containerFill}
+                                  stroke={colors.containerStroke}
+                                  strokeWidth={1.5}
+                                  dash={[10, 5]}
+                                  cornerRadius={4}
+                                  offsetX={safeWidth / 2}
+                                  offsetY={safeHeight / 2}
+                                />
+                              );
+
+                            case 'curved-wall':
+                              const cRadius = safeWidth; // the radius of the arc
+                              return (
+                                <Arc
+                                  innerRadius={cRadius - (table.radius || 10) / 2}
+                                  outerRadius={cRadius + (table.radius || 10) / 2}
+                                  angle={safeHeight || 90}
+                                  fill={colors.wallFill}
+                                  stroke={colors.wallStroke}
+                                  strokeWidth={1}
+                                />
+                              );
+
                             case 'circle':
                             default:
                               return (
@@ -539,15 +710,15 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
                           }
                         })()}
 
-                        {/* Labels only for seatable tables */}
+                        {/* Labels only for seatable tables OR specific decorative elements */}
                         {isSeatable && (
                           <>
                             <Text
-                              text={booking ? booking.guest_name : table.table_number.toString()}
+                              text={booking ? booking.guest_name : (hasActiveOrder ? 'Occupato' : table.table_number.toString())}
                               width={safeWidth}
                               height={safeHeight}
-                              offsetX={safeWidth / 2}
-                              offsetY={safeHeight / 2}
+                              offsetX={!table.radius ? safeWidth / 2 : table.radius}
+                              offsetY={!table.radius ? safeHeight / 2 : table.radius}
                               align="center"
                               verticalAlign="middle"
                               fontSize={10}
@@ -555,12 +726,12 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
                               wrap="char"
                               pointerEvents="none"
                             />
-                            {isOccupied && (
+                            {booking && (
                               <Text
                                 text={format(new Date(booking.booking_time), 'HH:mm')}
                                 width={safeWidth}
                                 y={10}
-                                offsetX={safeWidth / 2}
+                                offsetX={!table.radius ? safeWidth / 2 : table.radius}
                                 align="center"
                                 fontSize={8}
                                 fill={colors.occupiedText}
@@ -568,6 +739,34 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
                               />
                             )}
                           </>
+                        )}
+                        {!isSeatable && table.shape === 'container' && (
+                          <Text
+                            text={table.table_number.toString() || table.label || "Area"}
+                            width={safeWidth}
+                            height={safeHeight}
+                            offsetX={safeWidth / 2}
+                            offsetY={safeHeight / 2}
+                            align="center"
+                            verticalAlign="middle"
+                            fontSize={14}
+                            fontStyle="bold"
+                            fill={colors.containerText}
+                            pointerEvents="none"
+                          />
+                        )}
+                        {hasActiveOrder && (
+                          <Circle
+                            x={safeWidth / 2}
+                            y={-safeHeight / 2}
+                            radius={6}
+                            fill="#ef4444"
+                            stroke="white"
+                            strokeWidth={2}
+                            shadowColor="black"
+                            shadowBlur={2}
+                            shadowOpacity={0.3}
+                          />
                         )}
                       </Group>
                     )
@@ -608,81 +807,120 @@ export default function ReservationsFloorPlan({ locationId, bookings, onAssignme
       </Dialog>
 
       <Dialog open={editDialog.open} onOpenChange={(val) => !val && setEditDialog(prev => ({ ...prev, open: false }))}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Modifica Prenotazione</DialogTitle>
+            <DialogTitle>Tavolo {editDialog.table?.table_number}</DialogTitle>
             <DialogDescription>
-              Modifica i dettagli della prenotazione al Tavolo {editDialog.table?.table_number}.
+              Gestisci la prenotazione e gli ordini per questo tavolo.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-name" className="text-right">Nome</Label>
-              <Input
-                id="edit-name"
-                value={editForm.guest_name}
-                onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-guests" className="text-right">Ospiti</Label>
-              <Input
-                id="edit-guests"
-                type="number"
-                value={editForm.guests_count}
-                onChange={(e) => setEditForm({ ...editForm, guests_count: parseInt(e.target.value) })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-notes" className="text-right">Note</Label>
-              <Textarea
-                id="edit-notes"
-                value={editForm.notes}
-                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-          </div>
+          <Tabs
+            value={editDialog.activeTab || 'booking'}
+            onValueChange={(val) => setEditDialog(prev => ({ ...prev, activeTab: val }))}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2 border">
+              <TabsTrigger value="booking">Prenotazione</TabsTrigger>
+              <TabsTrigger value="orders">Ordini</TabsTrigger>
+            </TabsList>
 
-          <DialogFooter className="sm:justify-between">
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                if (!editDialog.booking) return;
-                try {
-                  await unassignBooking(editDialog.booking.id);
-                  toast.success("Tavolo liberato!");
-                  setEditDialog({ open: false, booking: null, table: null });
-                } catch (e) {
-                  toast.error("Errore nel liberare il tavolo");
-                }
-              }}
-            >
-              Libera Tavolo
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditDialog({ open: false, booking: null, table: null })}>Annulla</Button>
-              <Button onClick={async () => {
-                if (!editDialog.booking) return;
-                try {
-                  await updateBooking(editDialog.booking.id, {
-                    guest_name: editForm.guest_name,
-                    guests_count: editForm.guests_count,
-                    notes: editForm.notes
-                  });
-                  toast.success("Prenotazione aggiornata!");
-                  setEditDialog({ open: false, booking: null, table: null });
-                } catch (e) {
-                  toast.error("Errore nell'aggiornamento");
-                }
-              }}>Salva Modifiche</Button>
-            </div>
-          </DialogFooter>
+            <TabsContent value="booking" className="space-y-4 ">
+              {editDialog.booking ? (
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="edit-name" className="text-right">Nome</Label>
+                      <Input
+                        id="edit-name"
+                        value={editForm.guest_name}
+                        onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
+                        className="col-span-3"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="edit-guests" className="text-right">Ospiti</Label>
+                      <NumberInput
+                        value={editForm.guests_count}
+                        onValueChange={(val) => setEditForm({ ...editForm, guests_count: val || 0 })}
+                        className="col-span-3"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="edit-notes" className="text-right">Note</Label>
+                    <Textarea
+                      id="edit-notes"
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-xl border-2 border-dashed">
+                  <ScrollText className="w-12 h-12 mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Nessuna prenotazione attiva</p>
+                  <p className="text-sm text-muted-foreground">Il tavolo è occupato da un ordine diretto (QR Code o manuale senza prenotazione).</p>
+                </div>
+              )}
+
+              <DialogFooter className="sm:justify-between mt-4">
+                {editDialog.booking ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        if (!editDialog.booking) return;
+                        try {
+                          await unassignBooking(editDialog.booking.id);
+                          toast.success("Tavolo liberato!");
+                          setEditDialog({ open: false, booking: null, table: null });
+                        } catch (e) {
+                          toast.error("Errore nel liberare il tavolo");
+                        }
+                      }}
+                    >
+                      Libera
+                    </Button>
+                    <Button onClick={async () => {
+                      if (!editDialog.booking) return;
+                      try {
+                        await updateBooking(editDialog.booking.id, {
+                          guest_name: editForm.guest_name,
+                          guests_count: editForm.guests_count,
+                          notes: editForm.notes
+                        });
+                        toast.success("Prenotazione aggiornata!");
+                        setEditDialog({ open: false, booking: null, table: null });
+                      } catch (e) {
+                        toast.error("Errore nell'aggiornamento");
+                      }
+                    }}>
+                      Aggiorna
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" onClick={() => setEditDialog({ open: false, booking: null, table: null })}>Chiudi</Button>
+                )}
+              </DialogFooter>
+            </TabsContent>
+
+            <TabsContent value="orders">
+              {editDialog.table && (
+                <TableOrdersPanel
+                  tableId={editDialog.table.id}
+                  tableName={editDialog.table.table_number}
+                  locationId={locationId}
+                  refreshTrigger={Date.now()}
+                  guestCount={editForm.guests_count}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
-      </Dialog>
+      </Dialog >
     </div >
   );
 }
+

@@ -38,6 +38,9 @@ export type Location = {
   branding: LocationBranding | null;
   active_menu_id: string | null;
   seats: number;
+  max_covers_per_shift: number | null;
+  standard_reservation_duration: number | null;
+  cover_price: number | null;
 
   telnyx_phone_number?: string | null;
   telnyx_connection_id?: string | null;
@@ -97,6 +100,8 @@ export type Profile = {
   full_name: string;
   role: string;
   created_at: string;
+  email: string;
+  accessible_locations: string[] | null;
 };
 
 export type RestaurantTable = {
@@ -167,6 +172,41 @@ export type Transaction = {
   period_start?: string;
   period_end?: string;
   created_at: string;
+};
+
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "served"
+  | "completed"
+  | "cancelled";
+export type OrderItemStatus = "pending" | "preparing" | "served" | "cancelled";
+
+export type Order = {
+  id: string;
+  organization_id: string;
+  location_id: string;
+  table_id?: string | null;
+  booking_id?: string | null;
+  status: OrderStatus;
+  total_amount: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: OrderItem[]; // Virtual relation
+};
+
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  notes: string | null;
+  status: OrderItemStatus;
 };
 
 export type Feedback = {

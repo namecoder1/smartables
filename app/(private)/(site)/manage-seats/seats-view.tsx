@@ -20,6 +20,7 @@ import { PLANS } from '@/lib/plans';
 import { Badge } from '@/components/ui/badge';
 import { Lock } from 'lucide-react';
 import NoItems from '@/components/utility/no-items';
+import OverviewCards from '@/components/private/overview-cards';
 
 const PLAN_LIMITS = {
   starter: 5,
@@ -195,45 +196,26 @@ const SeatsView = () => {
           </div>
 
           <div className='flex flex-col gap-4'>
-            <div className='grid grid-cols-3 gap-4'>
-              <Card className='gap-2 bg-card/80 shadow-none'>
-                <CardHeader>
-                  <CardTitle>Totale coperti</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className='text-3xl font-bold'>
-                    {allTables.reduce((acc, table) => acc + (table.seats || 0), 0)}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className='gap-2 bg-card/80 shadow-none'>
-                <CardHeader>
-                  <CardTitle>Capienza Sede</CardTitle>
-                </CardHeader>
-                <CardContent className='flex items-end gap-1.5'>
-                  <p className='text-3xl font-bold'>
-                    {location.seats}
-                  </p>
-                  <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
-                    coperti
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className='gap-2 bg-card/80 shadow-none'>
-                <CardHeader>
-                  <CardTitle>Mappe create</CardTitle>
-                </CardHeader>
-                <CardContent className='flex items-end gap-1.5'>
-                  <p className='text-3xl font-bold'>
-                    {orgZoneCount}/{maxZones}
-                  </p>
-                  <span className='text-xl hidden sm:flex text-foreground/80 font-semibold tracking-tight'>
-                    mappe
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-            
+            <OverviewCards
+              data={[
+                {
+                  title: 'Totale coperti',
+                  value: allTables.reduce((acc, table) => acc + (table.seats || 0), 0),
+                  description: ''
+                },
+                {
+                  title: 'Capienza Sede',
+                  value: location.seats,
+                  description: 'coperti'
+                },
+                {
+                  title: 'Totale sale',
+                  value: `${orgZoneCount}/${maxZones}`,
+                  description: 'sale'
+                }
+              ]}
+            />
+
             {!loading && zones.length === 0 ? (
               <NoItems
                 icon={<Store className="w-10 h-10 text-foreground" />}
@@ -271,6 +253,7 @@ const SeatsView = () => {
             initialZoneId={selectedZoneId}
             onBack={handleBack}
             onSaveSuccess={handleSaveSuccess}
+            locationSlug={location.slug}
           />
         </div>
       )}

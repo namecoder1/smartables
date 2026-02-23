@@ -26,6 +26,19 @@ type MenuCategory = {
   items: MenuItem[];
 };
 
+// Helper to determine text color based on background color
+function getContrastColor(hexColor: string) {
+  // Convert hex to RGB
+  const r = parseInt(hexColor.substring(1, 3), 16);
+  const g = parseInt(hexColor.substring(3, 5), 16);
+  const b = parseInt(hexColor.substring(5, 7), 16);
+
+  // Calculate brightness (YIQ formula)
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+
+  return yiq >= 128 ? '#000000' : '#ffffff';
+}
+
 export default async function DigitalMenuPage({
   params,
 }: {
@@ -33,6 +46,17 @@ export default async function DigitalMenuPage({
 }) {
   const { locationSlug, menuId } = await params;
   const supabase = await createClient();
+
+  const { data: location, error: locationError } = await supabase
+    .from("locations")
+    .select("*, organizations(name)")
+    .eq("slug", locationSlug)
+    .single();
+
+  if (locationError || !location) {
+    console.error("Location not found:", locationError);
+    return notFound();
+  }
 
   // Fetch Menu with Content (JSONB)
   const { data: menu, error } = await supabase
@@ -45,6 +69,16 @@ export default async function DigitalMenuPage({
     console.error("Menu not found:", error);
     return notFound();
   }
+
+  console.log(location)
+
+  const branding = location.branding;
+  const primaryColor = branding?.colors?.primary || "#3b82f6"; // Default Blue-500
+  const secondaryColor = branding?.colors?.secondary || "#a855f7"; // Default Purple-500
+  const logoUrl = branding?.logo_url;
+
+  const primaryForeground = getContrastColor(primaryColor);
+
 
   // Handle PDF Menu
   if (menu.pdf_url) {
@@ -66,7 +100,7 @@ export default async function DigitalMenuPage({
             />
           </div>
           <div className="text-center pb-8 pt-4">
-            <Button asChild variant="default" className="rounded-full shadow-lg shadow-blue-500/20">
+            <Button asChild variant="default" className="rounded-full shadow-lg shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90">
               <a href={menu.pdf_url} target="_blank" rel="noopener noreferrer">
                 Scarica / Apri PDF
               </a>
@@ -81,18 +115,30 @@ export default async function DigitalMenuPage({
   const rawCategories = (menu.content as unknown as MenuCategory[]) || [];
   // Filter out empty categories if desired, or keep them to show "Empty" state
   const categories = rawCategories.filter(c => c.items && c.items.length > 0);
-
+ 
   // Gradient based on name length for variety (same as main page)
   const gradientClass = "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900";
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 pb-20">
+    <div
+      className="min-h-screen bg-slate-50 font-sans selection:bg-primary/20 pb-20"
+      style={{
+        '--primary': primaryColor,
+        '--primary-foreground': primaryForeground,
+        '--ring': primaryColor,
+      } as React.CSSProperties}
+    >
       {/* Hero Header */}
-      <div className={`relative ${gradientClass} text-white pt-8 pb-32 px-6 overflow-hidden z-10`}>
+      <div
+        className={`relative text-white pt-8 pb-32 px-6 overflow-hidden z-10`}
+        style={{
+          background: `linear-gradient(5deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+        }}
+      >
         {/* Abstract background shapes */}
         <div className="opacity-40">
           <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-blue-500/20 blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 rounded-full bg-primary/20 blur-2xl pointer-events-none" />
         </div>
 
         <div className="relative z-10 max-w-md mx-auto">
@@ -109,7 +155,7 @@ export default async function DigitalMenuPage({
           <div className="text-center space-y-3 px-2">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight drop-shadow-sm">{menu.name}</h1>
             {menu.description && (
-              <p className="text-slate-300 text-sm max-w-xs mx-auto leading-relaxed font-medium">{menu.description}</p>
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-medium">{menu.description}</p>
             )}
           </div>
         </div>
@@ -128,7 +174,7 @@ export default async function DigitalMenuPage({
                     <a
                       key={cat.id}
                       href={`#cat-${cat.id}`}
-                      className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all active:scale-95 active:bg-slate-900 active:text-white"
+                      className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all active:scale-95 active:bg-primary active:text-primary-foreground"
                     >
                       {cat.name}
                     </a>
@@ -150,7 +196,7 @@ export default async function DigitalMenuPage({
               ) : (
                 categories.map((cat, index) => (
                   <section key={cat.id} id={`cat-${cat.id}`} className={`scroll-mt-28 ${index !== 0 ? 'mt-10' : ''}`}>
-                    <div className="flex items-baseline justify-between mb-4 border-l-4 border-blue-500 pl-3">
+                    <div className="flex items-baseline justify-between mb-4 border-l-4 border-primary pl-3">
                       <h2 className="text-xl font-bold text-slate-800">{cat.name}</h2>
                     </div>
 
@@ -165,7 +211,7 @@ export default async function DigitalMenuPage({
                           {/* Text Content */}
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex justify-between items-start gap-2">
-                              <h3 className="font-bold text-slate-800 text-[17px] leading-tight group-hover:text-blue-600 transition-colors">
+                              <h3 className="font-bold text-slate-800 text-[17px] leading-tight group-hover:text-primary transition-colors">
                                 {item.name}
                               </h3>
                             </div>
@@ -182,7 +228,7 @@ export default async function DigitalMenuPage({
                                 <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-100 h-5 px-1.5 text-[10px] font-bold">ESAURITO</Badge>
                               )}
                               {item.image_url && (
-                                <span className="md:hidden text-xs text-blue-500 flex items-center gap-0.5">
+                                <span className="md:hidden text-xs text-primary flex items-center gap-0.5">
                                   <Info className="w-3 h-3" /> Foto
                                 </span>
                               )}

@@ -14,6 +14,11 @@ export async function requestVerificationCode(
   if (!token) throw new Error("Missing WHATSAPP_ACCESS_TOKEN");
 
   try {
+    console.log(
+      `[Meta] Requesting code for Phone ID: ${phoneNumberId} via ${method}`,
+    );
+    const startTime = Date.now();
+
     const response = await fetch(
       `${WHATSAPP_API_URL}/${phoneNumberId}/request_code`,
       {
@@ -29,16 +34,25 @@ export async function requestVerificationCode(
       },
     );
 
+    const duration = Date.now() - startTime;
+    console.log(
+      `[Meta] Request code API call took ${duration}ms. Status: ${response.status}`,
+    );
+
     const data = await response.json();
+    console.log(`[Meta] Request code response:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error("Meta Request Code Error:", data);
+      console.error(`[Meta] Request Code Error (Data):`, data);
       throw new Error(data.error?.message || "Failed to request code");
     }
 
     return data.success;
   } catch (error) {
-    console.error("Error requesting verification code:", error);
+    console.error(
+      `[Meta] Error requesting verification code for ${phoneNumberId}:`,
+      error,
+    );
     throw error;
   }
 }
@@ -137,6 +151,44 @@ export async function addNumberToWaba(
     return data.id as string;
   } catch (error) {
     console.error("Error adding number to WABA:", error);
+    throw error;
+  }
+}
+
+/**
+ * Deregisters a phone number from the WhatsApp Business Account.
+ * This effectively "deletes" it from the WABA context, allowing re-registration.
+ * WARNING: This may lose chat history if not backed up, but for a fresh number it's fine.
+ */
+export async function deregisterNumberFromWaba(phoneNumberId: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  if (!token) throw new Error("Missing WHATSAPP_ACCESS_TOKEN");
+
+  try {
+    console.log(`[Meta] Deregistering phone number ID: ${phoneNumberId}`);
+    const response = await fetch(
+      `${WHATSAPP_API_URL}/${phoneNumberId}/deregister`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[Meta] Deregister Number Error:", data);
+      throw new Error(data.error?.message || "Failed to deregister number");
+    }
+
+    console.log(`[Meta] Successfully deregistered number ${phoneNumberId}`);
+    return data.success;
+  } catch (error) {
+    console.error("[Meta] Error deregistering number:", error);
     throw error;
   }
 }

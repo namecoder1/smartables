@@ -6,7 +6,12 @@ export type TableShape =
   | "column"
   | "door"
   | "booth"
-  | "counter";
+  | "counter"
+  | "text"
+  | "cashier"
+  | "restroom"
+  | "curved-wall"
+  | "container";
 
 export interface TablePreset {
   id: string;
@@ -109,6 +114,38 @@ export const TABLE_PRESETS: TablePreset[] = [
     label: "Separè",
     width: 120,
     height: 5, // Thinner than wall (8)
+    seats: 0,
+  },
+  {
+    id: "text-label",
+    type: "text",
+    label: "Etichetta",
+    width: 100,
+    height: 30,
+    seats: 0,
+  },
+  {
+    id: "cashier",
+    type: "cashier",
+    label: "Cassa",
+    width: 60,
+    height: 40,
+    seats: 0,
+  },
+  {
+    id: "restroom",
+    type: "restroom",
+    label: "Bagni",
+    width: 60,
+    height: 60,
+    seats: 0,
+  },
+  {
+    id: "container",
+    type: "container",
+    label: "Area",
+    width: 200,
+    height: 200,
     seats: 0,
   },
 ];

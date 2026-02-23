@@ -22,6 +22,10 @@ const pathToDataMap: Record<string, PageData> = {
     title: "Prenotazioni",
     description: "Gestisci, visualizza e modifica le prenotazioni per i tuoi tavoli"
   },
+  "/orders": {
+    title: "Ordinazioni",
+    description: "Gestisci, visualizza e modifica le ordinazioni dei tuoi tavoli"
+  },
   "/calendar": {
     title: "Calendario",
     description: "Visualizza le prenotazioni in un calendario"
@@ -77,6 +81,10 @@ const pathToDataMap: Record<string, PageData> = {
   "/faqs": {
     title: "Domande Frequenti",
     description: "Trova risposte rapide alle domande più comuni su Smartables."
+  },
+  "/onboarding/voice": {
+    title: "Verifica il numero di telefono",
+    description: "Verifica il numero di telefono per abilitare le funzionalità di chiamata."
   },
 }
 

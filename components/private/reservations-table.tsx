@@ -25,11 +25,11 @@ const ReservationsTable = ({
   return (
     <div>
       {data && data.length > 0 ? (
-        <div className="rounded-xl border bg-card">
+        <div className="rounded-xl border-2 bg-card">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm">
-              <thead className="[&_tr]:border-b">
-                <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+              <thead className="[&_tr]:border-b-2">
+                <tr className="border-b-2 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                     Ospite
                   </th>
@@ -44,12 +44,12 @@ const ReservationsTable = ({
                   </th>
                 </tr>
               </thead>
-              <tbody className="[&_tr:last-child]:border-0">
+              <tbody className="[&_tr:last-child]:border-b-0">
                 {data.map((booking: Booking) => (
                   <tr
                     key={booking.id}
                     style={{ backgroundColor: selectedBooking?.id === booking.id && isSheetOpen ? '#f0f0f020' : '' }}
-                    className={`border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted ${handleRowClick ? 'cursor-pointer' : ''}`}
+                    className={`border-b-2 transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted ${handleRowClick ? 'cursor-pointer' : ''}`}
                     onClick={() => handleRowClick?.(booking)}
                   >
                     <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">

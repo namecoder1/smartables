@@ -1,20 +1,20 @@
 import PageWrapper from '@/components/private/page-wrapper'
-import Reservations from './reservations'
+import ReservationsView from './reservations-view'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Prenotazioni',
-  description: 'Prenotazioni',
+  title: 'Gestione Sala',
+  description: 'Gestione Sala e Ordini',
 }
 
 const ReservationsPage = () => {
   return (
     <PageWrapper>
-      <div className='xl:hidden'>
-        <h1 className='text-3xl font-bold tracking-tight'>Prenotazioni</h1>
-        <p className='text-muted-foreground'>Gestisci, visualizza e modifica le prenotazioni per i tuoi tavoli</p>
+      <div className='xl:hidden mb-4'>
+        <h1 className='text-3xl font-bold tracking-tight'>Gestione Sala</h1>
+        <p className='text-muted-foreground'>Gestisci tavoli, prenotazioni e ordini in tempo reale.</p>
       </div>
-      <Reservations />  
+      <ReservationsView />
     </PageWrapper>
   )
 }

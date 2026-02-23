@@ -40,6 +40,10 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
 
   const email = formData.get("email") as string;
   const role = formData.get("role") as string;
+  const locationType = formData.get("location_type") as string | null;
+  const selectedLocationsStr = formData.get("selected_locations") as
+    | string
+    | null;
 
   if (!email) {
     return { error: "Email richiesta" };
@@ -47,6 +51,22 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
 
   if (role !== "admin" && role !== "staff") {
     return { error: "Ruolo non valido" };
+  }
+
+  // Parse accessible_locations
+  let accessibleLocations: string[] | null = null;
+
+  // If role is admin, they always have access to all locations.
+  // Otherwise, if locationType is "selected", parse the locations array.
+  if (role !== "admin" && locationType === "selected" && selectedLocationsStr) {
+    try {
+      const parsed = JSON.parse(selectedLocationsStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        accessibleLocations = parsed;
+      }
+    } catch (e) {
+      console.error("Failed to parse selected_locations", e);
+    }
   }
 
   try {
@@ -84,6 +104,7 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
         email: newUser.email,
         organization_id: currentUserProfile.organization_id,
         role: role,
+        accessible_locations: accessibleLocations,
         // full_name is left null until they accept
       });
 

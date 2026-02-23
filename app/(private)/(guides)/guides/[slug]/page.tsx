@@ -231,7 +231,7 @@ export default async function GuidePage({ params }: Props) {
                     </span>
                     <h2 className="text-lg font-semibold tracking-tight m-0">{headingText}</h2>
                   </div>
-                  <div className="pl-10 flex flex-col gap-3 text-sm text-muted-foreground leading-relaxed">
+                  <div className="pl-10 flex flex-col gap-3 text-muted-foreground leading-relaxed">
                     <PortableText value={section.content} components={portableTextComponents} />
                   </div>
                 </section>
@@ -296,7 +296,7 @@ export default async function GuidePage({ params }: Props) {
                 <p className="text-xs text-muted-foreground">Nessuna guida suggerita.</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {suggestedGuides.map((sg) => {
+                  {suggestedGuides.slice(0, 4).map((sg) => {
                     const SgIcon = getGuideIcon(sg.icon)
                     return (
                       <Link
@@ -308,16 +308,16 @@ export default async function GuidePage({ params }: Props) {
                           <SgIcon className="w-4 h-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-medium group-hover:text-primary transition-colors leading-tight line-clamp-2">
+                          <h4 className="text-sm font-medium group-hover:text-primary transition-colors leading-tight line-clamp-2">
                             {sg.title}
                           </h4>
                           {sg.category && (
-                            <span className="text-[10px] text-muted-foreground mt-1 block">
+                            <span className="text-sm text-muted-foreground mt-1 block">
                               {sg.category.title}
                             </span>
                           )}
                           {sg.minutes && (
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                               <Clock className="w-2.5 h-2.5" />
                               {sg.minutes} min
                             </span>

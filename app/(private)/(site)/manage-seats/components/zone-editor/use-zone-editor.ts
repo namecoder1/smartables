@@ -87,7 +87,12 @@ export function useZoneEditor(
           rotation: t.rotation,
           width: t.width,
           height: t.height,
-          radius: t.shape === "circle" ? t.width / 2 : 0,
+          radius:
+            t.shape === "circle" || t.shape === "plant"
+              ? t.width
+                ? t.width / 2
+                : 0
+              : 0,
           zone_id: t.zone_id,
           min_capacity: t.min_capacity,
           max_capacity: t.max_capacity,

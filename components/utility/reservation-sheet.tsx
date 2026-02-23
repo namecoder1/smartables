@@ -8,7 +8,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { createBooking, updateBooking } from '@/app/actions/bookings'
-import { searchCustomers } from '@/app/actions/customers'
+import { getAllCustomers } from '@/app/actions/customers'
 import { Check, ChevronsUpDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 // import { BookingWithCustomer } from '@/types/components' // Assuming this type exists or we define it
@@ -41,6 +41,15 @@ interface ReservationSheetProps {
   booking?: BookingWithCustomer | null // Optional booking to edit
 }
 
+import { CalendarIcon, Clock } from "lucide-react"
+import { format } from "date-fns"
+import { it } from "date-fns/locale"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { useLocationStore } from '@/store/location-store'
+
+// ... existing imports
+
 const ReservationSheet = ({
   open,
   onOpenChange,
@@ -54,30 +63,99 @@ const ReservationSheet = ({
   const [phone, setPhone] = useState('')
   const [guests, setGuests] = useState<number | undefined>(undefined)
   const [date, setDate] = useState<Date | undefined>(undefined)
+  const [time, setTime] = useState<string>("")
   const [notes, setNotes] = useState('')
 
   // Known Customer Logic
   const [isKnownCustomer, setIsKnownCustomer] = useState(false)
   const [openCombobox, setOpenCombobox] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null)
-  const [customerSearch, setCustomerSearch] = useState("")
+  // We don't need 'customerSearch' state for remote search anymore, 
+  // but we can keep it if we want to control the input value manually. 
+  // cmdk handles filtering 
   const [customers, setCustomers] = useState<Customer[]>([])
 
-  // Debounced Search for Customers
-  useEffect(() => {
-    if (!isKnownCustomer) return
+  const { getSelectedLocation } = useLocationStore()
+  const location = getSelectedLocation()
+  const openingHours = location?.opening_hours
 
-    const timer = setTimeout(async () => {
-      if (customerSearch.length > 1) {
-        const results = await searchCustomers(customerSearch)
-        setCustomers(results || [])
-      } else {
-        setCustomers([])
+  // Helper to map JS Date day index to our Italian day keys
+  const getDayKey = (d: Date) => {
+    const days = [
+      "domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"
+    ];
+    return days[d.getDay()];
+  };
+
+  // Helper to check if a day is open
+  const isDayOpen = (d: Date) => {
+    if (!openingHours) return true; // If no hours defined, assume open
+    const dayKey = getDayKey(d);
+    const slots = openingHours[dayKey];
+    return Array.isArray(slots) && slots.length > 0;
+  };
+
+  // Generate time slots based on selected date and opening hours
+  const timeSlots = React.useMemo(() => {
+    if (!date || !openingHours) return [];
+
+    const dayKey = getDayKey(date);
+    const slots = openingHours[dayKey];
+
+    if (!Array.isArray(slots) || slots.length === 0) return [];
+
+    const generatedSlots: string[] = [];
+
+    slots.forEach((slot: any) => {
+      const [openHour, openMinute] = slot.open.split(':').map(Number);
+      const [closeHour, closeMinute] = slot.close.split(':').map(Number);
+
+      let currentHour = openHour;
+      let currentMinute = openMinute;
+
+      // Create Date objects for easy comparison and manipulation
+      const closeTimeValue = closeHour * 60 + closeMinute;
+
+      while (true) {
+        const currentTimeValue = currentHour * 60 + currentMinute;
+
+        // If we've reached or passed closing time, stop
+        if (currentTimeValue >= closeTimeValue) break;
+
+        const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+        generatedSlots.push(timeString);
+
+        // Increment by 15 minutes
+        currentMinute += 15; // Changed to 15 mins for more granularity
+        if (currentMinute >= 60) {
+          currentHour += 1;
+          currentMinute -= 60;
+        }
       }
-    }, 300)
+    });
 
-    return () => clearTimeout(timer)
-  }, [customerSearch, isKnownCustomer])
+    return generatedSlots.sort();
+  }, [date, openingHours]);
+
+  // Reset time if selected time is not in new slots when date changes
+  useEffect(() => {
+    if (time && timeSlots.length > 0 && !timeSlots.includes(time)) {
+      // If the exact time is not available, try to find the closest one or just reset?
+      // For now, reset to force user selection
+      setTime("");
+    }
+  }, [date, timeSlots]);
+
+  // Fetch all customers when "Known Customer" is enabled
+  useEffect(() => {
+    if (isKnownCustomer && customers.length === 0) {
+      const fetchCustomers = async () => {
+        const results = await getAllCustomers()
+        setCustomers(results || [])
+      }
+      fetchCustomers()
+    }
+  }, [isKnownCustomer, customers.length])
 
   // Reset form when sheet closes or booking changes
   useEffect(() => {
@@ -87,25 +165,26 @@ const ReservationSheet = ({
         setName(booking.guest_name || '')
         setPhone(booking.guest_phone || '')
         setGuests(booking.guests_count || undefined)
-        setDate(booking.booking_time ? new Date(booking.booking_time) : undefined)
+
+        if (booking.booking_time) {
+          const dateObj = new Date(booking.booking_time);
+          setDate(dateObj);
+          setTime(format(dateObj, "HH:mm"));
+        } else {
+          setDate(undefined);
+          setTime("");
+        }
+
         setNotes(booking.notes || '')
 
         if (booking.customer_id) {
           setIsKnownCustomer(true)
           setSelectedCustomer(booking.customer_id)
-          // Ideally we should pre-fetch the customer name if it's not in booking.guest_name exactly as we want?
-          // But booking.guest_name should be correct.
-          // We set the search value to the name so it shows up in combobox trigger if logic uses it?
-          // The Combobox logic above uses `customers.find` which might be empty initially.
-          // We need to initialize the customers list or at least handle the display of selectedCustomer.
-          // Hack: we can push the current customer into the list so it displays correctly
-          if (booking.customer) {
-            setCustomers([{
-              id: booking.customer.id,
-              name: booking.customer.name,
-              phone: booking.customer.phone_number
-            }])
-          }
+          // Pre-fill customers list with at least the current one if not fetched yet
+          // But our new logic fetches ALL customers when isKnownCustomer becomes true.
+          // However, we might want to ensure the selected customer is visually available immediately if possible.
+          // Since fetch is async, there might be a split second where it says "Select...".
+          // We can let the effect handle it.
         } else {
           setIsKnownCustomer(false)
           setSelectedCustomer(null)
@@ -116,11 +195,11 @@ const ReservationSheet = ({
         setPhone('')
         setGuests(undefined)
         setDate(undefined)
+        setTime("")
         setNotes('')
         setIsKnownCustomer(false)
         setSelectedCustomer(null)
-        setCustomerSearch('')
-        setCustomers([])
+        setCustomers([]) // Clear so we re-fetch if needed, or keep to cache? Re-fetch ensures fresh data.
       }
     }
   }, [open, booking])
@@ -132,7 +211,14 @@ const ReservationSheet = ({
     formData.set('name', name)
     formData.set('phone', phone)
     formData.set('guests', String(guests || ''))
-    if (date) formData.set('date', date.toISOString())
+
+    if (date && time) {
+      const [hours, minutes] = time.split(':').map(Number);
+      const bookingDate = new Date(date);
+      bookingDate.setHours(hours, minutes, 0, 0);
+      formData.set('date', bookingDate.toISOString()); // The action likely expects 'date' or specific fields, checked below
+    }
+
     formData.set('notes', notes)
 
     startTransition(async () => {
@@ -202,26 +288,21 @@ const ReservationSheet = ({
                     className="w-full justify-between"
                   >
                     {selectedCustomer
-                      ? customers.find((customer) => customer.id === selectedCustomer)?.name || name // Fallback to name if not in list yet
+                      ? customers.find((customer) => customer.id === selectedCustomer)?.name || name
                       : "Seleziona cliente..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align='start' className="w-[268px] p-0 bg-card!">
                   <Command className='bg-background dark:bg-card/30 rounded-xl'>
-                    <CommandInput
-                      placeholder="Cerca cliente..."
-                      value={customerSearch}
-                      onValueChange={setCustomerSearch}
-                      className="h-9"
-                    />
+                    <CommandInput placeholder="Cerca cliente..." className="h-9" />
                     <CommandList>
                       <CommandEmpty>Nessun cliente trovato.</CommandEmpty>
-                      <CommandGroup>
+                      <CommandGroup className="max-h-[200px] overflow-auto">
                         {customers.map((customer) => (
                           <CommandItem
                             key={customer.id}
-                            value={customer.name}
+                            value={`${customer.name} ${customer.phone}`}
                             onSelect={() => {
                               setSelectedCustomer(customer.id)
                               setName(customer.name)
@@ -231,11 +312,11 @@ const ReservationSheet = ({
                           >
                             <Check
                               className={cn(
-                                "mr-2 h-4 w-4",
+                                "h-4 w-4",
                                 selectedCustomer === customer.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {customer.name} ({customer.phone})
+                            {customer.name} 
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -280,7 +361,7 @@ const ReservationSheet = ({
           </div>
         )}
 
-        <div className='grid sm:grid-cols-2 gap-2'>
+        <div className='flex gap-2'>
           <div className='flex flex-col items-start gap-2'>
             <Label>Numero di coperti</Label>
             <NumberInput
@@ -294,11 +375,61 @@ const ReservationSheet = ({
               min={1}
             />
           </div>
-          <DateTimePicker
-            value={date}
-            onChange={setDate}
-          />
+
+          <div className="flex flex-1 flex-col gap-2">
+            <Label>Data</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  {date ? format(date, "PPP", { locale: it }) : <span>Seleziona data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  locale={it}
+                  disabled={(d) => {
+                    // Optional: disable past dates?
+                    // const today = new Date();
+                    // today.setHours(0,0,0,0);
+                    // if (d < today) return true;
+                    return !isDayOpen(d);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Orario</Label>
+            <Select value={time} onValueChange={setTime} disabled={!date || timeSlots.length === 0}>
+              <SelectTrigger className="w-fit">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <SelectValue placeholder={!date ? "Prima seleziona una data" : (timeSlots.length === 0 ? "Chiuso" : "Seleziona orario")} />
+                </div>
+              </SelectTrigger>
+              <SelectContent position='popper' align='end' className='max-h-96'>
+                {timeSlots.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
 
         <div className='flex flex-col items-start gap-2'>
           <Label>Note</Label>

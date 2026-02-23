@@ -101,7 +101,7 @@ export function CategoryDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-4 bg-slate-50">
+          <div className="flex items-center justify-between rounded-xl border px-4 py-2 bg-background dark:bg-input/30">
             <div className="space-y-0.5">
               <Label className="text-base">Visibilità</Label>
               <div className="text-xs text-muted-foreground">

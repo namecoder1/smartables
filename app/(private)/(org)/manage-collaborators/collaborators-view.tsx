@@ -34,6 +34,8 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { inviteCollaborator } from './actions'
 import { User as UserType } from '@supabase/supabase-js'
+import OverviewCards from '@/components/private/overview-cards'
+import { useOrganization } from '@/components/providers/organization-provider'
 
 type Collaborator = {
   id: string
@@ -46,28 +48,45 @@ type Collaborator = {
 interface CollaboratorsViewProps {
   collaborators: Collaborator[]
   user: UserType
+  organizationLocations: { id: string; name: string }[]
 }
 
-const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
+const CollaboratorsView = ({ collaborators, user, organizationLocations }: CollaboratorsViewProps) => {
   const [open, setOpen] = useState(false)
+  const { organization } = useOrganization()
   const [isPending, startTransition] = useTransition()
+
+  const [locationType, setLocationType] = useState<"all" | "selected">("all")
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([])
 
   async function onSubmit(formData: FormData) {
     startTransition(async () => {
+      // Append the location selections
+      if (organization?.billing_tier !== "starter") {
+        formData.append("location_type", locationType)
+        if (locationType === "selected") {
+          formData.append("selected_locations", JSON.stringify(selectedLocations))
+        }
+      }
+
       const result = await inviteCollaborator(null, formData)
 
       if (result?.error) {
         toast.error(result.error)
       } else {
         setOpen(false)
+        setLocationType("all")
+        setSelectedLocations([])
         toast.success('Invito inviato con successo!')
       }
     })
   }
 
+  const collaboratorCount = organization?.billing_tier === "starter" ? 1 : organization?.billing_tier === "growth" ? 3 : 5
+
   return (
     <PageWrapper className='relative'>
-      <div className="flex xl:hidden items-center justify-between mb-6 gap-10">
+      <div className="flex xl:hidden items-center justify-between gap-10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestisci collaboratori</h1>
           <p className="text-muted-foreground">Gestisci i collaboratori della tua organizzazione.</p>
@@ -117,6 +136,55 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
                     </Select>
                   </div>
                 </div>
+
+                {organization?.billing_tier !== "starter" && (
+                  <>
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label className="text-right pt-2">
+                        Sedi accessibili
+                      </Label>
+                      <div className="col-span-3 space-y-4">
+                        <Select
+                          value={locationType}
+                          onValueChange={(value: "all" | "selected") => setLocationType(value)}
+                        >
+                          <SelectTrigger className='w-full'>
+                            <SelectValue placeholder="Sedi accessibili" />
+                          </SelectTrigger>
+                          <SelectContent position='popper'>
+                            <SelectItem value="all">Tutte le sedi</SelectItem>
+                            <SelectItem value="selected">Sedi specifiche</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {locationType === "selected" && (
+                          <div className="space-y-2 border rounded-md p-3 max-h-48 overflow-y-auto">
+                            {organizationLocations.map(loc => (
+                              <label key={loc.id} className="flex items-center space-x-2 p-1 hover:bg-muted/50 rounded cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                                  checked={selectedLocations.includes(loc.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedLocations([...selectedLocations, loc.id])
+                                    } else {
+                                      setSelectedLocations(selectedLocations.filter(id => id !== loc.id))
+                                    }
+                                  }}
+                                />
+                                <span className="text-sm font-medium">{loc.name}</span>
+                              </label>
+                            ))}
+                            {organizationLocations.length === 0 && (
+                              <div className="text-sm text-muted-foreground p-2">Nessuna sede disponibile.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
@@ -126,6 +194,35 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <OverviewCards
+        data={[
+          {
+            title: 'Collaboratori totali',
+            value: collaborators.length,
+            description: ''
+          },
+          {
+            title: 'Collaboratori attivi',
+            value: collaborators.filter((collaborator) => collaborator.role !== 'owner').length,
+            description: 'attivi'
+          },
+          {
+            title: 'Collaboratori massimi',
+            value: organization?.billing_tier === "starter" ? 1 : organization?.billing_tier === "growth" ? 3 : 5,
+            description: 'max'
+          }
+        ]}
+      />
+
+      <div className="flex items-start gap-4 rounded-lg border bg-primary/20 p-4 dark:bg-primary/20 dark:text-primary border-primary dark:border-primary">
+        <div className="space-y-2">
+          <p className="font-semibold text-lg tracking-tight leading-none">Semplifica la gestione dei tuoi collaboratori</p>
+          <p className="text-sm opacity-90">
+            Per rendere più efficiente la gestione di questa sede considera di aggiungere un collaboratore, il tuo piano ne supporta {collaboratorCount}.
+          </p>
+        </div>
       </div>
 
       <div className="border-2 rounded-xl">
@@ -188,7 +285,7 @@ const CollaboratorsView = ({ collaborators, user }: CollaboratorsViewProps) => {
         </Table>
       </div>
 
-      <Button className="shadow-sm absolute bottom-6 hidden xl:flex right-6" onClick={() => setOpen(true)}>
+      <Button className="shadow-sm absolute bottom-6 hidden xl:flex right-6" disabled={collaborators.length >= collaboratorCount} onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" /> Aggiungi
       </Button>
     </PageWrapper>

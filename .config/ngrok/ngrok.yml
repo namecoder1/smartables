@@ -1,0 +1,8 @@
+version: "2"
+authtoken: 2v4p4EkzSNAJOooBOmbSszKRnx3_4wcshAj6nPwETyzWdtW1A
+
+tunnels:
+  nextjs:
+    proto: http
+    addr: 3000
+    domain: talented-gar-formally.ngrok-free.app

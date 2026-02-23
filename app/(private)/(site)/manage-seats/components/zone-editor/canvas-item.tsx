@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, Rect, Circle, Text, Path } from 'react-konva';
+import { Group, Rect, Circle, Text, Path, Arc } from 'react-konva';
 import { TableInstance } from './types';
 
 
@@ -124,6 +124,27 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
             shadowColor="black" shadowBlur={shadowBlur} shadowOpacity={shadowOpacity}
           />
         );
+      case 'curved-wall':
+        // A curved wall based on an Arc.
+        // table.width = inner radius, table.height = angle.
+        // To draw a curved wall centered correctly:
+        // By default Arc is drawn around (0,0). Our Group has width/height equal to radius * 2.
+        const cRadius = table.width || 100;
+        return (
+          <Arc
+            innerRadius={cRadius - (table.radius || 10) / 2}
+            outerRadius={cRadius + (table.radius || 10) / 2}
+            angle={table.height || 90}
+            fill={colors.wallFill}
+            stroke={isSelected ? colors.selectedStroke : colors.wallStroke}
+            strokeWidth={isSelected ? 2 : 1}
+            shadowColor="black" shadowBlur={shadowBlur} shadowOpacity={shadowOpacity}
+          // An Arc is drawn starting at 0 angle (3 o'clock).
+          // We want it to be centered relative to the (0,0) of the Group.
+          // When angle is 90, the Arc sweeps from 0 to 90 degrees around origin.
+          // The Group already handles dragging and rotating the table's (x,y).
+          />
+        );
       case 'column':
         if (table.radius) {
           return (
@@ -161,6 +182,88 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
             <Circle radius={(table.radius || 25) * 0.4} fill={colors.plantStroke} opacity={0.5} />
           </Group>
         );
+      case 'text':
+        return (
+          <Text
+            text={table.label}
+            fontSize={20}
+            fontStyle="bold"
+            fill={colors.text}
+            width={table.width}
+            height={table.height}
+            align="left"
+            verticalAlign="middle"
+            offsetX={table.width! / 2}
+            offsetY={table.height! / 2}
+          />
+        );
+      case 'cashier':
+        return (
+          <Group>
+            <Rect
+              width={table.width} height={table.height}
+              fill={colors.cashierFill}
+              stroke={isSelected ? colors.selectedStroke : colors.cashierStroke}
+              strokeWidth={isSelected ? 2 : 1}
+              cornerRadius={4}
+              offsetX={table.width! / 2} offsetY={table.height! / 2}
+              shadowColor="black" shadowBlur={shadowBlur} shadowOpacity={shadowOpacity}
+            />
+            {/* Cashier Icon / Text */}
+            <Text
+              text="$"
+              fontSize={Math.min(table.width!, table.height!) * 0.6}
+              fontStyle="bold"
+              fill={colors.text}
+              align="center"
+              verticalAlign="middle"
+              width={table.width}
+              height={table.height}
+              offsetX={table.width! / 2}
+              offsetY={table.height! / 2}
+            />
+          </Group>
+        );
+      case 'container':
+        return (
+          <Rect
+            width={table.width} height={table.height}
+            fill={colors.containerFill}
+            stroke={isSelected ? colors.selectedStroke : colors.containerStroke}
+            strokeWidth={isSelected ? 2 : 1.5}
+            dash={[10, 5]}
+            cornerRadius={4}
+            offsetX={table.width! / 2} offsetY={table.height! / 2}
+            shadowColor="black" shadowBlur={shadowBlur} shadowOpacity={shadowOpacity}
+          />
+        );
+      case 'restroom':
+        return (
+          <Group>
+            <Rect
+              width={table.width} height={table.height}
+              fill={colors.restroomFill}
+              stroke={isSelected ? colors.selectedStroke : colors.restroomStroke}
+              strokeWidth={isSelected ? 2 : 1}
+              cornerRadius={4}
+              offsetX={table.width! / 2} offsetY={table.height! / 2}
+              shadowColor="black" shadowBlur={shadowBlur} shadowOpacity={shadowOpacity}
+            />
+            {/* WC Text */}
+            <Text
+              text="WC"
+              fontSize={Math.min(table.width!, table.height!) * 0.4}
+              fontStyle="bold"
+              fill={colors.text}
+              align="center"
+              verticalAlign="middle"
+              width={table.width}
+              height={table.height}
+              offsetX={table.width! / 2}
+              offsetY={table.height! / 2}
+            />
+          </Group>
+        );
       case 'circle':
       default:
         return (
@@ -196,11 +299,15 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
         table.type !== 'plant' &&
         table.type !== 'booth' &&
         table.type !== 'door' &&
-        table.type !== 'column' && (
+        table.type !== 'column' &&
+        table.type !== 'text' &&
+        table.type !== 'cashier' &&
+        table.type !== 'restroom' && (
           <Text
             text={table.label}
-            fontSize={12}
-            fill={colors.text}
+            fontSize={table.type === 'container' ? 14 : 12}
+            fontStyle={table.type === 'container' ? 'bold' : 'normal'}
+            fill={table.type === 'container' ? colors.containerText : colors.text}
             align="center"
             verticalAlign="middle"
             width={!table.radius ? table.width : (table.radius * 2)}

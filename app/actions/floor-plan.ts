@@ -103,8 +103,18 @@ export async function saveFloorPlan(
         position_x: t.x,
         position_y: t.y,
         rotation: t.rotation,
-        width: t.width,
-        height: t.height,
+        width:
+          t.type === "circle" || t.type === "plant" || t.radius
+            ? t.radius
+              ? t.radius * 2
+              : t.width
+            : t.width,
+        height:
+          t.type === "circle" || t.type === "plant" || t.radius
+            ? t.radius
+              ? t.radius * 2
+              : t.height
+            : t.height,
         // radius for circle not directly in schema props column?
         // Schema has width/height. We can store radius as width/2 or use specific column if added.
         // For now using width/height for both.

@@ -66,7 +66,7 @@ export function ImageUpload({
   return (
     <div className={`w-full ${className}`}>
       <div className='flex items-center justify-between'>
-        <Label htmlFor='image-upload' className="mb-2 flex items-center gap-2">
+        <Label htmlFor='image-upload' className="mb-1 flex items-center gap-2">
           <ImageIcon className="w-4 h-4" />
           {title}
         </Label>
@@ -99,7 +99,7 @@ export function ImageUpload({
         ) : (
           <div
             onClick={() => !disabled && fileInputRef.current?.click()}
-            className={`flex flex-col rounded-xl items-center justify-center aspect-video w-full py-4 h-40 border border-dashed bg-muted/50 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+            className={`flex flex-col rounded-xl items-center justify-center aspect-video w-full py-4 h-40 border border-dashed bg-background dark:bg-input/30 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
           >
             <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
             <span className="text-xs text-muted-foreground">Clicca e carica</span>

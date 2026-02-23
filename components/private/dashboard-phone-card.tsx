@@ -20,8 +20,8 @@ export default function DashboardPhoneCard({ activationStatus, locations }: Dash
     // In future, this might need a selector or loop.
     const location = locations && locations.length > 0 ? locations[0] : null
 
-    // Hidden if account not active (billing check)
-    if (activationStatus !== 'active') {
+    // Hidden if account not active (billing check) or not in the final verification stages
+    if (activationStatus !== 'active' && activationStatus !== 'verified') {
         return null;
     }
 

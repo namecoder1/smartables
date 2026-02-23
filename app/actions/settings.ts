@@ -14,6 +14,8 @@ export async function updateLocation(
     phone_number?: string | null;
     branding?: any;
     seats?: number;
+    max_covers_per_shift?: number | null;
+    standard_reservation_duration?: number | null;
     opening_hours?: any;
     slug?: string;
   },

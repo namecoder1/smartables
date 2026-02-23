@@ -9,8 +9,15 @@ export type PresetShape =
   | "open-space"
   | "t-shape"
   | "gazebo"
+  | "gazebo-divided"
   | "bar-counter"
-  | "booth-hall";
+  | "booth-hall"
+  | "veranda-narrow"
+  | "courtyard"
+  | "mezzanine"
+  | "lounge-open"
+  | "circular-room"
+  | "circular-corner";
 export type ZoneType = "indoor" | "outdoor" | "terrace" | "bar" | "other";
 
 export interface PresetDefinition {
@@ -76,6 +83,15 @@ export const PRESET_SHAPES: PresetDefinition[] = [
     allowedTypes: ["outdoor", "terrace", "other"],
   },
   {
+    id: "gazebo-divided",
+    label: "Gazebo Lungo con Separè",
+    description:
+      "Struttura esterna rettangolare allungata con divisori trasversali.",
+    defaultWidth: 1600,
+    defaultHeight: 800,
+    allowedTypes: ["outdoor", "terrace", "other"],
+  },
+  {
     id: "bar-counter",
     label: "Area Banco Bar",
     description: "Sala con struttura a L preimpostata per il bancone.",
@@ -90,6 +106,58 @@ export const PRESET_SHAPES: PresetDefinition[] = [
     defaultWidth: 1200,
     defaultHeight: 1000,
     allowedTypes: ["indoor", "bar"],
+  },
+  {
+    id: "veranda-narrow",
+    label: "Porticato / Veranda Stretta",
+    description:
+      "Spazio lungo e stretto, aperto su un lato e chiuso dall'edificio sull'altro.",
+    defaultWidth: 2000,
+    defaultHeight: 400,
+    allowedTypes: ["outdoor", "terrace", "other"],
+  },
+  {
+    id: "courtyard",
+    label: "Cortile Interno / Chiostro",
+    description:
+      "Area con spazio centrale vuoto e tavoli disposti lungo il perimetro.",
+    defaultWidth: 1200,
+    defaultHeight: 1200,
+    allowedTypes: ["outdoor", "other"],
+  },
+  {
+    id: "mezzanine",
+    label: "Soppalco / Area Rialzata",
+    description:
+      "Area delimitata da ringhiere o transenne invece che da muri completi.",
+    defaultWidth: 1000,
+    defaultHeight: 800,
+    allowedTypes: ["indoor", "terrace", "other"],
+  },
+  {
+    id: "lounge-open",
+    label: "Area Lounge Aperta",
+    description:
+      "Spazio aperto senza muri, delimitato idealmente da elementi bassi.",
+    defaultWidth: 1000,
+    defaultHeight: 800,
+    allowedTypes: ["outdoor", "terrace", "bar", "other"],
+  },
+  {
+    id: "circular-room",
+    label: "Sala Circolare",
+    description: "Ambiente rotondo o a cupola, racchiuso da pareti curve.",
+    defaultWidth: 1000,
+    defaultHeight: 1000,
+    allowedTypes: ["indoor", "outdoor", "other"],
+  },
+  {
+    id: "circular-corner",
+    label: "Sala con Angolo Circolare",
+    description: "Stanza squadrata in cui uno degli angoli è curvo / smussato.",
+    defaultWidth: 1000,
+    defaultHeight: 1000,
+    allowedTypes: ["indoor", "terrace", "other"],
   },
 ];
 
@@ -382,6 +450,42 @@ export function generatePresetLayout(
       tables.push(createColumn(width - margin, height - margin, colSize));
       break;
 
+    case "gazebo-divided":
+      // Long gazebo with 6 columns and internal dividers
+      const gdMargin = 50;
+      const gdColSize = 50;
+      // 6 columns (corners + middle)
+      tables.push(createColumn(gdMargin, gdMargin, gdColSize));
+      tables.push(createColumn(width / 2, gdMargin, gdColSize));
+      tables.push(createColumn(width - gdMargin, gdMargin, gdColSize));
+      tables.push(createColumn(gdMargin, height - gdMargin, gdColSize));
+      tables.push(createColumn(width / 2, height - gdMargin, gdColSize));
+      tables.push(createColumn(width - gdMargin, height - gdMargin, gdColSize));
+
+      // Dividers. Two transverse dividers, leaving a passage gap at the bottom.
+      const gdDivWidth = 20; // Divider thickness
+      const gdDivLength = height - 2 * gdMargin - 150; // Leave a passage of 150px
+      // Top-aligned dividers
+      tables.push({
+        ...createWall(
+          width / 3,
+          gdMargin + gdDivLength / 2,
+          gdDivWidth,
+          gdDivLength,
+        ),
+        label: "Separè",
+      });
+      tables.push({
+        ...createWall(
+          (2 * width) / 3,
+          gdMargin + gdDivLength / 2,
+          gdDivWidth,
+          gdDivLength,
+        ),
+        label: "Separè",
+      });
+      break;
+
     case "bar-counter":
       // L-shaped counter in top-right corner? Or top-left.
       // Let's do a Top-Left counter.
@@ -475,6 +579,253 @@ export function generatePresetLayout(
           label: "Divisorio",
         });
       }
+      break;
+
+    case "veranda-narrow":
+      // Long rectangle, closed on top, left, right, open on bottom.
+      tables.push(
+        createWall(width / 2, WALL_THICKNESS / 2, width, WALL_THICKNESS),
+      ); // Top (building wall)
+      tables.push(
+        createWall(WALL_THICKNESS / 2, height / 2, WALL_THICKNESS, height),
+      ); // Left
+      tables.push(
+        createWall(
+          width - WALL_THICKNESS / 2,
+          height / 2,
+          WALL_THICKNESS,
+          height,
+        ),
+      ); // Right
+      break;
+
+    case "courtyard":
+      // Outer perimeter walls
+      tables.push(
+        createWall(width / 2, WALL_THICKNESS / 2, width, WALL_THICKNESS),
+      ); // Top
+      tables.push(
+        createWall(
+          width / 2,
+          height - WALL_THICKNESS / 2,
+          width,
+          WALL_THICKNESS,
+        ),
+      ); // Bottom
+      tables.push(
+        createWall(WALL_THICKNESS / 2, height / 2, WALL_THICKNESS, height),
+      ); // Left
+      tables.push(
+        createWall(
+          width - WALL_THICKNESS / 2,
+          height / 2,
+          WALL_THICKNESS,
+          height,
+        ),
+      ); // Right
+
+      // Inner "hole" walls (courtyard center) - let's make it 50% of total size
+      const cw = width * 0.5;
+      const ch = height * 0.5;
+      tables.push(createWall(width / 2, (height - ch) / 2, cw, WALL_THICKNESS)); // Inner Top
+      tables.push(
+        createWall(width / 2, height - (height - ch) / 2, cw, WALL_THICKNESS),
+      ); // Inner Bottom
+      tables.push(createWall((width - cw) / 2, height / 2, WALL_THICKNESS, ch)); // Inner Left
+      tables.push(
+        createWall(width - (width - cw) / 2, height / 2, WALL_THICKNESS, ch),
+      ); // Inner Right
+      break;
+
+    case "mezzanine":
+      // Rectangle with thinner, semi-transparent feeling walls (labeled differently)
+      const transennaThick = 5;
+      tables.push({
+        ...createWall(width / 2, transennaThick / 2, width, transennaThick),
+        label: "Ringhiera",
+      });
+      tables.push({
+        ...createWall(
+          width / 2,
+          height - transennaThick / 2,
+          width,
+          transennaThick,
+        ),
+        label: "Ringhiera",
+      });
+      tables.push({
+        ...createWall(transennaThick / 2, height / 2, transennaThick, height),
+        label: "Ringhiera",
+      });
+      tables.push({
+        ...createWall(
+          width - transennaThick / 2,
+          height / 2,
+          transennaThick,
+          height,
+        ),
+        label: "Ringhiera",
+      });
+      break;
+
+    case "lounge-open":
+      // Corners just hinted with short planter walls.
+      const loungeWallLen = width * 0.2;
+      tables.push({
+        ...createWall(
+          loungeWallLen / 2,
+          WALL_THICKNESS / 2,
+          loungeWallLen,
+          WALL_THICKNESS,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          width - loungeWallLen / 2,
+          WALL_THICKNESS / 2,
+          loungeWallLen,
+          WALL_THICKNESS,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          loungeWallLen / 2,
+          height - WALL_THICKNESS / 2,
+          loungeWallLen,
+          WALL_THICKNESS,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          width - loungeWallLen / 2,
+          height - WALL_THICKNESS / 2,
+          loungeWallLen,
+          WALL_THICKNESS,
+        ),
+        label: "Fioriera",
+      });
+
+      tables.push({
+        ...createWall(
+          WALL_THICKNESS / 2,
+          loungeWallLen / 2,
+          WALL_THICKNESS,
+          loungeWallLen,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          WALL_THICKNESS / 2,
+          height - loungeWallLen / 2,
+          WALL_THICKNESS,
+          loungeWallLen,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          width - WALL_THICKNESS / 2,
+          loungeWallLen / 2,
+          WALL_THICKNESS,
+          loungeWallLen,
+        ),
+        label: "Fioriera",
+      });
+      tables.push({
+        ...createWall(
+          width - WALL_THICKNESS / 2,
+          height - loungeWallLen / 2,
+          WALL_THICKNESS,
+          loungeWallLen,
+        ),
+        label: "Fioriera",
+      });
+      break;
+
+    case "circular-room":
+      // A perfect circle using curved-wall shapes.
+      // E.g. we use 4 quadrants of arcs (90 degrees each) to make a full circle.
+      const radiusX = width / 2;
+      const radiusY = height / 2;
+      const radiusRoom = Math.min(radiusX, radiusY);
+      const rCenterX = width / 2;
+      const rCenterY = height / 2;
+
+      for (let i = 0; i < 4; i++) {
+        tables.push({
+          id: `wall-curved-${uuidv4().slice(0, 8)}`,
+          uniqueId: uuidv4(),
+          type: "curved-wall",
+          label: "Muro Curvo",
+          seats: 0,
+          width: radiusRoom, // Inner/Outer arc mapped via width/radius in CanvasItem
+          height: 90, // Angle of the arc
+          radius: WALL_THICKNESS, // Thickness of the curved wall
+          x: rCenterX,
+          y: rCenterY,
+          rotation: i * 90, // Rotate quadrants
+          zone_id: zoneId,
+        });
+      }
+      break;
+
+    case "circular-corner":
+      // Square room but top-right corner is rounded.
+      tables.push(
+        createWall(
+          width / 2,
+          height - WALL_THICKNESS / 2,
+          width,
+          WALL_THICKNESS,
+        ),
+      ); // Bottom
+      tables.push(
+        createWall(WALL_THICKNESS / 2, height / 2, WALL_THICKNESS, height),
+      ); // Left
+
+      const cornerRadius = Math.min(width, height) * 0.4;
+
+      // Top wall (stops before corner)
+      tables.push(
+        createWall(
+          (width - cornerRadius) / 2,
+          WALL_THICKNESS / 2,
+          width - cornerRadius,
+          WALL_THICKNESS,
+        ),
+      );
+      // Right wall (stops before corner)
+      tables.push(
+        createWall(
+          width - WALL_THICKNESS / 2,
+          (height + cornerRadius) / 2,
+          WALL_THICKNESS,
+          height - cornerRadius,
+        ),
+      );
+
+      // Arc for the corner (top-right, orientation -90, sweep 90)
+      const arcCenterX = width - cornerRadius;
+      const arcCenterY = cornerRadius;
+
+      tables.push({
+        id: `wall-curved-${uuidv4().slice(0, 8)}`,
+        uniqueId: uuidv4(),
+        type: "curved-wall",
+        label: "Angolo Curvo",
+        seats: 0,
+        width: cornerRadius, // Radius
+        height: 90, // Angle
+        radius: WALL_THICKNESS, // Thickness
+        x: arcCenterX,
+        y: arcCenterY,
+        rotation: -90, // Top-right orientation
+        zone_id: zoneId,
+      });
       break;
 
     default:

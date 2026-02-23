@@ -9,22 +9,21 @@ interface ComplianceAlertProps {
   context: 'sidebar' | 'page'
   status: string
   managedAccountId: string | null
+  complianceStatus?: string
 }
 
-export default function ComplianceAlert({ context = 'sidebar', status, managedAccountId }: ComplianceAlertProps) {
+export default function ComplianceAlert({ context = 'sidebar', status, managedAccountId, complianceStatus }: ComplianceAlertProps) {
 
 
   // Logic: Show alert if Organization is ACTIVE (phone verified) but no Managed Account/Docs yet.
 
-  // NOTE: In a real scenario, we would check the 'telnyx_regulatory_requirements' table status.
-  // For now, if 'managedAccountId' is null, it means we haven't started the process.
-  // OR we can pass a specific 'complianceStatus' prop.
-
-  if (status !== 'active' && status !== 'verified' && status !== 'pending') return null // Updated to allow pending for MVP
+  if (status !== 'active' && status !== 'verified' && status !== 'pending' && status !== 'pending_verification') return null // Updated to allow pending states for MVP
 
   // If already has managed account (and presumably docs), don't show prompt.
-  // Refine this logic based on actual DB status passed from parent.
   if (managedAccountId) return null
+
+  // If regulatory requirements are approved, don't show prompt.
+  if (complianceStatus === 'approved') return null
 
   if (context === 'sidebar') {
     return (

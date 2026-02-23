@@ -35,9 +35,10 @@ interface SidebarProps extends React.ComponentProps<typeof AppSidebar> {
   activationStatus?: string
   managedAccountId?: string | null
   starredPages?: { id: string; url: string; title: string }[]
+  complianceStatus?: string
 }
 
-const Sidebar = ({ className, organizationId, activationStatus, managedAccountId, starredPages, ...props }: SidebarProps) => {
+const Sidebar = ({ className, organizationId, activationStatus, managedAccountId, starredPages, complianceStatus, ...props }: SidebarProps) => {
   const pathname = usePathname()
   const [isEditing, setIsEditing] = useState(false)
 
@@ -182,6 +183,7 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
               context="sidebar"
               status={activationStatus}
               managedAccountId={managedAccountId || null}
+              complianceStatus={complianceStatus}
             />
           </div>
         )}

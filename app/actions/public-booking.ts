@@ -13,6 +13,7 @@ export type CreateBookingState = {
 export async function createPublicBooking(
   prevState: CreateBookingState,
   formData: FormData,
+  source: string,
 ): Promise<CreateBookingState> {
   const supabase = await createClient();
 
@@ -39,13 +40,13 @@ export async function createPublicBooking(
   // In a real app we need to handle timezones carefully (Location timezone).
   // For MVP we assume the server/browser consistency or store as is.
   // Ideally: '2023-10-25T20:00:00.000Z'
+  // Combine date and time into ISO string
   const bookingTime = new Date(`${date}T${time}:00`).toISOString();
 
   // 1. Check if customer exists or create new (Upsert based on phone + org)
   // We need query to find customer first or upsert.
   // Since we don't have a direct "upsert on conflict" that returns ID easily without RLS knowing user...
   // Actually RLS for "public" might be restricted.
-  // Wait, public users (anon) cannot write to `customers` or `bookings` usually unless we open RLS.
   // IMPORTANT: We need `service_role` client for this action because 'anon' user shouldn't just write to anyone's DB.
   // HOWEVER: `createClient` uses user session. We might need a admin client for public actions?
   // OR we enable RLS for Anon to INSERT but not SELECT.
@@ -65,7 +66,7 @@ export async function createPublicBooking(
       guests_count: guestsCount,
       booking_time: bookingTime,
       status: "pending",
-      source: "web",
+      source: source,
     })
     .select()
     .single();

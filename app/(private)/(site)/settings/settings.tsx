@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Store, MapPin, Loader2, Share2, ImageIcon, Palette, Users, HelpCircle } from 'lucide-react'
+import { Store, MapPin, Loader2, Share2, ImageIcon, Palette, Users, HelpCircle, Timer, Armchair } from 'lucide-react'
 import { LocationBranding as Branding, Location } from '@/types/general'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -62,6 +62,8 @@ const SettingsView = ({ locations }: { locations: any[] }) => {
         address: location.address,
         phone_number: location.phone_number,
         seats: location.seats,
+        max_covers_per_shift: location.max_covers_per_shift,
+        standard_reservation_duration: location.standard_reservation_duration,
       })
       if (location.branding) {
         setBranding({
@@ -199,6 +201,34 @@ const SettingsView = ({ locations }: { locations: any[] }) => {
                   className="pl-9"
                   value={formData.seats || ''}
                   onChange={(e) => setFormData({ ...formData, seats: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="max_covers">Max coperti per turno</Label>
+              <div className="relative">
+                <Armchair className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="max_covers"
+                  type="number"
+                  placeholder='es: 100'
+                  className="pl-9"
+                  value={formData.max_covers_per_shift || ''}
+                  onChange={(e) => setFormData({ ...formData, max_covers_per_shift: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duration">Durata standard (min)</Label>
+              <div className="relative">
+                <Timer className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="duration"
+                  type="number"
+                  placeholder='es: 90'
+                  className="pl-9"
+                  value={formData.standard_reservation_duration || ''}
+                  onChange={(e) => setFormData({ ...formData, standard_reservation_duration: Number(e.target.value) })}
                 />
               </div>
             </div>

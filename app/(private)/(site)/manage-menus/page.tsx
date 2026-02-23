@@ -18,7 +18,7 @@ const ManageMenus = async () => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id, role, accessible_locations')
     .eq('id', user.id)
     .single()
 
@@ -26,11 +26,17 @@ const ManageMenus = async () => {
   const organizationId = profile.organization_id
 
   // 2. Fetch Locations
-  const { data: locations } = await supabase
+  let locationsQuery = supabase
     .from('locations')
     .select('*')
     .eq('organization_id', organizationId)
     .order('created_at')
+
+  if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+    locationsQuery = locationsQuery.in('id', profile.accessible_locations)
+  }
+
+  const { data: locations } = await locationsQuery
 
   // 3. Fetch Menus (Deep)
   const { data: menus } = await supabase

@@ -58,25 +58,51 @@ export default async function PublicMenuPage({
   const activeMenus = (menus?.map((m) => m.menu).filter((m) => m !== null) as unknown as Menu[]) || [];
   const orgName = location.organizations?.name || "Ristorante";
 
-  // Create a gradient based on the location name length to give it some variety or just a nice default
-  const gradientClass = "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900";
+  // Branding Logic
+  const branding = location.branding;
+  const primaryColor = branding?.colors?.primary || "#3b82f6"; // Default Blue-500
+  const secondaryColor = branding?.colors?.secondary || "#a855f7"; // Default Purple-500
+  const logoUrl = branding?.logo_url;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-blue-100">
       {/* Hero Section */}
-      <div className={`relative ${gradientClass} text-white pb-12 pt-16 px-6 overflow-hidden`}>
+      <div
+        className="relative text-white pb-12 pt-16 px-6 overflow-hidden transition-all duration-700 ease-in-out"
+        style={{
+          background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`
+        }}
+      >
         {/* Abstract background shapes */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-white/5 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none mix-blend-overlay" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-black/5 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-md mx-auto text-center space-y-4">
-          <Badge variant="outline" className="text-white/80 border-white/20 px-3 py-1 mb-2 backdrop-blur-sm">
-            {orgName}
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-            {location.name}
-          </h1>
-          <div className="flex items-center justify-center text-slate-300 text-sm gap-2">
+        <div className="relative z-10 max-w-md mx-auto text-center space-y-6">
+
+          {logoUrl && (
+            <div className="mx-auto w-24 h-24 relative mb-4 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/20 bg-white p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoUrl}
+                alt={`${location.name} Logo`}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {!logoUrl && (
+              <Badge variant="outline" className="text-white/90 border-white/20 px-3 py-1 backdrop-blur-md bg-white/10">
+                {orgName}
+              </Badge>
+            )}
+
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow-sm">
+              {location.name}
+            </h1>
+          </div>
+
+          <div className="flex items-center justify-center text-white/90 text-sm gap-2 font-medium bg-white/10 backdrop-blur-sm py-1.5 px-4 rounded-full w-fit mx-auto border border-white/10">
             <MapPin className="w-4 h-4" />
             <span className="max-w-[250px] truncate">{location.address || "Vieni a trovarci"}</span>
           </div>
@@ -89,11 +115,18 @@ export default async function PublicMenuPage({
 
           {/* Booking CTA Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-6 border border-slate-100 text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-blue-500 to-purple-500" />
+            <div
+              className="absolute top-0 left-0 w-full h-1"
+              style={{ background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` }}
+            />
             <h3 className="text-lg font-semibold text-slate-800 mb-2">Vuoi prenotare un tavolo?</h3>
             <p className="text-slate-500 text-sm mb-5">Riserva il tuo posto in pochi click.</p>
             <Link href={`/p/${locationSlug}`} className="block">
-              <Button size="lg" className="w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 transition-all active:scale-[0.98]">
+              <Button
+                size="lg"
+                className="w-full rounded-xl text-white shadow-lg transition-all active:scale-[0.98]"
+                style={{ backgroundColor: primaryColor, boxShadow: `0 10px 15px -3px ${primaryColor}40` }}
+              >
                 <CalendarDays className="w-5 h-5 mr-2" />
                 Prenota Ora
               </Button>
@@ -103,7 +136,10 @@ export default async function PublicMenuPage({
           {/* Menus Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 px-2">
-              <div className="h-8 w-1 bg-blue-600 rounded-full" />
+              <div
+                className="h-8 w-1 rounded-full"
+                style={{ backgroundColor: primaryColor }}
+              />
               <h2 className="text-xl font-bold text-slate-800">
                 I Nostri Menu
               </h2>
@@ -119,7 +155,12 @@ export default async function PublicMenuPage({
             ) : (
               <div className="grid gap-4">
                 {activeMenus.map((menu) => (
-                  <MenuCard key={menu.id} menu={menu} locationSlug={locationSlug} />
+                  <MenuCard
+                    key={menu.id}
+                    menu={menu}
+                    locationSlug={locationSlug}
+                    primaryColor={primaryColor}
+                  />
                 ))}
               </div>
             )}
@@ -138,7 +179,7 @@ export default async function PublicMenuPage({
   );
 }
 
-function MenuCard({ menu, locationSlug }: { menu: Menu; locationSlug: string }) {
+function MenuCard({ menu, locationSlug, primaryColor }: { menu: Menu; locationSlug: string; primaryColor: string }) {
   const isPdf = !!menu.pdf_url;
   const href = isPdf && menu.pdf_url ? menu.pdf_url : `/m/${locationSlug}/${menu.id}`;
   const target = isPdf ? "_blank" : "_self";
@@ -147,23 +188,40 @@ function MenuCard({ menu, locationSlug }: { menu: Menu; locationSlug: string }) 
     <Link
       href={href}
       target={target}
-      className="group block bg-white rounded-2xl shadow-sm hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-slate-100"
+      className="group block bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-slate-100"
+      style={{
+        // We can use CSS variables or direct styles for hover states if we use a wrapper or styled component.
+        // For inline styles in React, handling hover colors is tricky without state or CSS-in-JS.
+        // Alternatively, we leave the hover shadow as default or subtle, and focus on the static elements.
+      }}
     >
       <div className="flex p-5 gap-4">
         {/* Icon/Image Placeholder */}
-        <div className={`shrink-0 w-16 h-16 rounded-xl flex items-center justify-center ${isPdf ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'} group-hover:scale-105 transition-transform`}>
+        <div
+          className={`shrink-0 w-16 h-16 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105`}
+          style={{
+            backgroundColor: isPdf ? '#fef2f2' : `${primaryColor}10`, // Red-50 or Primary with 10% opacity
+            color: isPdf ? '#ef4444' : primaryColor
+          }}
+        >
           {isPdf ? <FileText className="w-8 h-8" /> : <Utensils className="w-8 h-8" />}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
-            <h3 className="font-bold text-lg text-slate-800 truncate pr-2 group-hover:text-blue-600 transition-colors">
+            <h3
+              className="font-bold text-lg text-slate-800 truncate pr-2 transition-colors group-hover:text-[--hover-color]"
+              style={{ '--hover-color': primaryColor } as React.CSSProperties}
+            >
               {menu.name}
             </h3>
             {isPdf ? (
               <ExternalLink className="w-4 h-4 text-slate-300 shrink-0 mt-1" />
             ) : (
-              <ChevronRight className="w-5 h-5 text-slate-300 shrink-0 mt-1 group-hover:text-blue-600 transition-colors" />
+              <ChevronRight
+                className="w-5 h-5 text-slate-300 shrink-0 mt-1 transition-colors group-hover:text-[--hover-color]"
+                style={{ '--hover-color': primaryColor } as React.CSSProperties}
+              />
             )}
           </div>
 
@@ -175,7 +233,17 @@ function MenuCard({ menu, locationSlug }: { menu: Menu; locationSlug: string }) 
             {isPdf ? (
               <Badge variant="secondary" className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100 text-[10px] px-2 h-5">PDF</Badge>
             ) : (
-              <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100 text-[10px] px-2 h-5">DIGITALE</Badge>
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-2 h-5 border opacity-90"
+                style={{
+                  backgroundColor: `${primaryColor}15`,
+                  color: primaryColor,
+                  borderColor: `${primaryColor}30`
+                }}
+              >
+                DIGITALE
+              </Badge>
             )}
           </div>
         </div>

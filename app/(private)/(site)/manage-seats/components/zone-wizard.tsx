@@ -177,6 +177,19 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
                           <rect x="25" y="25" width="78" height="46" rx="2" className="stroke-dashed" strokeDasharray="4 4" />
                         </svg>
                       )}
+                      {shape.id === 'gazebo-divided' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <rect x="10" y="25" width="108" height="46" rx="2" className="stroke-dashed" strokeDasharray="4 4" />
+                          <rect x="10" y="25" width="10" height="10" className="fill-foreground" />
+                          <rect x="59" y="25" width="10" height="10" className="fill-foreground" />
+                          <rect x="108" y="25" width="10" height="10" className="fill-foreground" />
+                          <rect x="10" y="61" width="10" height="10" className="fill-foreground" />
+                          <rect x="59" y="61" width="10" height="10" className="fill-foreground" />
+                          <rect x="108" y="61" width="10" height="10" className="fill-foreground" />
+                          <line x1="42" y1="25" x2="42" y2="50" />
+                          <line x1="86" y1="25" x2="86" y2="50" />
+                        </svg>
+                      )}
                       {shape.id === 'bar-counter' && (
                         <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
                           <rect x="1" y="1" width="126" height="94" rx="2" className="stroke-muted" />
@@ -190,6 +203,40 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
                           <line x1="1" y1="60" x2="20" y2="60" />
                           <line x1="108" y1="30" x2="127" y2="30" />
                           <line x1="108" y1="60" x2="127" y2="60" />
+                        </svg>
+                      )}
+                      {shape.id === 'veranda-narrow' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <path d="M10,80 L10,20 L118,20 L118,80" className="fill-transparent stroke-foreground" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                      {shape.id === 'courtyard' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <rect x="10" y="10" width="108" height="76" rx="2" className="fill-background stroke-foreground" />
+                          <rect x="44" y="38" width="40" height="20" rx="2" className="fill-transparent stroke-foreground" />
+                        </svg>
+                      )}
+                      {shape.id === 'mezzanine' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-1">
+                          <rect x="10" y="10" width="108" height="76" rx="2" className="fill-background stroke-dashed" strokeDasharray="4 4" />
+                        </svg>
+                      )}
+                      {shape.id === 'lounge-open' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <path d="M10,30 L10,10 L30,10" className="fill-transparent stroke-foreground" strokeLinejoin="round" />
+                          <path d="M98,10 L118,10 L118,30" className="fill-transparent stroke-foreground" strokeLinejoin="round" />
+                          <path d="M10,66 L10,86 L30,86" className="fill-transparent stroke-foreground" strokeLinejoin="round" />
+                          <path d="M98,86 L118,86 L118,66" className="fill-transparent stroke-foreground" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                      {shape.id === 'circular-room' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <ellipse cx="64" cy="48" rx="46" ry="36" className="fill-background stroke-foreground" />
+                        </svg>
+                      )}
+                      {shape.id === 'circular-corner' && (
+                        <svg width="100%" height="100%" viewBox="0 0 128 96" fill="none" className="stroke-foreground/50 stroke-2">
+                          <path d="M10,10 L10,86 L118,86 L118,48 Q118,10 80,10 Z" className="fill-background stroke-foreground" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
@@ -208,7 +255,7 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
 
         {/* STEP 3: CONFIG */}
         {step === 3 && (
-          <div className="space-y-6">
+          <div className="space-y-6 px-1">
             <div className="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className='flex flex-col gap-4'>
                 <div className="flex flex-col gap-2">

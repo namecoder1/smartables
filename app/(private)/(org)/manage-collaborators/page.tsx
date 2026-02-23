@@ -32,8 +32,18 @@ const ManageCollaborators = async () => {
     .eq('organization_id', currentUserProfile.organization_id)
     .order('created_at', { ascending: false })
 
+  const { data: locations } = await supabase
+    .from('locations')
+    .select('id, name')
+    .eq('organization_id', currentUserProfile.organization_id)
+    .order('name')
+
   return (
-    <CollaboratorsView collaborators={collaborators || []} user={user} />
+    <CollaboratorsView
+      collaborators={collaborators || []}
+      user={user}
+      organizationLocations={locations || []}
+    />
   )
 }
 export default ManageCollaborators

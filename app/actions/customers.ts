@@ -34,3 +34,35 @@ export async function searchCustomers(query: string) {
 
   return customers;
 }
+
+export async function getAllCustomers() {
+  const supabase = await createClient();
+
+  // Get current user and organization
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !profile.organization_id) return [];
+
+  // Fetch all customers ordered by name
+  const { data: customers, error } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("organization_id", profile.organization_id)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching all customers:", error);
+    return [];
+  }
+
+  return customers;
+}

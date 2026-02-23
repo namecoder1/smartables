@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   if (user) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role, accessible_locations')
       .eq('id', user.id)
       .single()
 
@@ -51,10 +51,16 @@ export default async function DashboardPage() {
 
       organization = orgData
 
-      const { data: locData } = await supabase
+      let locationsQuery = supabase
         .from('locations')
         .select('*')
         .eq('organization_id', profile.organization_id)
+
+      if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+        locationsQuery = locationsQuery.in('id', profile.accessible_locations)
+      }
+
+      const { data: locData } = await locationsQuery
 
       locations = locData || []
       activeLocationId = (await cookies()).get("smartables-location-id")?.value
@@ -148,8 +154,8 @@ export default async function DashboardPage() {
           </BentoCard>
 
           {/* Today's Customers List - Bento Card */}
-          <BentoCard className="col-span-3 min-h-[400px]" title="Ospiti di Oggi" description={`${todaysBookings.length} prenotazioni confermate`}>
-            <div className="mt-6 space-y-2">
+          <BentoCard className="col-span-3 min-h-[400px] h-full" title="Ospiti di Oggi" description={`${todaysBookings.length} prenotazioni confermate`}>
+            <div className="mt-6 space-y-2 h-full">
               {todaysBookings.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
                   <div className="h-12 w-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">

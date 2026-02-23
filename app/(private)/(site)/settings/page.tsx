@@ -15,18 +15,24 @@ const SettingsPage = async () => {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id, role, accessible_locations')
     .eq('id', user.id)
     .single()
 
   if (!profile?.organization_id) return <div>No organization found</div>
   const organizationId = profile.organization_id
 
-  const { data: locations } = await supabase
+  let locationsQuery = supabase
     .from('locations')
     .select('*')
     .eq('organization_id', organizationId)
     .order('created_at')
+
+  if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+    locationsQuery = locationsQuery.in('id', profile.accessible_locations)
+  }
+
+  const { data: locations } = await locationsQuery
 
   return (
     <PageWrapper>
