@@ -6,7 +6,6 @@ import { Button } from '../ui/button'
 import { ShieldUser } from 'lucide-react'
 import { LuCircleUserRound } from "react-icons/lu";
 import Link from 'next/link'
-import { ModeToggle } from '../ui/mode-toggle'
 import { Profile } from '@/types/general'
 import { logout } from '@/utils/supabase/actions'
 import { useTheme } from 'next-themes'
@@ -54,10 +53,6 @@ export const UserMenu = ({ user, email }: { user: Profile | null, email: string 
           <Button variant='ghost' asChild className='w-full justify-start'>
             <Link href='/billing' className='cursor-pointer'>Gestisci Fatturazione</Link>
           </Button>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <ModeToggle variant='mini' />
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

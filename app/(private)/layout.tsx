@@ -75,12 +75,6 @@ export default async function PrivateLayout({
   const starredPages = await getStarredPages()
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem
-      disableTransitionOnChange
-    >
       <div className="fixed inset-0 h-full w-full">
         <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
           <OrganizationProvider
@@ -88,7 +82,7 @@ export default async function PrivateLayout({
           >
             <PageTitleProvider>
               <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
-              <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525] dark:bg-[#27251f]">
+              <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525]">
                 <Sidebar
                   collapsible="none"
                   className="hidden xl:flex bg-transparent"
@@ -110,7 +104,7 @@ export default async function PrivateLayout({
                     // @ts-ignore
                     complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
                   />
-                  <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-background dark:bg-[#1a1813] border-border h-full">
+                  <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-[#eeeeee] border-border h-full">
                     {isCanceled ? (
                       <RefundGate>{children}</RefundGate>
                     ) : (
@@ -123,6 +117,5 @@ export default async function PrivateLayout({
           </OrganizationProvider>
         </SidebarProvider>
       </div>
-    </ThemeProvider>
   );
 }

@@ -27,22 +27,22 @@ const ActionSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl bg-background dark:bg-[#1a1813] flex flex-col gap-0 p-0">
-        <SheetHeader className="p-4 border-b">
-          <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>
+      <SheetContent className="w-full sm:max-w-xl bg-background flex flex-col gap-0 p-0 overflow-hidden">
+        <SheetHeader className="p-6 border-b bg-white">
+          <SheetTitle className='text-2xl font-bold tracking-tight text-foreground'>{title}</SheetTitle>
+          <SheetDescription className='text-muted-foreground font-medium'>
             {description}
           </SheetDescription>
         </SheetHeader>
 
-        <ContentWrapper {...contentProps} className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <ContentWrapper {...contentProps} className="flex flex-col flex-1 overflow-hidden bg-zinc-50/50">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {children}
           </div>
 
-          <div className="flex justify-end gap-2 p-4 border-t mt-auto">
+          <div className="flex justify-end gap-3 p-6 border-t mt-auto bg-white">
             {formAction && (
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl px-6">Annulla</Button>
             )}
             {actionButtons}
           </div>

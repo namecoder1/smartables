@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ModeToggle } from "@/components/ui/mode-toggle"
 import { Separator } from "@/components/ui/separator"
 
 import PasswordStrength, { isPasswordValid } from "@/components/utility/password-strength"
@@ -215,8 +214,6 @@ export default function AcceptInvitePage() {
         </CardContent>
       </Card>
       <div className="flex flex-col items-center mt-4 gap-2">
-        <ModeToggle className="w-fit" />
-        <Separator />
         <div className="flex items-center gap-2">
           <Link href='/privacy-policy' className="text-xs hover:text-primary hover:underline underline-offset-2">Politica sulla privacy</Link>
           <Link href='/terms-of-service' className="text-xs hover:text-primary hover:underline underline-offset-2">Termini di servizio</Link>

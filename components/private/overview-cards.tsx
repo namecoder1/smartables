@@ -1,4 +1,3 @@
-import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
 const OverviewCards = ({
@@ -11,7 +10,7 @@ const OverviewCards = ({
   }[]
 }) => {
   return (
-    <div className='grid min-[510px]:grid-cols-3 gap-4'>
+    <div className='grid border-2 p-4 rounded-4xl bg-[#eeeeee] min-[510px]:grid-cols-3 gap-4'>
       {data.map((item, index) => (
         <Card key={index} className='gap-2 bg-card/80 shadow-none'>
           <CardHeader>

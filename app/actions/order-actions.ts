@@ -269,7 +269,7 @@ export async function getTableOrders(tableId: string) {
     `,
     )
     .eq("table_id", tableId)
-    .in("status", ["pending", "confirmed", "preparing", "served"])
+    .in("status", ["pending", "confirmed", "preparing", "ready", "served"])
     .order("created_at", { ascending: false });
 
   if (error) {

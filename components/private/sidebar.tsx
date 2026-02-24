@@ -125,7 +125,8 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                       asChild
                       isActive={pathname === entry.url || pathname.startsWith(entry.url + '/')}
                     >
-                      <Link href={entry.url}>
+                      <Link href={entry.url} className="flex items-center gap-2">
+                        <entry.icon className="size-5.5! text-white dark:text-foreground" />
                         <span className="font-medium text-white dark:text-foreground">{entry.label}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -147,7 +148,7 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                 >
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={entry.label} className="text-white dark:text-foreground">
+                      <SidebarMenuButton tooltip={entry.label} className="text-white dark:text-foreground border border-transparent hover:border-primary">
                         <div className="flex items-center gap-2">
                           {entry.icon && <entry.icon className="text-white dark:text-foreground size-5" />}
                           <span className="font-medium text-white dark:text-foreground">{entry.label}</span>

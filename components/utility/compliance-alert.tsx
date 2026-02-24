@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { useLocationStore } from "@/store/location-store"
 import { CircleQuestionMark, FileText } from "lucide-react"
 import Link from "next/link"
 
@@ -13,7 +14,9 @@ interface ComplianceAlertProps {
 }
 
 export default function ComplianceAlert({ context = 'sidebar', status, managedAccountId, complianceStatus }: ComplianceAlertProps) {
-
+  const {  getSelectedLocation} = useLocationStore()
+  const location = getSelectedLocation()
+  const activationStatus = location?.activation_status
 
   // Logic: Show alert if Organization is ACTIVE (phone verified) but no Managed Account/Docs yet.
 
@@ -49,6 +52,9 @@ export default function ComplianceAlert({ context = 'sidebar', status, managedAc
       </Alert>
     )
   }
+
+  console.log(status, activationStatus)
+  if (activationStatus === 'provisioning') return null
 
   return (
     <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-orange-200 bg-orange-50/50 p-4 dark:border-orange-900/50 dark:bg-orange-950/20">

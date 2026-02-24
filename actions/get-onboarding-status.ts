@@ -15,6 +15,7 @@ export type OnboardingData = {
   test: boolean;
   phoneNumber: string | null;
   activationStatus: string | null;
+  rejectionReason: string | null;
 };
 
 export async function getOnboardingStatus(
@@ -42,6 +43,7 @@ export async function getOnboardingStatus(
       test: false,
       phoneNumber: null,
       activationStatus: "pending",
+      rejectionReason: null,
     };
   }
 
@@ -49,20 +51,24 @@ export async function getOnboardingStatus(
   let documentsStatus = false;
   // For now: documents = approved.
 
+  let rejectionReason = null;
+
   if (location.regulatory_requirement_id) {
     const { data: requirement } = await supabase
       .from("telnyx_regulatory_requirements")
-      .select("status")
+      .select("status, rejection_reason")
       .eq("id", location.regulatory_requirement_id)
       .single();
 
-    if (
-      requirement &&
-      (requirement.status === "approved" ||
+    if (requirement) {
+      rejectionReason = requirement.rejection_reason;
+      if (
+        requirement.status === "approved" ||
         requirement.status === "pending" ||
-        requirement.status === "unapproved")
-    ) {
-      documentsStatus = true;
+        requirement.status === "unapproved"
+      ) {
+        documentsStatus = true;
+      }
     }
   }
 
@@ -89,5 +95,6 @@ export async function getOnboardingStatus(
     test: testStatus,
     phoneNumber: location.telnyx_phone_number || null,
     activationStatus: location.activation_status || "pending",
+    rejectionReason: rejectionReason,
   };
 }

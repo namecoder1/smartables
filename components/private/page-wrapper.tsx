@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 const PageWrapper = ({ children, className }: { children: React.ReactNode, className?: string }) => {
   return (
-    <section className={cn('p-6 xl:p-8 flex flex-col gap-6 min-h-full bg-background dark:bg-[#1a1813]', className)}>
+    <section className={cn('p-6 xl:p-8 flex flex-col gap-6 min-h-full', className)}>
       {children}
     </section>
   )

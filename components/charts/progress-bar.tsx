@@ -64,72 +64,80 @@ export function BookingProgressChart({ data }: Props) {
     })
   }, [data])
 
+  const daysOfWeek = {
+    'Monday': 'Lunedì',
+    'Tuesday': 'Martedì',
+    'Wednesday': 'Mercoledì',
+    'Thursday': 'Giovedì',
+    'Friday': 'Venerdì',
+    'Saturday': 'Sabato',
+    'Sunday': 'Domenica',
+  }
+
   return (
-    <Card className="border-none bg-transparent shadow-none py-0 mt-4">
-      <CardContent className="space-y-6 px-0">
-        {/* Top Segmented Bar */}
-        <div className="flex h-4 w-full overflow-hidden rounded-full">
-          {processedData.map((item) => (
-            <div
-              key={item.id}
-              className={`${item.color}`}
-              style={{ width: `${item.percentage}%` }}
-            />
-          ))}
-          {/* Remainder (gray) if needed, but usually top 5 won't cover 100% of all bookings. 
-              The design shows 100% width filled. 
-              If we want to show relative to TOTAL, we need a gray "other" filler.
-              If we want to represent just the distribution among these top ones, it changes logic.
-              Ref image: "Sales Pipeline" often sums to 100% of the pipeline.
-              Here "Top 5" might only be 30% of total bookings.
-              I will add a filler for the remaining % to make it realistic 100% bar.
-          */}
-          {processedData.reduce((acc, item) => acc + item.percentage, 0) < 100 && (
-            <div className="bg-muted flex-1" />
-          )}
-        </div>
+    <Card className="border-none bg-transparent shadow-none py-0 mt-0">
+      {/* Top Segmented Bar */}
+      <div className="flex h-4 w-full overflow-hidden rounded-full">
+        {processedData.map((item) => (
+          <div
+            key={item.id}
+            className={`${item.color}`}
+            style={{ width: `${item.percentage}%` }}
+          />
+        ))}
+        {/* Remainder (gray) if needed, but usually top 5 won't cover 100% of all bookings. 
+            The design shows 100% width filled. 
+            If we want to show relative to TOTAL, we need a gray "other" filler.
+            If we want to represent just the distribution among these top ones, it changes logic.
+            Ref image: "Sales Pipeline" often sums to 100% of the pipeline.
+            Here "Top 5" might only be 30% of total bookings.
+            I will add a filler for the remaining % to make it realistic 100% bar.
+        */}
+        {processedData.reduce((acc, item) => acc + item.percentage, 0) < 100 && (
+          <div className="bg-muted flex-1" />
+        )}
+      </div>
 
-        {/* List */}
-        <div className="space-y-4">
-          {processedData.map((item) => (
-            <div key={item.id} className="flex items-center justify-between">
-              {/* Left Label */}
-              <div className="flex items-start gap-3">
+      {/* List */}
+      <div className="space-y-4 border-t pt-6">
+        {processedData.map((item) => (
+          <div key={item.id} className="flex items-center justify-between">
+            {/* Left Label */}
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-1.5 h-3 w-3 rounded-full ${item.color}`}
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium leading-none">
+                  {daysOfWeek[item.label as keyof typeof daysOfWeek]} <span className="text-muted-foreground font-normal">alle {item.displayTime}</span>
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {item.count} prenotazion{item.count === 1 ? "e" : "i"} ({item.guests} ospit{item.guests === 1 ? "o" : "i"})
+                </p>
+              </div>
+            </div>
+
+            {/* Right Progress */}
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
                 <div
-                  className={`mt-1.5 h-3 w-3 rounded-full ${item.color}`}
+                  className={`h-full ${item.color}`}
+                  style={{ width: `${item.percentage}%` }}
                 />
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium leading-none">
-                    {item.label} <span className="text-muted-foreground font-normal">at {item.displayTime}</span>
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {item.count} bookings ({item.guests} guests)
-                  </p>
-                </div>
               </div>
-
-              {/* Right Progress */}
-              <div className="flex items-center gap-3">
-                <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full ${item.color}`}
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-                <span className="text-muted-foreground text-sm w-8 text-right">
-                  {item.percentage}%
-                </span>
-              </div>
+              <span className="text-muted-foreground text-sm w-8 text-right">
+                {item.percentage}%
+              </span>
             </div>
-          ))}
+          </div>
+        ))}
 
-          {processedData.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-4">
-              No booking data available.
-            </div>
-          )}
-        </div>
-      </CardContent>
+        {processedData.length === 0 && (
+          <div className="text-center text-sm text-muted-foreground py-4">
+            No booking data available.
+          </div>
+        )}
+      </div>
     </Card>
   )
 }

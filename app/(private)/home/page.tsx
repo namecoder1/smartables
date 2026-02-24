@@ -46,6 +46,7 @@ const HomePage = async () => {
     voice: false,
     branding: false,
     test: false,
+    rejectionReason: null,
     phoneNumber: null,
     activationStatus: "pending"
   }

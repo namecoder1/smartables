@@ -100,9 +100,31 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
                   </div>
 
                   {!isCompleted && (
-                    <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                      {step.description}
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                        {step.description}
+                      </p>
+
+                      {step.id === 'docs' && data.rejectionReason && (
+                        <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex gap-3 items-start animate-in fade-in zoom-in-95 duration-300">
+                          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                          <div className="space-y-1 text-left">
+                            <p className="text-xs font-bold text-red-800">Documenti Rifiutati da Telnyx</p>
+                            <p className="text-xs text-red-700 leading-relaxed font-medium">{data.rejectionReason}</p>
+                            <Button
+                              variant="link"
+                              className="h-auto p-0 text-red-800 hover:text-red-900 text-xs font-bold underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(step.link);
+                              }}
+                            >
+                              Carica di nuovo i documenti
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Active Step Actions */}

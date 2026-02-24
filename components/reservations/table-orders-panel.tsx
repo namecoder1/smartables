@@ -21,17 +21,19 @@ interface TableOrdersPanelProps {
   tableName: string;
   locationId: string;
   refreshTrigger: number;
-  guestCount: number
+  guestCount: number;
+  initialMode?: 'view' | 'add';
+  onOrderSubmit?: () => void;
 }
 
-export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigger, guestCount }: TableOrdersPanelProps) {
+export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigger, guestCount, initialMode = 'view', onOrderSubmit }: TableOrdersPanelProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { getSelectedLocation } = useLocationStore()
   const location = getSelectedLocation();
 
   // Quick Add State
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, setIsAdding] = useState(initialMode === 'add');
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
@@ -176,6 +178,9 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
       toast.success("Ordine inviato con successo!");
       setIsAdding(false);
       setDraftItems([]);
+      if (onOrderSubmit) {
+        onOrderSubmit();
+      }
     } catch (e) {
       toast.error("Errore durante l'invio dell'ordine");
     } finally {
@@ -194,9 +199,12 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
 
   if (isAdding) {
     return (
-      <div className="flex flex-col h-[70vh] max-h-[750px] relative -mx-6  sm:mx-0 sm:my-0 sm:h-[650px] overflow-hidden bg-background">
+      <div className="flex flex-col h-[70vh] max-h-[750px] relative -mx-6 sm:mx-0 sm:my-0 sm:h-[650px] overflow-hidden bg-background">
         <div className="flex flex-col gap-3 p-4 border-b bg-card z-10 shrink-0">
           <div className="flex items-center gap-2 relative">
+            <Button variant="ghost" size="icon" className="shrink-0 -ml-2 text-muted-foreground mr-1 h-9 w-9" onClick={() => setIsAdding(false)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -228,8 +236,7 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
           </ScrollArea>
         </div>
 
-        {/* Categories / Grid items */}
-        <ScrollArea className="flex-1 px-4 py-4 bg-muted/10">
+        <div className="flex-1 overflow-y-auto bg-muted/10 p-4" data-vaul-no-drag>
           {loadingMenu ? (
             <div className="flex flex-col items-center justify-center p-10 h-full text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -280,11 +287,10 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
-        {/* Draft Summary Footer */}
         {draftItems.length > 0 && (
-          <div className="shrink-0 bg-background border-t shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.15)] z-20">
+          <div className="shrink-0 h-56 overflow-y-auto bg-background border rounded-xl shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.15)] z-20">
             <div className="p-3 border-b flex justify-between items-center bg-card">
               <div className="font-semibold text-sm flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4 text-primary" /> Riepilogo {draftCount} {draftCount === 1 ? 'prodotto' : 'prodotti'}
@@ -292,7 +298,7 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
               <div className="font-bold text-lg text-primary">€{draftTotal.toFixed(2)}</div>
             </div>
 
-            <ScrollArea className="max-h-[300px] px-2 py-1 bg-background/50 backdrop-blur">
+            <div className="max-h-[30vh] overflow-y-auto px-2 py-1 bg-background/50 backdrop-blur" data-vaul-no-drag>
               <div className="divide-y w-full">
                 {draftItems.map(item => (
                   <div key={item.id} className="flex justify-between items-start py-2 px-1 w-full">
@@ -351,7 +357,7 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="p-3 pt-2 bg-card">
               <Button className="w-full rounded-xl h-12 font-bold text-base shadow-sm active:scale-[0.98] transition-all" onClick={submitOrder} disabled={isSubmitting}>
@@ -362,20 +368,18 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
           </div>
         )}
       </div>
-    )
+    );
   }
 
-
-
   return (
-    <div className="flex flex-col h-fit max-h-[600px]">
-      <ScrollArea className="flex-1 -mx-2 px-2">
+    <div className="flex flex-col h-fit overflow-hidden sm:-mb-4 relative">
+      <div className="flex-1 overflow-y-auto p-4" data-vaul-no-drag>
         {orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[300px] text-center bg-muted/20 rounded-2xl border border-dashed my-4">
             <div className="bg-background p-4 rounded-full shadow-sm border mb-4">
               <UtensilsCrossed className="w-8 h-8 text-muted-foreground opacity-70" />
             </div>
-            <p className="font-semibold text-lg text-foreground">Il tavolo è vuoto</p>
+            <p className="font-semibold text-lg text-foreground">Nessun ordine qui</p>
             <p className="text-sm text-muted-foreground max-w-[250px] mt-1">Non ci sono ordini per questo tavolo o sono stati già incassati.</p>
           </div>
         ) : (
@@ -424,19 +428,19 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
                             </td>
                           </tr>
                         ))}
-                          <tr className="hover:bg-muted/30 transition-colors">
-                            <td className="py-2.5 pl-3 pr-2 w-10 text-center font-bold text-foreground/70">x{guestCount}</td>
-                            <td className="py-2.5 px-2">
-                              <div className="font-medium text-foreground leading-tight">Coperto</div>
-                            </td>
-                            <td className="py-2.5 px-2 text-right font-medium text-muted-foreground">€{(location?.cover_price || 0).toFixed(2)}</td>
-                            <td className="py-2.5 pl-2 pr-3 w-8 text-right">
-                              <div
-                                className={`inline-block w-2.5 h-2.5 rounded-full ring-2 ring-background bg-orange-400 animate-pulse`}
-                                title='ciao'
-                              />
-                            </td>
-                          </tr>
+                        <tr className="hover:bg-muted/30 transition-colors">
+                          <td className="py-2.5 pl-3 pr-2 w-10 text-center font-bold text-foreground/70">x{guestCount}</td>
+                          <td className="py-2.5 px-2">
+                            <div className="font-medium text-foreground leading-tight">Coperto</div>
+                          </td>
+                          <td className="py-2.5 px-2 text-right font-medium text-muted-foreground">€{(location?.cover_price || 0).toFixed(2)}</td>
+                          <td className="py-2.5 pl-2 pr-3 w-8 text-right">
+                            <div
+                              className={`inline-block w-2.5 h-2.5 rounded-full ring-2 ring-background bg-orange-400 animate-pulse`}
+                              title='ciao'
+                            />
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -450,17 +454,15 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
             })}
           </div>
         )}
-      </ScrollArea>
-
-      <div className="mt-4 pt-4 border-t flex items-center justify-between gap-3 shrink-0">
-        <Button variant="outline" className="flex-1 h-12 rounded-xl border border-dashed font-semibold active:scale-[0.98] transition-transform" onClick={() => toast.info("Funzionalità in arrivo")}>
-          <ReceiptEuro className="w-4 h-4 mr-2 text-muted-foreground" /> Incassa
-        </Button>
-        <Button variant="default" className="flex-1 h-12 rounded-xl font-bold shadow-md active:scale-[0.98] transition-transform" onClick={() => setIsAdding(true)}>
-          <Plus className="w-5 h-5 mr-1" /> Nuovo Ordine
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 h-12 rounded-xl border border-dashed font-semibold active:scale-[0.98] transition-transform" onClick={() => toast.info("Funzionalità in arrivo")}>
+            <ReceiptEuro className="w-4 h-4 mr-2 text-muted-foreground" /> Incassa
+          </Button>
+          <Button variant="default" className="flex-1 h-12 rounded-xl font-bold shadow-md active:scale-[0.98] transition-transform" onClick={() => setIsAdding(true)}>
+            <Plus className="w-5 h-5 mr-1" /> Nuovo Ordine
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
-

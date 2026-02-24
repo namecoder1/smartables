@@ -1,11 +1,15 @@
 import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users } from "lucide-react"
 import { GiTable } from "react-icons/gi";
 import { PiForkKnifeFill, PiToolboxFill, PiListChecksFill } from "react-icons/pi";
-import { MdMenuBook } from "react-icons/md";
+import { MdDashboard, MdMenuBook } from "react-icons/md";
 import { MdDashboardCustomize } from "react-icons/md";
-import { RiTeamFill } from "react-icons/ri";
+import { RiMegaphoneLine, RiTeamFill } from "react-icons/ri";
 import { IoBookSharp } from "react-icons/io5";
 import { GrDocumentUser } from "react-icons/gr";
+import { LuListTodo, LuCalendarCheck, LuNotebookPen, LuBookOpenText, LuLayoutDashboard } from "react-icons/lu";
+import { LiaTableSolid } from "react-icons/lia";
+import { FaUsers, FaUsersLine } from "react-icons/fa6";
+import { TbRosetteDiscount } from "react-icons/tb";
 
 export type RouteItem = {
   title: string;
@@ -38,78 +42,92 @@ export const isRouteGroup = (entry: RouteEntry): entry is RouteGroup => {
 export const routes = {
   platform: [
     {
-      label: "Sala",
-      icon: PiForkKnifeFill,
+      label: 'Dashboard',
+      icon: LuLayoutDashboard,
+      url: '/dashboard',
+    },
+    {
+      label: "Prenotazioni",
+      icon: LuCalendarCheck,
       items: [
         {
-          title: "Dashboard",
-          url: "/dashboard",
-          icon: Home,
+          title: "Mappa prenotazioni",
+          url: "/area-management",
+          icon: LiaTableSolid,
         },
         {
-          title: "Gestione sala",
-          url: "/reservations",
-          icon: ListTodo,
+          title: "Vista prenotazioni",
+          url: "/reservations-management",
+          icon: FaUsersLine,
         },
         {
-          title: "Calendario",
-          url: "/calendar",
+          title: "Calendario prenotazioni",
+          url: "/reservations-calendar",
           icon: Calendar,
         },
       ],
     },
     {
-      label: "Gestisci",
-      icon: MdDashboardCustomize,
-      items: [
-        {
-          title: "Gestione sale",
-          url: "/manage-seats",
-          icon: GiTable,
-        },
-        {
-          title: "Gestione menù",
-          url: "/manage-menus",
-          icon: MdMenuBook,
-        },
-      ],
+      label: "Menù",
+      icon: LuBookOpenText,
+      url: "/menus-management",
     },
     {
-      label: "Strumenti",
-      icon: PiToolboxFill,
+      label: "Clienti",
+      icon: Users,
+      url: "/clients",
+    },
+    {
+      label: "Ordini",
+      icon: LuNotebookPen,
+      url: "/orders",
+    },
+    {
+      label: "Analitiche",
+      icon: ChartSpline,
+      url: "/analytics",
+    },
+    {
+      label: "Gestione ristorante",
+      icon: PiForkKnifeFill,
       items: [
         {
-          title: "Analitiche",
-          url: "/analytics",
-          icon: ChartSpline,
+          title: "Mappe ristorante",
+          url: "/areas-management",
+          icon: LiaTableSolid,
         },
         {
-          title: "Modulistica",
+          title: "Dettagli ristorante",
+          url: "/site-settings",
+          icon: LiaTableSolid,
+        },
+        { 
+          title: "Modulistica ristorante",
           url: "/compliance",
-          icon: GrDocumentUser,
-        },
-        {
-          title: "Impostazioni sede",
-          url: "/settings",
-          icon: Settings,
-        },
-      ],
+          icon: LiaTableSolid,
+        }
+      ]
+    },
+    {
+      label: "Collaboratori",
+      icon: FaUsers,
+      url: "/collaborators-management",
+    },
+    {
+      label: "Promozioni",
+      icon: TbRosetteDiscount,
+      url: "/promotions",
     },
   ] as RouteEntry[],
   organization: [
     {
-      label: "Organizzazione",
+      label: "Gestione Organizzazione",
       icon: RiTeamFill,
       items: [
         {
-          title: "Gestisci sedi",
-          url: "/manage-activities",
+          title: "Gestione sedi",
+          url: "/activities-management",
           icon: Store,
-        },
-        {
-          title: "Gestisci collaboratori",
-          url: "/manage-collaborators",
-          icon: Users,
         },
         {
           title: "Fatturazione",

@@ -96,7 +96,7 @@ async function AutomationStatusTable() {
     .select(`
       *,
       organization:organization_id ( name ),
-      requirement:regulatory_requirement_id ( id, status, telnyx_requirement_group_id )
+      requirement:regulatory_requirement_id ( id, status, telnyx_requirement_group_id, rejection_reason )
     `)
     .order('created_at', { ascending: false })
     .not('regulatory_requirement_id', 'is', null)
@@ -153,6 +153,12 @@ function AutomationCard({ location }: { location: any }) {
             {reqStatus}
           </Badge>
         </div>
+
+        {location.requirement?.rejection_reason && (
+          <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-700">
+            <strong>Rifiuto:</strong> {location.requirement.rejection_reason}
+          </div>
+        )}
 
 
         {/* STUCK STATE: Pending but no Telnyx Group ID */}

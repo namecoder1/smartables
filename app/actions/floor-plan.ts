@@ -104,13 +104,17 @@ export async function saveFloorPlan(
         position_y: t.y,
         rotation: t.rotation,
         width:
-          t.type === "circle" || t.type === "plant" || t.radius
+          t.type === "circle" ||
+          t.type === "plant" ||
+          (t.type === "column" && t.radius)
             ? t.radius
               ? t.radius * 2
               : t.width
             : t.width,
         height:
-          t.type === "circle" || t.type === "plant" || t.radius
+          t.type === "circle" ||
+          t.type === "plant" ||
+          (t.type === "column" && t.radius)
             ? t.radius
               ? t.radius * 2
               : t.height

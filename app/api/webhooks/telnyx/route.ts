@@ -18,16 +18,77 @@ export async function POST(req: Request) {
 
     const supabase = createAdminClient();
 
+    // 1. Identify Location and Organization for logging
+    let locationId = null;
+    let organizationId = null;
+
+    try {
+      if (eventType.startsWith("requirement_group.") && payload.id) {
+        const { data: reqData } = await supabase
+          .from("telnyx_regulatory_requirements")
+          .select("location_id, organization_id")
+          .eq("telnyx_requirement_group_id", payload.id)
+          .maybeSingle();
+
+        if (reqData) {
+          locationId = reqData.location_id;
+          organizationId = reqData.organization_id;
+        }
+      } else if (
+        payload.phone_number ||
+        (payload.phone_numbers && payload.phone_numbers[0]?.phone_number)
+      ) {
+        const phoneNumber =
+          payload.phone_number || payload.phone_numbers[0]?.phone_number;
+        const { data: locData } = await supabase
+          .from("locations")
+          .select("id, organization_id")
+          .eq("telnyx_phone_number", phoneNumber)
+          .maybeSingle();
+
+        if (locData) {
+          locationId = locData.id;
+          organizationId = locData.organization_id;
+        }
+      } else if (payload.to) {
+        const { data: locData } = await supabase
+          .from("locations")
+          .select("id, organization_id")
+          .eq("telnyx_phone_number", payload.to)
+          .maybeSingle();
+
+        if (locData) {
+          locationId = locData.id;
+          organizationId = locData.organization_id;
+        }
+      }
+
+      // 2. Log Webhook Event
+      await supabase.from("telnyx_webhook_logs").insert({
+        event_type: eventType,
+        payload: body,
+        location_id: locationId,
+        organization_id: organizationId,
+      });
+    } catch (logError) {
+      console.error("[Telnyx Webhook] Error logging event:", logError);
+    }
+
     if (eventType === "requirement_group.status_updated") {
       // requirement_group.status_updated
       // payload: { id: "...", status: "approved" | "rejected" | ... }
       const status = payload.status;
       const id = payload.id;
+      const rejectionReason =
+        payload.suborder_comments || payload.rejection_reason || null;
 
       // 1. Update Requirement Status
       const { data: reqGroup, error: updateError } = await supabase
         .from("telnyx_regulatory_requirements")
-        .update({ status: status })
+        .update({
+          status: status,
+          rejection_reason: rejectionReason,
+        })
         .eq("telnyx_requirement_group_id", id)
         .select("location_id, organization_id")
         .single();

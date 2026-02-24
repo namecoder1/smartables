@@ -47,3 +47,41 @@ export async function unassignBooking(bookingId: string) {
 
   revalidatePath("/(private)/(org)/reservations");
 }
+
+export async function createWalkInBooking(
+  locationId: string,
+  tableId: string,
+  guestsCount: number,
+) {
+  const supabase = await createClient();
+
+  const { data: loc } = await supabase
+    .from("locations")
+    .select("organization_id")
+    .eq("id", locationId)
+    .single();
+
+  if (!loc) throw new Error("Location non trovata");
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({
+      organization_id: loc.organization_id,
+      location_id: locationId,
+      table_id: tableId,
+      guest_name: "Walk-in",
+      guests_count: guestsCount,
+      booking_time: new Date().toISOString(),
+      status: "confirmed",
+      notes: "",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/(private)/(org)/reservations");
+  return data;
+}

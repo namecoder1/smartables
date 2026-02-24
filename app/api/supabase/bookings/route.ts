@@ -6,6 +6,8 @@ export async function GET(request: Request) {
   const sort = searchParams.get("sort") || "desc";
   const status = searchParams.get("status");
   const locationId = searchParams.get("location_id");
+  const start = searchParams.get("start");
+  const end = searchParams.get("end");
 
   const supabase = await createClient();
 
@@ -20,6 +22,10 @@ export async function GET(request: Request) {
 
   if (locationId) {
     query = query.eq("location_id", locationId);
+  }
+
+  if (start && end) {
+    query = query.gte("booking_time", start).lte("booking_time", end);
   }
 
   const { data, error } = await query;

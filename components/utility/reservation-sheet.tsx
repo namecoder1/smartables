@@ -31,7 +31,7 @@ type BookingWithCustomer = any
 type Customer = {
   id: string
   name: string
-  phone: string
+  phone_number: string
 }
 
 interface ReservationSheetProps {
@@ -249,7 +249,7 @@ const ReservationSheet = ({
       actionButtons={<Button type="submit" disabled={isPending}>{isPending ? 'Salvataggio...' : (booking ? 'Salva modifiche' : 'Aggiungi')}</Button>}
     >
       <div className='flex flex-col gap-4'>
-        <div className="flex flex-row items-center rounded-xl dark:bg-input/30 bg-background justify-between border p-3 shadow-sm">
+        <div className="flex flex-row items-center rounded-xl dark:bg-input/30 bg-background justify-between border p-4 shadow-sm">
           <div className="space-y-0.5">
             <Label className='text-base'>Cliente conosciuto?</Label>
           </div>
@@ -302,11 +302,11 @@ const ReservationSheet = ({
                         {customers.map((customer) => (
                           <CommandItem
                             key={customer.id}
-                            value={`${customer.name} ${customer.phone}`}
+                            value={`${customer.name} ${customer.phone_number}`}
                             onSelect={() => {
                               setSelectedCustomer(customer.id)
                               setName(customer.name)
-                              setPhone(customer.phone || '')
+                              setPhone(customer.phone_number || '')
                               setOpenCombobox(false)
                             }}
                           >
@@ -316,7 +316,7 @@ const ReservationSheet = ({
                                 selectedCustomer === customer.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {customer.name} 
+                            {customer.name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -361,8 +361,8 @@ const ReservationSheet = ({
           </div>
         )}
 
-        <div className='flex gap-2'>
-          <div className='flex flex-col items-start gap-2'>
+        <div className='grid grid-cols-3 gap-2'>
+          <div className='flex flex-col items-start gap-2 min-w-0'>
             <Label>Numero di coperti</Label>
             <NumberInput
               id='guests'
@@ -376,19 +376,19 @@ const ReservationSheet = ({
             />
           </div>
 
-          <div className="flex flex-1 flex-col gap-2">
+          <div className="flex flex-col gap-2 min-w-0">
             <Label>Data</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal px-3",
                     !date && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: it }) : <span>Seleziona data</span>}
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">{date ? format(date, "PPP", { locale: it }) : "Scegli data"}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -410,13 +410,15 @@ const ReservationSheet = ({
             </Popover>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 min-w-0">
             <Label>Orario</Label>
             <Select value={time} onValueChange={setTime} disabled={!date || timeSlots.length === 0}>
-              <SelectTrigger className="w-fit">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <SelectValue placeholder={!date ? "Prima seleziona una data" : (timeSlots.length === 0 ? "Chiuso" : "Seleziona orario")} />
+              <SelectTrigger className="w-full px-3 text-left">
+                <div className="flex items-center min-w-0 overflow-hidden">
+                  <Clock className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">
+                    <SelectValue placeholder={!date ? "Manca data" : (timeSlots.length === 0 ? "Chiuso" : "Scegli...")} />
+                  </span>
                 </div>
               </SelectTrigger>
               <SelectContent position='popper' align='end' className='max-h-96'>

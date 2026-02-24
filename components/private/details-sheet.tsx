@@ -1,13 +1,12 @@
 import { BookingWithCustomer } from '@/types/components'
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Clock, Info, Notebook, Phone, User, Users } from "lucide-react"
-import { getStatusBadgeVariant, mapStatusLabel } from '@/lib/utils'
-import { format } from 'date-fns'
+import { format, isSameDay, isToday, isTomorrow } from 'date-fns'
 import { it } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { deleteBooking } from '@/utils/supabase/actions'
 import ActionSheet from '../utility/action-sheet'
+import { Phone, Grid } from 'lucide-react'
+import { mapStatusLabel } from '@/lib/utils'
+import { formatPhoneNumber } from 'react-phone-number-input'
 
 interface DetailsSheetProps {
   isSheetOpen: boolean
@@ -29,7 +28,7 @@ const DetailsSheet = ({
     <>
       <Button
         variant="outline"
-        className="w-full sm:w-auto"
+        className="w-full sm:w-auto rounded-xl px-6 font-semibold"
         onClick={() => {
           if (onEdit) {
             onEdit(selectedBooking)
@@ -40,11 +39,10 @@ const DetailsSheet = ({
       </Button>
       <Button
         variant="destructive"
-        className="w-full sm:w-auto"
+        className="w-full sm:w-auto rounded-xl px-6 font-semibold"
         onClick={async () => {
           const res = await deleteBooking(selectedBooking.id)
           if (res?.error) {
-            // toast.error(res.error)
             console.error(res.error)
           } else {
             setIsSheetOpen(false)
@@ -52,7 +50,7 @@ const DetailsSheet = ({
           }
         }}
       >
-        Elimina Prenotazione
+        Elimina
       </Button>
     </>
   ) : null;
@@ -61,96 +59,108 @@ const DetailsSheet = ({
     <ActionSheet
       open={isSheetOpen}
       onOpenChange={setIsSheetOpen}
-      title="Dettagli Prenotazione"
-      description="Informazioni complete sulla prenotazione selezionata."
+      title="Dettaglio Prenotazione"
+      description="Informazioni e gestione della prenotazione"
       actionButtons={actionButtons}
     >
       {selectedBooking && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-muted-foreground" />
-              {selectedBooking.guest_name}
-            </h3>
-            <Badge variant={getStatusBadgeVariant(selectedBooking.status)}>
-              <div className="flex items-center gap-2">
-                {mapStatusLabel(selectedBooking.status)}
+        <div className="flex flex-col space-y-5">
+          <div className="bg-white rounded-3xl border border-border shadow-sm">
+            <div className="flex items-center justify-between border-b bg-zinc-100/50 rounded-t-3xl px-4 py-5 shadow-sm">
+              <p className='text-sm font-bold uppercase tracking-wider'>Stato Prenotazione</p>
+              <div className={`px-4 py-1.5 rounded-full ${selectedBooking.status === "confirmed" ? "bg-[#cdf1bf]" :
+                selectedBooking.status === "arrived" ? "bg-blue-100" :
+                  "bg-zinc-100"
+                }`}>
+                <span className={`text-[12px] font-bold uppercase tracking-wider ${selectedBooking.status === "confirmed" ? "text-[#287907]" :
+                  selectedBooking.status === "arrived" ? "text-blue-700" :
+                    "text-zinc-600"
+                  }`}>
+                  {mapStatusLabel(selectedBooking.status)}
+                </span>
               </div>
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-            <Phone className="h-4 w-4" />
-            <span>{selectedBooking.guest_phone}</span>
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <Users className="h-4 w-4" /> Ospiti
-              </span>
-              <p className="font-medium">{selectedBooking.guests_count} Persone</p>
             </div>
-            <div className="space-y-1">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Orario
-              </span>
-              <p className="font-medium">
-                {format(new Date(selectedBooking.booking_time), "d MMMM yyyy, HH:mm", { locale: it })}
-              </p>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div>
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              <User className="h-4 w-4" /> Dettagli Cliente
-            </h4>
-            {selectedBooking.customer ? (
-              <div className="grid grid-cols-2 gap-4 p-2 text-sm bg-muted/50 pt-2 rounded-md">
+            <div className='p-6'>
+              <div className="flex justify-between items-center border-b pb-4 mb-4">
                 <div>
-                  <span className="text-xs text-muted-foreground block">Nome</span>
-                  <span className="font-medium">{selectedBooking.customer.name}</span>
+                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Cliente</p>
+                  <h4 className="text-2xl font-bold text-foreground tracking-tight">{selectedBooking.guest_name}</h4>
+                  <p className="text-sm font-light text-foreground tracking-tight mt-2">{formatPhoneNumber(selectedBooking.guest_phone)}</p>
                 </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block">Telefono</span>
-                  <span className="font-medium">{selectedBooking.customer.phone_number}</span>
+                <a href={`tel:${selectedBooking.guest_phone}`} className="flex items-center justify-center w-12 h-12 bg-[#cdf1bf]/30 rounded-full border border-[#cdf1bf]/50 ml-2 hover:bg-[#cdf1bf]/50 transition-colors">
+                  <Phone className="w-5 h-5 text-[#287907]" />
+                </a>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5">
+                <div className="flex flex-col justify-center border-r pr-5">
+                  <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2">Data e Ora</p>
+                  <div className="flex flex-col">
+                    <p className="text-3xl font-extrabold tracking-tighter text-foreground">
+                      {format(new Date(selectedBooking.booking_time), "HH:mm")}
+                    </p>
+                    <p className="text-sm font-bold mt-0.5 capitalize text-zinc-500">
+                      {isToday(new Date(selectedBooking.booking_time)) ? "Oggi" : isTomorrow(new Date(selectedBooking.booking_time)) ? "Domani" : format(new Date(selectedBooking.booking_time), "EEE d MMMM", { locale: it })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block">Visite Totali</span>
-                  <span className="font-medium">{selectedBooking.customer.total_visits}</span>
+
+                <div className="flex flex-col justify-between">
+                  <p className=" text-sm font-bold uppercase tracking-wider mb-2">Ospiti</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-4xl font-black tracking-tighter text-foreground">
+                      {selectedBooking.guests_count}
+                    </p>
+                    <span className="text-sm font-bold text-zinc-500 uppercase">persone</span>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div>
-                <p className="text-muted-foreground text-sm">Questo cliente non ha un profilo</p>
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="rounded-3xl border border-border">
+            <p className="text-sm bg-zinc-100/50 font-bold rounded-t-3xl px-4 py-5 uppercase tracking-wider border-b">Note Prenotazione</p>
+            <p className="text-base p-4 leading-relaxed font-medium text-muted-foreground">{selectedBooking.notes || "Nessuna nota comunicata."}</p>
+          </div>
+
+          {/* Extra / Stats Cliente */}
+          {selectedBooking.customer && (
+            <div className="rounded-3xl border border-border">
+              <p className="text-sm bg-zinc-100/50 font-bold rounded-t-3xl px-4 py-5 uppercase tracking-wider border-b">Statistiche Cliente</p>
+              <div className="grid grid-cols-3 gap-2 p-4">
+                <div>
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Visite Totali</span>
+                  <span className="font-bold text-2xl tracking-tight">{selectedBooking.customer.total_visits}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Spesa media</span>
+                  <span className="font-bold text-2xl tracking-tight">34€</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Coperti medi</span>
+                  <span className="font-bold text-2xl tracking-tight">4</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-2 flex items-center justify-between flex-wrap gap-4 px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Canale</span>
+              <span className="text-sm font-bold text-foreground px-3 py-1 bg-zinc-100 rounded-lg capitalize">
+                {selectedBooking.source ? selectedBooking.source.replace('_', ' ') : 'Sconosciuta'}
+              </span>
+            </div>
+
+            {selectedBooking.table_id && (
+              <div className="flex items-center bg-[#cdf1bf]/30 px-3 py-1.5 rounded-full border border-[#cdf1bf]/50">
+                <Grid className="w-4 h-4 text-[#287907] mr-1.5" />
+                <span className="text-[#287907] font-bold text-[11px] uppercase tracking-wider">Tavolo Assegnato</span>
               </div>
             )}
           </div>
 
-          <Separator />
-
-          <div className='flex flex-col gap-4'>
-            <div className="space-y-2">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <Notebook className="h-4 w-4" /> Note aggiuntive
-              </span>
-              <p className="bg-muted p-2 rounded text-sm block w-full overflow-hidden text-ellipsis">
-                {selectedBooking.notes || 'Nessuna nota'}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <Info className="h-4 w-4" /> ID Prenotazione
-              </span>
-              <code className="bg-muted p-1 rounded text-xs block w-full overflow-hidden text-ellipsis">
-                {selectedBooking.id}
-              </code>
-            </div>
-          </div>
         </div>
       )}
     </ActionSheet>

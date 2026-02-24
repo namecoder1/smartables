@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Users, Clock, ZoomIn, ZoomOut, Printer, ScrollText } from 'lucide-react';
 import Link from 'next/link';
+import { ResponsiveDialog } from '@/components/utility/responsive-dialog';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +31,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TableOrdersPanel } from "./table-orders-panel";
-import { QRCodeSVG } from 'qrcode.react';
 import { NumberInput } from '../ui/number-input';
+import { cn } from '@/lib/utils';
 
 
 interface ReservationsFloorPlanProps {
@@ -39,14 +40,16 @@ interface ReservationsFloorPlanProps {
   selectedDate: Date;
   bookings: Booking[];
   onAssignmentChange?: () => void;
+  onTableSelect?: (table: any, booking: Booking | undefined, hasActiveOrder: boolean) => void;
 }
 
-export default function ReservationsFloorPlan({ locationId, selectedDate, bookings, onAssignmentChange }: ReservationsFloorPlanProps) {
+export default function ReservationsFloorPlan({ locationId, selectedDate, bookings, onAssignmentChange, onTableSelect }: ReservationsFloorPlanProps) {
   const { theme, systemTheme } = useTheme();
   const [zones, setZones] = useState<any[]>([]);
   const [tables, setTables] = useState<any[]>([]);
   const [currentZone, setCurrentZone] = useState<any>(null);
   const [locationSlug, setLocationSlug] = useState<string>(""); // Added state
+  const [showAssignCard, setShowAssignCard] = useState<boolean>(false);
   // ...
 
   const [activeOrderTableIds, setActiveOrderTableIds] = useState<Set<string>>(new Set());
@@ -70,7 +73,8 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
     booking: Booking | null;
     table: any | null;
     activeTab?: string;
-  }>({ open: false, booking: null, table: null, activeTab: 'booking' });
+    refreshTrigger?: number;
+  }>({ open: false, booking: null, table: null, activeTab: 'booking', refreshTrigger: 0 });
 
   // Form State for Editing
   const [editForm, setEditForm] = useState({
@@ -342,12 +346,18 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
     const existingBooking = getBookingForTable(table.id);
     const hasActiveOrder = activeOrderTableIds.has(table.id);
 
+    if (onTableSelect) {
+      onTableSelect(table, existingBooking, hasActiveOrder);
+      return;
+    }
+
     if (existingBooking || hasActiveOrder) {
       setEditDialog({
         open: true,
         booking: existingBooking || null,
         table,
-        activeTab: existingBooking ? 'booking' : 'orders'
+        activeTab: existingBooking ? 'booking' : 'orders',
+        refreshTrigger: Date.now()
       });
 
       if (existingBooking) {
@@ -388,45 +398,48 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
     }
   };
 
+
   return (
-    <div className="flex h-[calc(100vh-220px)]">
+    <div className="flex h-[calc(100vh-220px)] relative">
       {/* Sidebar: Unassigned Bookings */}
-      <Card className="w-80 shrink-0 rounded-r-none flex flex-col">
-        <CardHeader>
-          <CardTitle className="text-lg">Da Assegnare ({unassignedBookings.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="flex flex-col gap-2 p-4 pt-0">
-              {unassignedBookings.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground py-4">Nessuna prenotazione da assegnare.</p>
-              )}
-              {unassignedBookings.map(booking => (
-                <div
-                  key={booking.id}
-                  onClick={() => setSelectedBooking(booking)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedBooking?.id === booking.id ? 'bg-zinc-100 dark:bg-zinc-800 border-primary' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'}`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-sm truncate">{booking.guest_name}</span>
-                    <Badge variant="outline" className="text-xs">{format(new Date(booking.booking_time), 'HH:mm')}</Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {booking.guests_count}
+      {!onTableSelect && (
+        <Card className={cn("w-80 shrink-0 rounded-r-none flex-col", showAssignCard ? "flex absolute top-0 left-0 z-10 h-full" : "hidden xl:flex ")}>
+          <CardHeader>
+            <CardTitle className="text-lg tracking-tight">Da Assegnare ({unassignedBookings.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="flex flex-col gap-2 p-4 pt-0">
+                {unassignedBookings.length === 0 && (
+                  <p className="text-sm text-center text-muted-foreground py-4">Nessuna prenotazione da assegnare.</p>
+                )}
+                {unassignedBookings.map(booking => (
+                  <div
+                    key={booking.id}
+                    onClick={() => setSelectedBooking(booking)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedBooking?.id === booking.id ? 'bg-zinc-100 dark:bg-zinc-800 border-primary' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium text-sm truncate">{booking.guest_name}</span>
+                      <Badge variant="outline" className="text-xs">{format(new Date(booking.booking_time), 'HH:mm')}</Badge>
                     </div>
-                    {booking.notes && <span className="truncate max-w-[120px]">{booking.notes}</span>}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {booking.guests_count}
+                      </div>
+                      {booking.notes && <span className="truncate max-w-[120px]">{booking.notes}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Map */}
-      <Card className="flex-1 flex flex-col overflow-hidden border-l-0 rounded-l-none pt-0 gap-0">
+      <Card className={cn("flex-1 flex flex-col overflow-hidden py-0 gap-0", !onTableSelect ? "xl:border-l-0 xl:rounded-l-none" : "")}>
         {zones.length > 1 && (
           <div className="flex border-b overflow-x-auto">
             {zones.map(z => (
@@ -442,16 +455,25 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
           </div>
         )}
 
-        <div ref={containerRef} className="flex-1 bg-card relative overflow-hidden">
-          <div className="absolute top-4 right-4 flex gap-2 z-10">
-            {locationSlug && (
-              <Link href={`/reservations/print-qr/${locationSlug}`} target="_blank">
-                <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm">
-                  <Printer className="w-4 h-4 mr-2" /> Stampa QR
+        <div ref={containerRef} className="flex-1 relative overflow-hidden">
+          {!onTableSelect && (
+            <>
+              <div className="absolute top-4 right-4 flex gap-2 z-10">
+                {locationSlug && (
+                  <Link href={`/reservations/print-qr/${locationSlug}`} target="_blank">
+                    <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm">
+                      <Printer className="w-4 h-4 mr-2" /> Stampa QR
+                    </Button>
+                  </Link>
+                )}
+              </div>
+              <div className="absolute top-14 right-4 flex xl:hidden gap-2 z-10">
+                <Button variant="outline" onClick={() => setShowAssignCard(!showAssignCard)} size="sm" className="bg-white/90 backdrop-blur shadow-sm">
+                  Assegna
                 </Button>
-              </Link>
-            )}
-          </div>
+              </div>
+            </>
+          )}
           {currentZone && (
             <div className="absolute inset-0">
               <Stage
@@ -806,120 +828,118 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editDialog.open} onOpenChange={(val) => !val && setEditDialog(prev => ({ ...prev, open: false }))}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Tavolo {editDialog.table?.table_number}</DialogTitle>
-            <DialogDescription>
-              Gestisci la prenotazione e gli ordini per questo tavolo.
-            </DialogDescription>
-          </DialogHeader>
 
-          <Tabs
-            value={editDialog.activeTab || 'booking'}
-            onValueChange={(val) => setEditDialog(prev => ({ ...prev, activeTab: val }))}
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 border">
-              <TabsTrigger value="booking">Prenotazione</TabsTrigger>
-              <TabsTrigger value="orders">Ordini</TabsTrigger>
-            </TabsList>
+      <ResponsiveDialog
+        isOpen={editDialog.open}
+        setIsOpen={(val: boolean) => !val && setEditDialog(prev => ({ ...prev, open: false }))}
+        title={`Tavolo ${editDialog.table?.table_number}`}
+        description="Gestisci la prenotazione e gli ordini per questo tavolo."
+      >
 
-            <TabsContent value="booking" className="space-y-4 ">
-              {editDialog.booking ? (
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="edit-name" className="text-right">Nome</Label>
-                      <Input
-                        id="edit-name"
-                        value={editForm.guest_name}
-                        onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
-                        className="col-span-3"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="edit-guests" className="text-right">Ospiti</Label>
-                      <NumberInput
-                        value={editForm.guests_count}
-                        onValueChange={(val) => setEditForm({ ...editForm, guests_count: val || 0 })}
-                        className="col-span-3"
-                      />
-                    </div>
+        <Tabs
+          value={editDialog.activeTab || 'booking'}
+          onValueChange={(val) => setEditDialog(prev => ({ ...prev, activeTab: val }))}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2 border">
+            <TabsTrigger value="booking">Prenotazione</TabsTrigger>
+            <TabsTrigger value="orders">Ordini</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="booking" className="space-y-4 ">
+            {editDialog.booking ? (
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="edit-name" className="text-right">Nome</Label>
+                    <Input
+                      id="edit-name"
+                      value={editForm.guest_name}
+                      onChange={(e) => setEditForm({ ...editForm, guest_name: e.target.value })}
+                      className="col-span-3"
+                    />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="edit-notes" className="text-right">Note</Label>
-                    <Textarea
-                      id="edit-notes"
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    <Label htmlFor="edit-guests" className="text-right">Ospiti</Label>
+                    <NumberInput
+                      value={editForm.guests_count}
+                      onValueChange={(val) => setEditForm({ ...editForm, guests_count: val || 0 })}
                       className="col-span-3"
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-xl border-2 border-dashed">
-                  <ScrollText className="w-12 h-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Nessuna prenotazione attiva</p>
-                  <p className="text-sm text-muted-foreground">Il tavolo è occupato da un ordine diretto (QR Code o manuale senza prenotazione).</p>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="edit-notes" className="text-right">Note</Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className="col-span-3"
+                  />
                 </div>
-              )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/20 rounded-xl border-2 border-dashed">
+                <ScrollText className="w-12 h-12 mb-4 opacity-50" />
+                <p className="text-lg font-medium">Nessuna prenotazione attiva</p>
+                <p className="text-sm text-muted-foreground">Il tavolo è occupato da un ordine diretto (QR Code o manuale senza prenotazione).</p>
+              </div>
+            )}
 
-              <DialogFooter className="sm:justify-between mt-4">
-                {editDialog.booking ? (
-                  <>
-                    <Button
-                      variant="destructive"
-                      onClick={async () => {
-                        if (!editDialog.booking) return;
-                        try {
-                          await unassignBooking(editDialog.booking.id);
-                          toast.success("Tavolo liberato!");
-                          setEditDialog({ open: false, booking: null, table: null });
-                        } catch (e) {
-                          toast.error("Errore nel liberare il tavolo");
-                        }
-                      }}
-                    >
-                      Libera
-                    </Button>
-                    <Button onClick={async () => {
+            <DialogFooter className="sm:justify-between mt-4">
+              {editDialog.booking ? (
+                <>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
                       if (!editDialog.booking) return;
                       try {
-                        await updateBooking(editDialog.booking.id, {
-                          guest_name: editForm.guest_name,
-                          guests_count: editForm.guests_count,
-                          notes: editForm.notes
-                        });
-                        toast.success("Prenotazione aggiornata!");
+                        await unassignBooking(editDialog.booking.id);
+                        toast.success("Tavolo liberato!");
                         setEditDialog({ open: false, booking: null, table: null });
                       } catch (e) {
-                        toast.error("Errore nell'aggiornamento");
+                        toast.error("Errore nel liberare il tavolo");
                       }
-                    }}>
-                      Aggiorna
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="outline" onClick={() => setEditDialog({ open: false, booking: null, table: null })}>Chiudi</Button>
-                )}
-              </DialogFooter>
-            </TabsContent>
-
-            <TabsContent value="orders">
-              {editDialog.table && (
-                <TableOrdersPanel
-                  tableId={editDialog.table.id}
-                  tableName={editDialog.table.table_number}
-                  locationId={locationId}
-                  refreshTrigger={Date.now()}
-                  guestCount={editForm.guests_count}
-                />
+                    }}
+                  >
+                    Libera
+                  </Button>
+                  <Button onClick={async () => {
+                    if (!editDialog.booking) return;
+                    try {
+                      await updateBooking(editDialog.booking.id, {
+                        guest_name: editForm.guest_name,
+                        guests_count: editForm.guests_count,
+                        notes: editForm.notes
+                      });
+                      toast.success("Prenotazione aggiornata!");
+                      setEditDialog({ open: false, booking: null, table: null });
+                    } catch (e) {
+                      toast.error("Errore nell'aggiornamento");
+                    }
+                  }}>
+                    Aggiorna
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setEditDialog({ open: false, booking: null, table: null })}>Chiudi</Button>
               )}
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog >
+            </DialogFooter>
+          </TabsContent>
+
+          <TabsContent value="orders">
+            {editDialog.table && (
+              <TableOrdersPanel
+                tableId={editDialog.table.id}
+                tableName={editDialog.table.table_number}
+                locationId={locationId}
+                refreshTrigger={editDialog.refreshTrigger || 0}
+                guestCount={editForm.guests_count}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
+      </ResponsiveDialog>
     </div >
   );
 }

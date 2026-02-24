@@ -51,7 +51,7 @@ export function DonutPie({ data }: Props) {
         browser: "whatsapp_auto",
         visitors: counts.whatsapp_auto,
         fill: "var(--chart-2)",
-        label: "WhatsApp AI"
+        label: "WhatsApp"
       }
     ]
   }, [data])
@@ -68,7 +68,7 @@ export function DonutPie({ data }: Props) {
         color: "var(--chart-1)"
       },
       whatsapp_auto: {
-        label: "WhatsApp AI",
+        label: "WhatsApp",
         color: "var(--chart-2)"
       }
     } satisfies ChartConfig
@@ -79,7 +79,7 @@ export function DonutPie({ data }: Props) {
   }
 
   return (
-    <Card className="flex flex-col border-none shadow-none">
+    <Card className="flex flex-col border-none shadow-none rounded-3xl pt-0">
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
@@ -130,17 +130,21 @@ export function DonutPie({ data }: Props) {
           </PieChart>
         </ChartContainer>
         <div className="grid grid-cols-2 items-center text-sm gap-4 mt-4">
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-muted-foreground">Manuali</p>
-            <p className="font-medium text-lg flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-chart-1" />
+              <p className="text-muted-foreground">Manuali</p>
+            </div>
+            <p className="font-medium text-lg">
               {processedData.find(b => b.browser === "manual")?.visitors || 0}
             </p>
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-muted-foreground">WhatsApp AI</p>
-            <p className="font-medium text-lg flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-chart-2" />
+              <p className="text-muted-foreground">WhatsApp</p>
+            </div>
+            <p className="font-medium text-lg">
               {processedData.find(b => b.browser === "whatsapp_auto")?.visitors || 0}
             </p>
           </div>

@@ -74,6 +74,8 @@ Struttura Monolite Modulare ottimizzata per scalabilità e Exit Strategy.
 - **Database**: Supabase (PostgreSQL)
 - **State Management**: Zustand (gestione multi-location/org)
 - **Telefonia**: Telnyx Voice (Webhook only strategy) + **Managed Accounts** (Compliance)
+  - [Phone Number Orders Ref](https://developers.telnyx.com/api-reference/phone-number-orders/list-number-orders)
+  - [Requirement Groups Ref](https://developers.telnyx.com/api-reference/requirement-groups/update-requirement-group-for-a-phone-number-order)
 - **Messaging**: Meta WhatsApp Cloud API + WhatsApp Flows (`node:crypto` per cifratura payload)
 - **Payments**: Stripe (Checkout per ricariche, Portal per fatturazione)
 
