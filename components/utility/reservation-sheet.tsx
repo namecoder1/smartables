@@ -225,9 +225,9 @@ const ReservationSheet = ({
     startTransition(async () => {
       let result;
       if (booking) {
-        result = await updateBooking(booking.id, {}, formData)
+        result = await updateBooking(booking.id, {}, formData as any)
       } else {
-        result = await createBooking({}, formData)
+        result = await createBooking({}, formData as any)
       }
 
       if (result.success) {

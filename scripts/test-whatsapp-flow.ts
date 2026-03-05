@@ -3,7 +3,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 // We need to polyfill fetch for the Supabase client in raw Node if necessary, but tsx usually handles it or next does.
-import { getAvailableDates, getAvailableTimes } from "./lib/whatsapp-flow";
+import { getAvailableDates, getAvailableTimes } from "@/lib/whatsapp-flow";
 
 async function run() {
   const supabase = createClient(

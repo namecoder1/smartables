@@ -195,6 +195,7 @@ export function generatePresetLayout(
     id: `wall-gen-${uuidv4().slice(0, 8)}`,
     uniqueId: uuidv4(),
     type: "wall",
+    category: "Muri",
     label: "Muro",
     seats: 0,
     width: w,
@@ -209,6 +210,7 @@ export function generatePresetLayout(
     id: `col-gen-${uuidv4().slice(0, 8)}`,
     uniqueId: uuidv4(),
     type: "column",
+    category: "Decorazioni",
     label: "Colonna",
     seats: 0,
     width: size,
@@ -760,6 +762,7 @@ export function generatePresetLayout(
           id: `wall-curved-${uuidv4().slice(0, 8)}`,
           uniqueId: uuidv4(),
           type: "curved-wall",
+          category: "Muri",
           label: "Muro Curvo",
           seats: 0,
           width: radiusRoom, // Inner/Outer arc mapped via width/radius in CanvasItem
@@ -816,6 +819,7 @@ export function generatePresetLayout(
         id: `wall-curved-${uuidv4().slice(0, 8)}`,
         uniqueId: uuidv4(),
         type: "curved-wall",
+        category: "Muri",
         label: "Angolo Curvo",
         seats: 0,
         width: cornerRadius, // Radius

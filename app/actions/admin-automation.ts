@@ -38,17 +38,21 @@ export async function syncTelnyxStatus(locationId: string) {
       throw new Error("Location not found");
     }
 
+    const requirementData = location.requirement as any;
+    const requirement = Array.isArray(requirementData)
+      ? requirementData[0]
+      : requirementData;
+
     console.log("[Sync Debug] BEFORE State:", {
       id: location.id,
       telnyx_phone_number: location.telnyx_phone_number,
       activation_status: location.activation_status,
-      reqId: location.requirement?.id,
-      reqStatus: (location.requirement as any)?.status,
-      reqGroupId: (location.requirement as any)?.telnyx_requirement_group_id,
+      reqId: requirement?.id,
+      reqStatus: requirement?.status,
+      reqGroupId: requirement?.telnyx_requirement_group_id,
     });
 
     const results: string[] = [];
-    const requirement = location.requirement as any;
     const reqGroupId = requirement?.telnyx_requirement_group_id;
 
     // 2. Check Requirement Group status on Telnyx
