@@ -1,12 +1,135 @@
 "use server";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { purchasePhoneNumber } from "@/lib/telnyx";
+import {
+  purchasePhoneNumber,
+  getRequirementGroup,
+  getOwnedNumbers,
+} from "@/lib/telnyx";
 import {
   addNumberToWaba,
   requestVerificationCode,
 } from "@/lib/meta-registration";
 import { revalidatePath } from "next/cache";
+
+/**
+ * Syncs the real Telnyx status (requirement group + number) for a location.
+ * Fetches from Telnyx API and updates the DB if out of sync.
+ */
+export async function syncTelnyxStatus(locationId: string) {
+  const supabase = createAdminClient();
+
+  try {
+    // 1. Fetch location with its requirement data
+    const { data: location, error: locError } = await supabase
+      .from("locations")
+      .select(
+        `
+        id, telnyx_phone_number, activation_status,
+        requirement:regulatory_requirement_id (
+          id, status, telnyx_requirement_group_id
+        )
+      `,
+      )
+      .eq("id", locationId)
+      .single();
+
+    if (locError || !location) {
+      throw new Error("Location not found");
+    }
+
+    console.log("[Sync Debug] BEFORE State:", {
+      id: location.id,
+      telnyx_phone_number: location.telnyx_phone_number,
+      activation_status: location.activation_status,
+      reqId: location.requirement?.id,
+      reqStatus: (location.requirement as any)?.status,
+      reqGroupId: (location.requirement as any)?.telnyx_requirement_group_id,
+    });
+
+    const results: string[] = [];
+    const requirement = location.requirement as any;
+    const reqGroupId = requirement?.telnyx_requirement_group_id;
+
+    // 2. Check Requirement Group status on Telnyx
+    if (reqGroupId) {
+      try {
+        const telnyxGroup = await getRequirementGroup(reqGroupId);
+        const telnyxStatus = telnyxGroup.status?.toLowerCase();
+        const localStatus = requirement?.status;
+
+        if (telnyxStatus !== localStatus) {
+          await supabase
+            .from("telnyx_regulatory_requirements")
+            .update({
+              status: telnyxStatus === "unapproved" ? "pending" : telnyxStatus,
+              rejection_reason:
+                telnyxStatus === "approved"
+                  ? null
+                  : telnyxGroup.rejection_reason || null,
+            })
+            .eq("id", requirement.id);
+
+          results.push(`Req Group: ${localStatus} → ${telnyxStatus}`);
+        } else {
+          results.push(`Req Group: già in sync (${telnyxStatus})`);
+        }
+      } catch (e: any) {
+        results.push(`Req Group error: ${e.message}`);
+      }
+    } else {
+      results.push("Req Group: nessun ID Telnyx collegato");
+    }
+
+    // 3. Check phone number status on Telnyx
+    if (location.telnyx_phone_number) {
+      try {
+        const ownedNumbers = await getOwnedNumbers();
+        const matched = ownedNumbers.find(
+          (n: any) => n.phoneNumber === location.telnyx_phone_number,
+        );
+
+        if (matched) {
+          results.push(`Numero Telnyx: ${matched.status}`);
+
+          // If number is active, the order was completed — force req group to approved
+          if (matched.status === "active") {
+            if (requirement?.id && requirement.status !== "approved") {
+              await supabase
+                .from("telnyx_regulatory_requirements")
+                .update({ status: "approved", rejection_reason: null })
+                .eq("id", requirement.id);
+              results.push(
+                `Req Group forzato: ${requirement.status} → approved (numero attivo)`,
+              );
+            }
+
+            // Update location status if still provisioning
+            if (location.activation_status === "provisioning") {
+              await supabase
+                .from("locations")
+                .update({ activation_status: "pending_verification" })
+                .eq("id", locationId);
+              results.push(
+                "Location status: provisioning → pending_verification",
+              );
+            }
+          }
+        } else {
+          results.push("Numero non trovato tra owned numbers Telnyx");
+        }
+      } catch (e: any) {
+        results.push(`Owned numbers error: ${e.message}`);
+      }
+    }
+
+    revalidatePath("/manage");
+    return { success: true, message: results.join("\n") };
+  } catch (error: any) {
+    console.error("[Admin] Sync Error:", error);
+    return { success: false, message: error.message };
+  }
+}
 
 /**
  * Manually triggers the purchase of a phone number for a location.
@@ -69,7 +192,7 @@ export async function manualMetaRegistration(locationId: string) {
       .from("locations")
       .update({
         meta_phone_id: metaPhoneId,
-        activation_status: "active", // Assuming if we are here, it's pretty active
+        activation_status: "pending_verification", // Number added to Meta, but voice verification still needed
       })
       .eq("id", locationId);
 

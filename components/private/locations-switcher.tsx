@@ -44,7 +44,7 @@ export const LocationsSwitcher = () => {
       <Popover>
         <PopoverTrigger asChild>
           <button
-            className="w-full flex items-center gap-2 bg-card/10 dark:bg-card p-3 border-2 rounded-xl border-border/10 dark:border-border"
+            className="w-full flex items-center gap-2 bg-card/10 p-3 border-2 rounded-xl border-border/10"
           >
             {activeLocation.branding?.logo_url ? (
               <div className="border rounded-lg">
@@ -58,14 +58,14 @@ export const LocationsSwitcher = () => {
               </div>
             )}
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold text-white dark:text-foreground">{activeLocation.name}</span>
-              <span className="truncate text-xs text-white/70 dark:text-muted-foreground">Clicca per cambiare sede</span>
+              <span className="truncate font-semibold text-white">{activeLocation.name}</span>
+              <span className="truncate text-xs text-white/70">Clicca per cambiare sede</span>
             </div>
-            <ChevronsUpDown className="ml-auto text-white dark:text-foreground" size={16} />
+            <ChevronsUpDown className="ml-auto text-white" size={16} />
           </button>
         </PopoverTrigger>
         <PopoverContent
-          className="border border-border/20  min-w-56 w-full p-0 bg-[#3B3B3B] dark:bg-card"
+          className="border border-border/20  min-w-56 w-full p-0 bg-[#3B3B3B]"
           align="center"
           side="right"
           sideOffset={4}
@@ -109,7 +109,7 @@ export const LocationsSwitcher = () => {
               <div className="flex rounded-md size-6 items-center justify-center bg-[#FD9710]">
                 <Plus className="size-4" color="white" />
               </div>
-              <div className="font-medium text-white dark:text-foreground">Aggiungi sede</div>
+              <div className="font-medium text-white">Aggiungi sede</div>
             </Link>
           </div>
         </PopoverContent>

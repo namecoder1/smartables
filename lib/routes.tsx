@@ -1,4 +1,4 @@
-import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users } from "lucide-react"
+import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users, MessageSquare } from "lucide-react"
 import { GiTable } from "react-icons/gi";
 import { PiForkKnifeFill, PiToolboxFill, PiListChecksFill } from "react-icons/pi";
 import { MdDashboard, MdMenuBook } from "react-icons/md";
@@ -8,7 +8,7 @@ import { IoBookSharp } from "react-icons/io5";
 import { GrDocumentUser } from "react-icons/gr";
 import { LuListTodo, LuCalendarCheck, LuNotebookPen, LuBookOpenText, LuLayoutDashboard } from "react-icons/lu";
 import { LiaTableSolid } from "react-icons/lia";
-import { FaUsers, FaUsersLine } from "react-icons/fa6";
+import { FaUsers, FaUsersLine, FaWhatsapp } from "react-icons/fa6";
 import { TbRosetteDiscount } from "react-icons/tb";
 
 export type RouteItem = {
@@ -101,12 +101,17 @@ export const routes = {
           url: "/site-settings",
           icon: LiaTableSolid,
         },
-        { 
+        {
           title: "Modulistica ristorante",
           url: "/compliance",
           icon: LiaTableSolid,
         }
       ]
+    },
+    {
+      label: "Gestione WhatsApp",
+      icon: FaWhatsapp,
+      url: "/whatsapp-management",
     },
     {
       label: "Collaboratori",

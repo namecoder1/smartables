@@ -65,7 +65,7 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                 <div className="flex aspect-square size-12 items-center justify-center rounded-lg">
                   <Image src="/logo.png" alt="Logo" width={60} height={60} />
                 </div>
-                <p className="text-3xl text-white dark:text-foreground font-bold tracking-tighter">Smartables</p>
+                <p className="text-3xl text-white font-bold tracking-tighter">Smartables</p>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -78,7 +78,7 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/home' || pathname.startsWith('/home/')}>
                 <Link href="/home">
-                  <span className="font-medium text-white dark:text-foreground">Home</span>
+                  <span className="font-medium text-white">Home</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -87,10 +87,10 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
         {starredPages && starredPages.length > 0 && (
           <SidebarGroup className="border-b-2 border-white/10">
             <div className="flex items-center justify-between mb-2 pr-2">
-              <p className="text-md font-bold text-white dark:text-foreground tracking-tight">Preferiti</p>
+              <p className="text-md font-bold text-white tracking-tight">Preferiti</p>
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="text-white/70 hover:text-white dark:text-foreground/70 dark:hover:text-foreground transition-colors"
+                className="text-white/70 hover:text-white transition-colors"
               >
                 {isEditing ? <Check size={14} /> : <Pencil size={14} />}
               </button>
@@ -100,12 +100,12 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                 <SidebarMenuItem key={page.id} className="flex items-center">
                   <SidebarMenuButton asChild isActive={pathname === page.url || pathname.startsWith(page.url + '/')}>
                     <Link href={page.url}>
-                      <span className="font-medium text-white dark:text-foreground">{page.title}</span>
+                      <span className="font-medium text-white">{page.title}</span>
                     </Link>
                   </SidebarMenuButton>
                   {isEditing && (
-                    <SidebarMenuAction className="mt-1 mr-1 hover:bg-destructive" onClick={() => toggleStarredPage(page.title, page.url)}>
-                      <X className="text-white dark:text-foreground" />
+                    <SidebarMenuAction className="mt-1 mr-1 hover:bg-primary" onClick={() => toggleStarredPage(page.title, page.url)}>
+                      <X className="text-white" />
                     </SidebarMenuAction>
                   )}
                 </SidebarMenuItem>
@@ -126,8 +126,8 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                       isActive={pathname === entry.url || pathname.startsWith(entry.url + '/')}
                     >
                       <Link href={entry.url} className="flex items-center gap-2">
-                        <entry.icon className="size-5.5! text-white dark:text-foreground" />
-                        <span className="font-medium text-white dark:text-foreground">{entry.label}</span>
+                        <entry.icon className="size-5.5! text-white" />
+                        <span className="font-medium text-white">{entry.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -148,12 +148,12 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                 >
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={entry.label} className="text-white dark:text-foreground border border-transparent hover:border-primary">
+                      <SidebarMenuButton tooltip={entry.label} className="text-white border border-transparent hover:border-primary">
                         <div className="flex items-center gap-2">
-                          {entry.icon && <entry.icon className="text-white dark:text-foreground size-5" />}
-                          <span className="font-medium text-white dark:text-foreground">{entry.label}</span>
+                          {entry.icon && <entry.icon className="text-white size-5" />}
+                          <span className="font-medium text-white">{entry.label}</span>
                         </div>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-white dark:text-foreground!" />
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-white!" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -162,7 +162,7 @@ const Sidebar = ({ className, organizationId, activationStatus, managedAccountId
                           <SidebarMenuSubItem key={itemIdx}>
                             <SidebarMenuSubButton className="active:bg-primary/60" asChild isActive={pathname === item.url || pathname.startsWith(item.url + '/')}>
                               <Link href={item.url}>
-                                <span className="text-white dark:text-foreground">{item.title}</span>
+                                <span className="text-white">{item.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>

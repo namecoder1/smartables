@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { Resend } from "resend";
-import { purchasePhoneNumber, answerCall, startRecording } from "@/lib/telnyx";
+import { answerCall, hangupCall } from "@/lib/telnyx";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
-import { registerNumberWithMeta } from "@/lib/meta-registration";
+import {
+  registerNumberWithMeta,
+  verifyCodeWithMeta,
+} from "@/lib/meta-registration";
 import NumberActiveEmail from "@/emails/number-active";
 import { render } from "@react-email/components";
 
@@ -150,152 +154,414 @@ export async function POST(req: Request) {
         }
       }
     } else if (eventType === "call.initiated") {
-      // INCOMING CALL from Meta
+      // INCOMING CALL — Production Smart Filter
       const callControlId = payload.call_control_id;
       const to = payload.to;
+      const callerNumber = payload.from;
       console.log(
-        `[Telnyx Webhook] 📞 Incoming call to ${to} (CallID: ${callControlId})`,
+        `[Telnyx Webhook] 📞 Incoming call to ${to} from ${callerNumber} (CallID: ${callControlId})`,
       );
 
       try {
-        // 1. Check if there's a forwarding number
-        console.log(
-          `[Telnyx Webhook] 🔍 Checking DB for forwarding number for ${to}...`,
-        );
+        // ── Step 1: Lookup location ──
         const { data: location, error: dbError } = await supabase
           .from("locations")
-          .select("voice_forwarding_number")
+          .select(
+            "id, organization_id, meta_phone_id, opening_hours, is_test_completed, name",
+          )
           .eq("telnyx_phone_number", to)
           .single();
 
-        if (dbError) {
+        if (dbError || !location) {
           console.error(
-            `[Telnyx Webhook] ❌ DB Error fetching forwarding number:`,
+            `[Telnyx Webhook] ❌ Location not found for ${to}`,
             dbError,
           );
+          await hangupCall(callControlId);
+          return NextResponse.json({ success: true, reason: "no_location" });
         }
 
-        if (location && location.voice_forwarding_number) {
+        // ── Step 2: Filter anonymous/invalid callers ──
+        if (
+          !callerNumber ||
+          callerNumber === "anonymous" ||
+          callerNumber.length < 8
+        ) {
           console.log(
-            `[Telnyx Webhook] ✅ Found forwarding number! Forwarding call to ${location.voice_forwarding_number}...`,
+            `[Telnyx Webhook] 👻 Anonymous/invalid caller. Hanging up.`,
           );
+          await hangupCall(callControlId);
+          return NextResponse.json({ success: true, reason: "anonymous" });
+        }
 
-          try {
-            // Transfer the call to the forwarding number
-            const ansStart = Date.now();
-            console.log(
-              `[Telnyx Webhook] ⏳ Answering call before transfer...`,
-            );
-            await answerCall(callControlId);
-            console.log(
-              `[Telnyx Webhook] ☎️ Call answered in ${Date.now() - ansStart}ms`,
-            );
-
-            console.log(
-              `[Telnyx Webhook] 🔄 Initiating transfer to ${location.voice_forwarding_number}...`,
-            );
-            const { transferCall } = await import("@/lib/telnyx");
-            await transferCall(callControlId, location.voice_forwarding_number);
-            console.log(
-              `[Telnyx Webhook] 🚀 Transfer command sent successfully!`,
-            );
-          } catch (forwardError) {
-            console.error(
-              `[Telnyx Webhook] 💥 ERROR during answer/transfer process:`,
-              forwardError,
-            );
-          }
-        } else {
+        // ── Step 3: TEST MODE — Simple flow for onboarding ──
+        if (!location.is_test_completed) {
           console.log(
-            `[Telnyx Webhook] ⚠️ No forwarding number found in DB, falling back to answering automatically...`,
+            `[Telnyx Webhook] 🧪 TEST MODE for location ${location.id}`,
           );
-
-          // 1. Answer Call
-          const ansStart = Date.now();
           await answerCall(callControlId);
 
-          // 2. Start Recording immediately
-          const recStart = Date.now();
-          await startRecording(callControlId);
+          if (location.meta_phone_id) {
+            try {
+              const { sendWhatsAppMessage } = await import("@/lib/whatsapp");
+              await sendWhatsAppMessage(
+                callerNumber,
+                { name: "test_tech", language: { code: "it" } },
+                location.meta_phone_id,
+              );
+              await supabase
+                .from("locations")
+                .update({ is_test_completed: true })
+                .eq("id", location.id);
+              console.log(`[Telnyx Webhook] ✅ TEST completed!`);
+            } catch (err) {
+              console.error(`[Telnyx Webhook] ❌ TEST failed:`, err);
+            }
+          }
+
+          await hangupCall(callControlId);
+          return NextResponse.json({ success: true, reason: "test" });
+        }
+
+        // ═══════════════════════════════════════════════════
+        // PRODUCTION MODE — Full Smart Filter Chain
+        // ═══════════════════════════════════════════════════
+
+        // ── Step 4: Rate limit (24h) ──
+        const twentyFourHoursAgo = new Date(
+          Date.now() - 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const { data: recentMessage } = await supabase
+          .from("message_logs")
+          .select("id")
+          .eq("location_id", location.id)
+          .eq("phone_number", callerNumber)
+          .gte("sent_at", twentyFourHoursAgo)
+          .limit(1)
+          .maybeSingle();
+
+        if (recentMessage) {
           console.log(
-            `[Telnyx Webhook] 🎙️ Auto-Call answered (in ${recStart - ansStart}ms) and recording started (in ${Date.now() - recStart}ms).`,
+            `[Telnyx Webhook] ⏱️ Rate limited: already messaged ${callerNumber} in last 24h. Hanging up.`,
+          );
+          await hangupCall(callControlId);
+          return NextResponse.json({ success: true, reason: "rate_limited" });
+        }
+
+        // ── Step 5: Supplier suppression (7 days) ──
+        const sevenDaysAgo = new Date(
+          Date.now() - 7 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+        const { data: supplierTag } = await supabase
+          .from("contact_attributes")
+          .select("id")
+          .eq("location_id", location.id)
+          .eq("phone_number", callerNumber)
+          .eq("tag", "supplier")
+          .gte("updated_at", sevenDaysAgo)
+          .limit(1)
+          .maybeSingle();
+
+        if (supplierTag) {
+          console.log(
+            `[Telnyx Webhook] 📦 Supplier suppressed: ${callerNumber}. Hanging up.`,
+          );
+          await hangupCall(callControlId);
+          return NextResponse.json({ success: true, reason: "supplier" });
+        }
+
+        // ── Step 6: Determine open/closed status ──
+        let isOpen = false;
+        let closedReason = "";
+
+        // 6a. Check special closures first
+        const now = new Date().toISOString();
+        const { data: activeClosure } = await supabase
+          .from("special_closures")
+          .select("reason")
+          .eq("location_id", location.id)
+          .lte("start_date", now)
+          .gte("end_date", now)
+          .limit(1)
+          .maybeSingle();
+
+        if (activeClosure) {
+          isOpen = false;
+          closedReason = activeClosure.reason || "Chiusura straordinaria";
+          console.log(
+            `[Telnyx Webhook] 🔒 Special closure active: ${closedReason}`,
+          );
+        } else {
+          // 6b. Check regular opening hours
+          const dayNames = [
+            "domenica",
+            "lunedì",
+            "martedì",
+            "mercoledì",
+            "giovedì",
+            "venerdì",
+            "sabato",
+          ];
+          const nowDate = new Date();
+          // Use Italy timezone for accurate day/time matching
+          const italyTime = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Europe/Rome",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).format(nowDate);
+          const italyDay = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Europe/Rome",
+            weekday: "short",
+          }).format(nowDate);
+
+          // Map English short day to Italian index
+          const engDayMap: Record<string, number> = {
+            Sun: 0,
+            Mon: 1,
+            Tue: 2,
+            Wed: 3,
+            Thu: 4,
+            Fri: 5,
+            Sat: 6,
+          };
+          const dayIndex = engDayMap[italyDay] ?? nowDate.getDay();
+          const todayName = dayNames[dayIndex];
+          const currentTime = italyTime; // "HH:MM"
+
+          const openingHours = location.opening_hours as Record<
+            string,
+            { open: string; close: string }[]
+          > | null;
+          const todaySlots = openingHours?.[todayName];
+
+          if (todaySlots && todaySlots.length > 0) {
+            isOpen = todaySlots.some(
+              (slot) => currentTime >= slot.open && currentTime <= slot.close,
+            );
+          }
+
+          console.log(
+            `[Telnyx Webhook] 🕐 ${todayName} ${currentTime} → ${isOpen ? "APERTO" : "CHIUSO"}`,
           );
         }
+
+        // ── Step 7: Answer and send appropriate template ──
+        await answerCall(callControlId);
+
+        const templateName = isOpen ? "missed_call_open" : "missed_call_closed";
+        const lang = callerNumber.startsWith("+39") ? "it" : "en";
+
+        console.log(
+          `[Telnyx Webhook] 📤 Sending template "${templateName}" (${lang}) to ${callerNumber}...`,
+        );
+
+        // Build button components based on template structure:
+        // missed_call_closed: Quick Reply "Vedi menu" (0) + Flow "Prenota per dopo" (1)
+        // missed_call_open:   Quick Reply "Sono un fornitore" (0) + Quick Reply "Richiamatemi" (1) + Flow "Prenota tavolo" (2)
+        const buttonComponents = isOpen
+          ? [
+              {
+                type: "button",
+                sub_type: "quick_reply",
+                index: "0",
+                parameters: [{ type: "payload", payload: "fornitore" }],
+              },
+              {
+                type: "button",
+                sub_type: "quick_reply",
+                index: "1",
+                parameters: [{ type: "payload", payload: "richiama" }],
+              },
+              {
+                type: "button",
+                sub_type: "flow",
+                index: "2",
+                parameters: [],
+              },
+            ]
+          : [
+              {
+                type: "button",
+                sub_type: "quick_reply",
+                index: "0",
+                parameters: [{ type: "payload", payload: "menu" }],
+              },
+              {
+                type: "button",
+                sub_type: "flow",
+                index: "1",
+                parameters: [],
+              },
+            ];
+
+        try {
+          await sendWhatsAppMessage(
+            callerNumber,
+            {
+              name: templateName,
+              language: { code: lang },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: location.name || "il ristorante" },
+                  ],
+                },
+                ...buttonComponents,
+              ],
+            },
+            location.meta_phone_id,
+          );
+
+          // Log for rate limiting
+          await supabase.from("message_logs").insert({
+            location_id: location.id,
+            organization_id: location.organization_id,
+            phone_number: callerNumber,
+            template_name: templateName,
+            sent_at: new Date().toISOString(),
+          });
+
+          // Increment usage
+          if (location.organization_id) {
+            try {
+              await supabase.rpc("increment_whatsapp_usage", {
+                org_id: location.organization_id,
+              });
+            } catch (_e) {
+              /* ignore */
+            }
+          }
+
+          console.log(`[Telnyx Webhook] ✅ WhatsApp sent & logged.`);
+        } catch (err) {
+          console.error(`[Telnyx Webhook] ❌ Failed to send WhatsApp:`, err);
+        }
+
+        // Hang up
+        await hangupCall(callControlId);
+        console.log(`[Telnyx Webhook] 📵 Call completed.`);
       } catch (e) {
         console.error(
           `[Telnyx Webhook] 💥 FATAL ERROR in call.initiated handler:`,
           e,
         );
       }
+    } else if (eventType === "call.recording.saved") {
+      // RECORDING SAVED - Process transcription and Meta registration
 
-      // RECORDING SAVED
+      // Skip processing for WOW test recordings
+      if (payload.client_state === "wow_test") {
+        console.log(
+          `[Telnyx Webhook] ⏩ Skipping transcription for WOW test recording.`,
+        );
+        return NextResponse.json({ success: true });
+      }
+
       const recordingUrl = payload.recording_urls?.mp3;
-      const toNumber = payload.to; // The Telnyx number
-      // We need to find which location corresponds to this number to get the Meta Phone ID.
+      // In recording.saved, the number might be in 'to' or 'from' or nested
+      const toNumber = payload.to || payload.from || payload.call_to;
+
       console.log(
-        `[Telnyx Webhook] Recording saved for call to ${toNumber}. URL: ${recordingUrl}`,
+        `[Telnyx Webhook] 🎧 Recording saved for call. TO: ${payload.to}, FROM: ${payload.from}, URL: ${recordingUrl}`,
       );
+
+      // If still undefined, log full payload for debugging
+      if (!toNumber) {
+        console.log(
+          "[Telnyx Webhook] 🔍 FULL PAYLOAD (for debug):",
+          JSON.stringify(payload, null, 2),
+        );
+      }
 
       if (recordingUrl) {
         try {
           // 1. Transcribe
           const transStart = Date.now();
-          console.log(`[Telnyx Webhook] Starting Transcription...`);
+          console.log(`[Telnyx Webhook] 🤖 Starting Transcription (OpenAI)...`);
           const transcription = await transcribeAudio(recordingUrl);
           console.log(
-            `[Telnyx Webhook] Transcription completed in ${Date.now() - transStart}ms: "${transcription}"`,
+            `[Telnyx Webhook] ✅ Transcription completed in ${Date.now() - transStart}ms: "${transcription}"`,
           );
 
           // 2. Extract Code
           const code = extractVerificationCode(transcription);
-          console.log(`[Telnyx Webhook] Extracted Code: "${code}"`);
+          console.log(`[Telnyx Webhook] 🔢 Extracted Code: "${code}"`);
 
           if (code) {
             // 3. Find Location & Meta ID
-            // Telnyx numbers in DB are usually +39...
-            // Payload 'to' might be +39... or 39...
             const dbStart = Date.now();
             console.log(
-              `[Telnyx Webhook] Looking up location for number: ${toNumber}`,
+              `[Telnyx Webhook] 🔍 Looking up location for number: ${toNumber} or connection: ${payload.connection_id}`,
             );
-            const { data: location } = await supabase
+
+            // Try to find by number first, then connection_id
+            let { data: location } = await supabase
               .from("locations")
               .select("id, meta_phone_id, telnyx_phone_number")
-              .eq("telnyx_phone_number", toNumber) // Ensure format matches
-              .single();
+              .eq("telnyx_phone_number", toNumber || "")
+              .maybeSingle();
+
+            if (!location && payload.connection_id) {
+              console.log(
+                "[Telnyx Webhook] No location by number, trying by connection_id...",
+              );
+              const { data: locByConn } = await supabase
+                .from("locations")
+                .select("id, meta_phone_id, telnyx_phone_number")
+                .eq("telnyx_connection_id", payload.connection_id)
+                .maybeSingle();
+              location = locByConn;
+            }
+
             console.log(
-              `[Telnyx Webhook] Location lookup took ${Date.now() - dbStart}ms. Found: ${location?.id || "None"}`,
+              `[Telnyx Webhook] 📄 Location lookup took ${Date.now() - dbStart}ms. Found: ${location?.id || "None"}`,
             );
 
             if (location && location.meta_phone_id) {
-              // 4. Register with Meta
+              // 4. Verify & Register with Meta
               console.log(
-                `[Telnyx Webhook] Registering code ${code} for location ${location.id}...`,
+                `[Telnyx Webhook] 🚀 Verifying code ${code} for location ${location.id}...`,
               );
               const regStart = Date.now();
-              await registerNumberWithMeta(location.meta_phone_id, code);
+
+              // Step 1: Verify Code
+              await verifyCodeWithMeta(location.meta_phone_id, code);
               console.log(
-                `[Telnyx Webhook] Number verified with Meta in ${Date.now() - regStart}ms!`,
+                `[Telnyx Webhook] ✅ Code verified with Meta! Finalizing...`,
               );
 
-              // 5. Update Status
+              // Step 2: Register (Finalize)
+              await registerNumberWithMeta(location.meta_phone_id);
+              console.log(
+                `[Telnyx Webhook] ✨ Number verified and registered with Meta in ${Date.now() - regStart}ms!`,
+              );
+
+              // 5. Update Status & Save OTP for frontend auto-fill
+              console.log(
+                `[Telnyx Webhook] 📝 Updating location status and saving OTP...`,
+              );
               await supabase
                 .from("locations")
-                .update({ activation_status: "verified" })
+                .update({
+                  activation_status: "verified",
+                  meta_verification_otp: code, // Save for auto-fill
+                })
                 .eq("id", location.id);
             } else {
               console.error(
-                `[Telnyx Webhook] Could not find location/meta_id for number: ${toNumber}`,
+                `[Telnyx Webhook] ❌ Could not find location/meta_id for number: ${toNumber}`,
               );
             }
           } else {
             console.warn(
-              `[Telnyx Webhook] No code extracted from transcription.`,
+              `[Telnyx Webhook] ⚠️ No code extracted from transcription.`,
             );
           }
         } catch (error) {
           console.error(
-            `[Telnyx Webhook] Error processing recording/verification:`,
+            `[Telnyx Webhook] 💥 Error processing recording/verification:`,
             error,
           );
         }

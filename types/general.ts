@@ -9,11 +9,33 @@ export type Booking = {
   guest_name: string;
   guest_phone: string;
   guests_count: number;
+  children_count?: string | null;
+  allergies?: string | null;
   booking_time: string;
   status: "pending" | "confirmed" | "cancelled" | "no_show" | "arrived";
   source: "whatsapp_auto" | "manual" | "web" | "phone";
   notes: string;
   created_at: string;
+};
+
+export type CallbackRequest = {
+  id: string;
+  location_id: string;
+  phone_number: string;
+  status: "pending";
+  notes: string;
+  created_at: string;
+  completed_at: string;
+};
+
+export type ContactAttribute = {
+  id: string;
+  location_id: string;
+  phone_number: string;
+  tag: string;
+  metadata: any;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Customer = {
@@ -27,6 +49,17 @@ export type Customer = {
   created_at: string;
 };
 
+export type Feedback = {
+  id: string;
+  organization_id: string;
+  profile_id: string;
+  type: string;
+  reason: string;
+  message: string;
+  metadata: any;
+  created_at: string;
+};
+
 export type Location = {
   id: string;
   organization_id: string;
@@ -35,20 +68,24 @@ export type Location = {
   address: string | null;
   phone_number: string | null;
   opening_hours: WeeklyHours;
-  branding: LocationBranding | null;
-  active_menu_id: string | null;
   seats: number;
-  max_covers_per_shift: number | null;
-  standard_reservation_duration: number | null;
-  cover_price: number | null;
-
   telnyx_phone_number?: string | null;
   telnyx_connection_id?: string | null;
   telnyx_voice_app_id?: string | null;
   regulatory_requirement_id: string | null;
-
   activation_status: string;
   created_at: string;
+  branding: LocationBranding | null;
+  active_menu_id: string | null;
+  meta_phone_id: string;
+  display_name_status: string;
+  voice_forwarding_number: string;
+  max_covers_per_shift: number | null;
+  standard_reservation_duration: number | null;
+  cover_price: number | null;
+  meta_verification_otp: string;
+  is_branding_completed: boolean;
+  is_test_completed: boolean;
 };
 
 export type MenuLocation = {
@@ -57,15 +94,51 @@ export type MenuLocation = {
   is_active: boolean;
 };
 
+export type MenuItem = {
+  id: string;
+  name: string;
+  tags?: string[];
+  price: number;
+  is_new?: boolean;
+  allergens?: string[];
+  image_url?: string | null;
+  sort_order: number;
+  description: string | null;
+  is_available: boolean;
+};
+
+export type MenuCategory = {
+  id: string;
+  name: string;
+  items: MenuItem[];
+  is_visible: boolean;
+  sort_order: number;
+  description: string | null;
+};
+
 export type Menu = {
   id: string;
   organization_id: string;
   name: string;
   description: string | null;
   pdf_url?: string | null;
-  content: any[];
+  content: MenuCategory[];
   is_active: boolean;
   created_at: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+};
+
+export type MessageLog = {
+  id: string;
+  organization_id: string;
+  location_id: string;
+  customer_id: string;
+  cost_implication: boolean;
+  sent_at: string;
+  payload: any;
+  phone_number: string;
+  template_name: string;
 };
 
 export type Organization = {
@@ -209,15 +282,64 @@ export type OrderItem = {
   status: OrderItemStatus;
 };
 
-export type Feedback = {
+// -- Promotion Types --
+
+export type PromotionType =
+  | "percentage"
+  | "fixed_amount"
+  | "bundle"
+  | "cover_override";
+export type PromotionItemTargetType =
+  | "menu_item"
+  | "category"
+  | "full_menu"
+  | "cover";
+export type PromotionItemRole = "target" | "condition";
+
+export type PromotionItem = {
+  id: string;
+  promotion_id: string;
+  target_type: PromotionItemTargetType;
+  target_ref: string | null;
+  role: PromotionItemRole;
+  override_value: number | null;
+  override_type: string | null;
+};
+
+export type PromotionLocation = {
+  promotion_id: string;
+  location_id: string;
+};
+
+export type PromotionMenu = {
+  promotion_id: string;
+  menu_id: string;
+};
+
+export type Promotion = {
   id: string;
   organization_id: string;
-  profile_id: string;
-  type: string;
-  reason: string | null;
-  message: string | null;
-  metadata: any;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  type: PromotionType;
+  value: number | null;
+  all_locations: boolean;
+  all_menus: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  recurring_schedule: any | null;
+  visit_threshold: number | null;
+  is_active: boolean;
+  priority: number;
+  stackable: boolean;
+  notify_via_whatsapp: boolean;
   created_at: string;
+  updated_at: string;
+  // Joined relations
+  promotion_locations?: PromotionLocation[];
+  promotion_menus?: PromotionMenu[];
+  promotion_items?: PromotionItem[];
 };
 
 // -- Utility Types --
@@ -252,4 +374,13 @@ export type CalendarEvent = {
   start: Date;
   end: Date;
   resource: Booking;
+};
+
+// -- Server Action State Types --
+
+export type CreateBookingState = {
+  message?: string;
+  error?: string | null;
+  success?: boolean;
+  bookingId?: string;
 };

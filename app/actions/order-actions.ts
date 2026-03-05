@@ -3,7 +3,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
-// ... imports
 import { createAdminClient } from "@/utils/supabase/admin";
 import { OrderStatus, OrderItemStatus } from "@/types/general";
 
@@ -63,10 +62,25 @@ export async function getOrderData(locationSlug: string, tableId: string) {
         JSON.stringify(menusError, null, 2),
       );
     } else if (linkedMenus) {
-      // Extract menus and filter for is_active
+      const now = new Date();
+      // Extract menus and filter for is_active and date validity
       menus = linkedMenus
         .map((item: any) => item.menus)
-        .filter((m: any) => m && m.is_active !== false); // Default to true if undefined, or strict check
+        .filter((m: any) => {
+          if (!m || m.is_active === false) return false;
+
+          if (m.starts_at && m.ends_at) {
+            const startDate = new Date(m.starts_at);
+            const endDate = new Date(m.ends_at);
+            if (now < startDate || now > endDate) return false;
+          } else if (m.starts_at) {
+            if (now < new Date(m.starts_at)) return false;
+          } else if (m.ends_at) {
+            if (now > new Date(m.ends_at)) return false;
+          }
+
+          return true;
+        });
 
       console.log("[getOrderData] Found active menus:", menus.length);
     }
@@ -89,8 +103,22 @@ export async function getOrderData(locationSlug: string, tableId: string) {
           .eq("id", location.active_menu_id)
           .single();
 
-        if (legacyMenu) {
-          menus.push(legacyMenu);
+        if (legacyMenu && legacyMenu.is_active !== false) {
+          let isValid = true;
+          const now = new Date();
+          if (legacyMenu.starts_at && legacyMenu.ends_at) {
+            const startDate = new Date(legacyMenu.starts_at);
+            const endDate = new Date(legacyMenu.ends_at);
+            if (now < startDate || now > endDate) isValid = false;
+          } else if (legacyMenu.starts_at) {
+            if (now < new Date(legacyMenu.starts_at)) isValid = false;
+          } else if (legacyMenu.ends_at) {
+            if (now > new Date(legacyMenu.ends_at)) isValid = false;
+          }
+
+          if (isValid) {
+            menus.push(legacyMenu);
+          }
         }
       }
     }
@@ -203,20 +231,10 @@ export async function createOrder(data: CreateOrderInput) {
   return { success: true, orderId };
 }
 
-export async function getActiveMenu(locationId: string) {
+export async function getActiveMenus(locationId: string) {
   const supabase = createAdminClient();
 
   try {
-    const { data: location, error: locError } = await supabase
-      .from("locations")
-      .select("active_menu_id")
-      .eq("id", locationId)
-      .single();
-
-    if (locError) {
-      console.error("[getActiveMenu] Error fetching location:", locError);
-    }
-
     const { data: linkedMenus, error: menusError } = await supabase
       .from("menu_locations")
       .select(
@@ -227,31 +245,72 @@ export async function getActiveMenu(locationId: string) {
       )
       .eq("location_id", locationId);
 
-    let activeMenu: any = null;
+    let activeMenus: any[] = [];
 
     if (!menusError && linkedMenus && linkedMenus.length > 0) {
-      const found = linkedMenus
+      const now = new Date();
+      activeMenus = linkedMenus
         .map((item: any) => item.menus)
-        .find((m: any) => m && m.is_active !== false);
-      if (found) activeMenu = found;
+        .filter((m: any) => {
+          if (!m || m.is_active === false) return false;
+
+          if (m.starts_at && m.ends_at) {
+            const startDate = new Date(m.starts_at);
+            const endDate = new Date(m.ends_at);
+            if (now < startDate || now > endDate) return false;
+          } else if (m.starts_at) {
+            if (now < new Date(m.starts_at)) return false;
+          } else if (m.ends_at) {
+            if (now > new Date(m.ends_at)) return false;
+          }
+
+          return true;
+        });
     }
 
-    if (!activeMenu && location?.active_menu_id) {
-      const { data: legacyMenu } = await supabase
-        .from("menus")
-        .select("*")
-        .eq("id", location.active_menu_id)
-        .eq("is_active", true)
+    if (activeMenus.length === 0) {
+      const { data: location } = await supabase
+        .from("locations")
+        .select("active_menu_id")
+        .eq("id", locationId)
         .single();
 
-      if (legacyMenu) activeMenu = legacyMenu;
+      if (location?.active_menu_id) {
+        const { data: legacyMenu } = await supabase
+          .from("menus")
+          .select("*")
+          .eq("id", location.active_menu_id)
+          .eq("is_active", true)
+          .single();
+
+        if (legacyMenu) {
+          let isValid = true;
+          const now = new Date();
+          if (legacyMenu.starts_at && legacyMenu.ends_at) {
+            const startDate = new Date(legacyMenu.starts_at);
+            const endDate = new Date(legacyMenu.ends_at);
+            if (now < startDate || now > endDate) isValid = false;
+          } else if (legacyMenu.starts_at) {
+            if (now < new Date(legacyMenu.starts_at)) isValid = false;
+          } else if (legacyMenu.ends_at) {
+            if (now > new Date(legacyMenu.ends_at)) isValid = false;
+          }
+
+          if (isValid) activeMenus.push(legacyMenu);
+        }
+      }
     }
 
-    return activeMenu;
+    return activeMenus;
   } catch (error) {
-    console.error("[getActiveMenu] Unexpected error:", error);
-    return null;
+    console.error("[getActiveMenus] Unexpected error:", error);
+    return [];
   }
+}
+
+export async function getActiveMenu(locationId: string) {
+  const menus = await getActiveMenus(locationId);
+  return menus[0] || null;
 }
 
 export async function getTableOrders(tableId: string) {

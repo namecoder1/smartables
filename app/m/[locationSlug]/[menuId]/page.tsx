@@ -1,10 +1,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Share2, Info, ChevronLeft, Search, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Share2, Info, ChevronLeft, Search, UtensilsCrossed, CalendarDays, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 
 type MenuItem = {
   id: string;
@@ -24,6 +23,18 @@ type MenuCategory = {
   description: string | null;
   sort_order: number;
   items: MenuItem[];
+};
+
+type PublicPromotion = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  value: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  visit_threshold: number | null;
 };
 
 // Helper to determine text color based on background color
@@ -70,7 +81,40 @@ export default async function DigitalMenuPage({
     return notFound();
   }
 
-  console.log(location)
+  // Fetch ACTIVE PROMOTIONS for this specific menu
+  const now = new Date().toISOString();
+
+  const { data: allPromotions } = await supabase
+    .from("promotions")
+    .select(`
+      id, name, description, image_url, type, value, starts_at, ends_at, visit_threshold,
+      all_locations, all_menus,
+      promotion_locations(location_id),
+      promotion_menus(menu_id)
+    `)
+    .eq("organization_id", location.organization_id)
+    .eq("is_active", true);
+
+  const menuPromotions: PublicPromotion[] = (allPromotions || []).filter((promo) => {
+    // Check location scope
+    const locationMatch = promo.all_locations ||
+      promo.promotion_locations?.some((pl: any) => pl.location_id === location.id);
+    if (!locationMatch) return false;
+
+    // Check menu scope — must apply to THIS menu
+    const menuMatch = promo.all_menus ||
+      promo.promotion_menus?.some((pm: any) => pm.menu_id === menuId);
+    if (!menuMatch) return false;
+
+    // Check date range
+    if (promo.starts_at && new Date(promo.starts_at) > new Date(now)) return false;
+    if (promo.ends_at && new Date(promo.ends_at) < new Date(now)) return false;
+
+    // Skip visit-threshold-only promotions from public view
+    if (promo.visit_threshold && promo.visit_threshold > 0 && !promo.description) return false;
+
+    return true;
+  });
 
   const branding = location.branding;
   const primaryColor = branding?.colors?.primary || "#3b82f6"; // Default Blue-500
@@ -115,7 +159,7 @@ export default async function DigitalMenuPage({
   const rawCategories = (menu.content as unknown as MenuCategory[]) || [];
   // Filter out empty categories if desired, or keep them to show "Empty" state
   const categories = rawCategories.filter(c => c.items && c.items.length > 0);
- 
+
   // Gradient based on name length for variety (same as main page)
   const gradientClass = "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900";
 
@@ -154,16 +198,33 @@ export default async function DigitalMenuPage({
 
           <div className="text-center space-y-3 px-2">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-tight drop-shadow-sm">{menu.name}</h1>
-            {menu.description && (
-              <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed font-medium">{menu.description}</p>
-            )}
+            <p className="text-white text-sm max-w-xs mx-auto leading-relaxed font-medium">Scopri i deliziosi piatti di questo menu.</p>
           </div>
         </div>
       </div>
 
       {/* Main Content - Overlapping Card */}
       <div className="relative z-20 -mt-20 px-4">
-        <div className="max-w-md mx-auto space-y-8">
+        <div className="max-w-md mx-auto space-y-6">
+
+          {/* Promotions for this menu */}
+          {menuPromotions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider">Promozioni attive su questo menù</h2>
+              </div>
+              <div className="grid gap-3">
+                {menuPromotions.map((promo) => (
+                  <PromotionCard
+                    key={promo.id}
+                    promotion={promo}
+                    primaryColor={primaryColor}
+                    secondaryColor={secondaryColor}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100 ring-1 ring-slate-900/5">
             {/* Sticky Category Navigation */}
@@ -263,6 +324,101 @@ export default async function DigitalMenuPage({
         </div>
       </div>
 
+    </div>
+  );
+}
+
+// ===== Promotion Helpers & Card =====
+
+function formatPromoValue(type: string, value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  switch (type) {
+    case 'percentage': return `-${value}%`;
+    case 'fixed_amount': return `-${value}€`;
+    case 'bundle': return `${value}€`;
+    case 'cover_override': return value === 0 ? 'Gratis' : `${value}€`;
+    default: return null;
+  }
+}
+
+function formatPromoDate(startsAt: string | null, endsAt: string | null) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  if (startsAt && endsAt) return `${fmt(startsAt)} — ${fmt(endsAt)}`;
+  if (endsAt) return `Fino al ${fmt(endsAt)}`;
+  return null;
+}
+
+const PROMO_TYPE_CONFIG: Record<string, { label: string; emoji: string }> = {
+  percentage: { label: 'Sconto %', emoji: '🏷️' },
+  fixed_amount: { label: 'Sconto €', emoji: '💰' },
+  bundle: { label: 'Bundle', emoji: '🎁' },
+  cover_override: { label: 'Coperto', emoji: '🍽️' },
+};
+
+function PromotionCard({
+  promotion,
+  primaryColor,
+  secondaryColor,
+}: {
+  promotion: PublicPromotion;
+  primaryColor: string;
+  secondaryColor: string;
+}) {
+  const typeConfig = PROMO_TYPE_CONFIG[promotion.type] || PROMO_TYPE_CONFIG.percentage;
+  const valueLabel = formatPromoValue(promotion.type, promotion.value);
+  const dateLabel = formatPromoDate(promotion.starts_at, promotion.ends_at);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-md">
+      <div
+        className="h-1"
+        style={{ background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` }}
+      />
+      <div className="p-4">
+        <div className="flex gap-3">
+          {promotion.image_url ? (
+            <div className="shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-slate-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={promotion.image_url} alt={promotion.name} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div
+              className="shrink-0 w-14 h-14 rounded-xl flex items-center justify-center text-xl"
+              style={{ backgroundColor: `${primaryColor}10` }}
+            >
+              {typeConfig.emoji}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-bold text-slate-800 text-sm leading-snug">{promotion.name}</h3>
+              {valueLabel && (
+                <span className="shrink-0 text-base font-extrabold tracking-tight" style={{ color: primaryColor }}>
+                  {valueLabel}
+                </span>
+              )}
+            </div>
+            {promotion.description && (
+              <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{promotion.description}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-2 h-5 border"
+                style={{ backgroundColor: `${primaryColor}12`, color: primaryColor, borderColor: `${primaryColor}25` }}
+              >
+                {typeConfig.label}
+              </Badge>
+              {dateLabel && (
+                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3" />
+                  {dateLabel}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

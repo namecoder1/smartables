@@ -12,8 +12,26 @@ import { createClient } from '@/utils/supabase/client'
 import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
 import { NumberInput } from '../ui/number-input'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Check, X, ChevronDown, ChevronDownIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import ConfirmDialog from '@/components/utility/confirm-dialog'
+import { ResponsiveDialog } from '@/components/utility/responsive-dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { MenuItem } from '@/types/general'
+
+const ALLERGENS = [
+  'Glutine', 'Lattosio', 'Frutta a guscio', 'Crostacei', 'Pesce', 'Molluschi',
+  'Uova', 'Soia', 'Senape', 'Semi di sesamo', 'Miele'
+]
+
+const TAGS = [
+  { id: 'gluten-free', label: 'Senza glutine', icon: '🌾' },
+  { id: 'lactose-free', label: 'Senza lattosio', icon: '🥛' },
+  { id: 'spicy', label: 'Piccante', icon: '🔥' },
+  { id: 'vegan', label: 'Vegano', icon: '🥦' },
+  { id: 'exclusive', label: 'Esclusivo', icon: '🏆' },
+  { id: 'popular', label: 'Popolare', icon: '⭐️' },
+]
 
 interface MenuItemDialogProps {
   open: boolean
@@ -21,7 +39,7 @@ interface MenuItemDialogProps {
   organizationId: string
   menuId: string
   categoryId: string
-  item?: any
+  item?: MenuItem
   onSuccess: () => void
 }
 
@@ -42,6 +60,9 @@ export function MenuItemDialog({
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState<number | undefined>(undefined)
   const [isAvailable, setIsAvailable] = useState(true)
+  const [isNew, setIsNew] = useState(false)
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
 
@@ -52,13 +73,19 @@ export function MenuItemDialog({
         setDescription(item.description || '')
         setPrice(Number(item.price) || 0)
         setIsAvailable(item.is_available ?? true)
-        setExistingImageUrl(item.image_url)
+        setIsNew(item.is_new ?? false)
+        setSelectedAllergens(item.allergens ?? [])
+        setSelectedTags(item.tags ?? [])
+        setExistingImageUrl(item.image_url ?? undefined)
         setImageFile(null)
       } else {
         setName('')
         setDescription('')
         setPrice(undefined)
         setIsAvailable(true)
+        setIsNew(false)
+        setSelectedAllergens([])
+        setSelectedTags([])
         setExistingImageUrl(undefined)
         setImageFile(null)
       }
@@ -99,6 +126,9 @@ export function MenuItemDialog({
         description,
         price: price || 0,
         is_available: isAvailable,
+        is_new: isNew,
+        allergens: selectedAllergens,
+        tags: selectedTags,
         image_url: finalImageUrl
       }
 
@@ -124,6 +154,7 @@ export function MenuItemDialog({
   }
 
   const handleDeleteConfirm = async () => {
+    if (!item) return
     try {
       await deleteMenuItem(menuId, item.id)
       toast.success("Articolo eliminato")
@@ -135,99 +166,178 @@ export function MenuItemDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden gap-0">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>{item ? 'Modifica Piatto' : 'Nuovo Piatto'}</DialogTitle>
-          <DialogDescription>
-            Inserisci i dettagli, il prezzo e una foto invitante.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog
+      isOpen={open}
+      setIsOpen={onOpenChange}
+      title={item ? 'Modifica Piatto' : 'Nuovo Piatto'}
+      description="Inserisci i dettagli, il prezzo e una foto invitante."
+      className="sm:max-w-3xl"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
+        {/* Left Column: Main Info */}
+        <div className="space-y-6">
+          <ImageUpload
+            title="Foto"
+            value={existingImageUrl}
+            onChange={(url, file) => {
+              setImageFile(file || null)
+              setExistingImageUrl(url || undefined)
+            }}
+          />
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Left: Image */}
-            <div className="md:w-1/3 flex flex-col gap-2">
-                <ImageUpload
-                  title="Foto Piatto"
-                  value={existingImageUrl}
-                  onChange={(url, file) => {
-                    setImageFile(file || null)
-                    setExistingImageUrl(url || undefined)
-                  }}
-                />
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-semibold">Nome</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Nome del piatto"
+              className="h-10 border-slate-200"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label htmlFor="description" className="text-sm font-semibold">Descrizione</Label>
+              <span className="text-[10px] text-muted-foreground">{description.length} / 1200</span>
             </div>
-
-            {/* Right: Details */}
-            <div className="md:w-2/3 space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome Piatto <span className="text-red-500">*</span></Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="es. Carbonara"
-                  className="font-medium"
-                />
-              </div>
-                
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrizione & Allergeni</Label>
-                <Textarea
-                  id="description"
-                  rows={3}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="Descrivi gli ingredienti principali..."
-                  className="resize-none"
-                />
-              </div>
+            <div className="relative">
+              <Textarea
+                id="description"
+                rows={4}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Descrizione del piatto"
+                className="resize-none pr-8 border-slate-200 h-24"
+              />
+              {description && (
+                <button
+                  onClick={() => setDescription('')}
+                  className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className='flex flex-col md:flex-row md:items-start gap-4'>
-            <div className="space-y-2">
-              <Label htmlFor="price">Prezzo (€) <span className="text-red-500">*</span></Label>
-              <div>
-                <NumberInput
-                  id="price"
-                  value={price}
-                  onValueChange={(val) => setPrice(val)}
-                  placeholder="0.00"
-                  min={0}
-                  step={0.50}
-                  context="default"
-                />
-              </div>
-            </div>
+          
 
-            <div className="flex flex-col w-full md:w-1/2 space-y-2">
-              <Label>Disponibilità</Label>
-              <div className='flex items-center justify-between w-full bg-background dark:bg-input/30 border p-2 rounded-xl'>
-                <p className="text-sm text-muted-foreground">{isAvailable ? 'Disponibile' : 'Non disponibile'}</p>
+          <div className="flex items-center justify-between p-3 bg-input/30 rounded-xl border border-border">
+            <div className="space-y-0.5">
+              <Label htmlFor="is-new" className="text-sm font-semibold">Nuovo?</Label>
+              <p className="text-[11px] text-slate-500">Visualizzata sulla card del piatto nel menu.</p>
+            </div>
+            <Switch
+              id="is-new"
+              checked={isNew}
+              onCheckedChange={setIsNew}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="price" className="text-sm font-semibold">Prezzo (€)</Label>
+              <NumberInput
+                id="price"
+                value={price}
+                onValueChange={(val) => setPrice(val)}
+                placeholder="0.00"
+                min={0}
+                step={0.50}
+                buttonHeight='h-5'
+                context="default"
+                className="h-10"
+              />
+            </div>
+            <div className="flex flex-col space-y-2">
+              <Label className="text-sm font-semibold">Disponibilità</Label>
+              <div className='flex items-center justify-between h-10 px-3 bg-white border border-slate-200 rounded-md'>
+                <p className="text-xs text-muted-foreground">{isAvailable ? 'Disponibile' : 'Esaurito'}</p>
                 <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
               </div>
             </div>
           </div>
-
         </div>
 
-        <DialogFooter className="p-6 border-t flex sm:justify-between items-center w-full">
-          {item ? (
-            <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4 mr-2" />
-              Elimina
-            </Button>
-          ) : <div />} {/* Spacer */}
+        {/* Right Column: Allergens & More */}
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tipologia</Label>
+            <div className="flex flex-wrap gap-2">
+              {TAGS.map(tag => (
+                <button
+                  key={tag.id}
+                  onClick={() => {
+                    setSelectedTags(prev =>
+                      prev.includes(tag.id)
+                        ? prev.filter(t => t !== tag.id)
+                        : [...prev, tag.id]
+                    )
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all",
+                    selectedTags.includes(tag.id)
+                      ? "bg-primary/20 text-black border-primary/40"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  )}
+                >
+                  <span>{tag.icon}</span>
+                  {tag.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Annulla</Button>
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Salvataggio...' : (item ? 'Salva Modifiche' : 'Crea Piatto')}
+          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <Label className="text-sm font-bold">Allergeni</Label>
+              <ChevronDownIcon className="w-4 h-4 text-slate-400" />
+            </div>
+            <div className="p-4 max-h-[300px] overflow-y-auto space-y-3 custom-scrollbar">
+              {ALLERGENS.map(allergen => (
+                <div key={allergen} className="flex items-center gap-3 group cursor-pointer" onClick={() => {
+                  setSelectedAllergens(prev =>
+                    prev.includes(allergen)
+                      ? prev.filter(a => a !== allergen)
+                      : [...prev, allergen]
+                  )
+                }}>
+                  <div className={cn(
+                    "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                    selectedAllergens.includes(allergen)
+                      ? "bg-green-600 border-green-600"
+                      : "bg-white border-slate-300 group-hover:border-slate-400"
+                  )}>
+                    {selectedAllergens.includes(allergen) && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className={cn(
+                    "text-sm transition-colors",
+                    selectedAllergens.includes(allergen) ? "text-slate-900 font-medium" : "text-slate-600"
+                  )}>
+                    {allergen}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-auto gap-3 pt-4">
+            {item && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                <Trash2 className="w-4 h-4" />
+                Elimina
+              </Button>
+            )}
+            <Button onClick={handleSubmit} disabled={loading} variant='outline'>
+              {loading ? 'Salvataggio...' : (item ? 'Salva' : 'Aggiungi')}
             </Button>
           </div>
-        </DialogFooter>
-      </DialogContent>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={deleteDialogOpen}
@@ -239,6 +349,6 @@ export function MenuItemDialog({
         onConfirm={handleDeleteConfirm}
         variant="destructive"
       />
-    </Dialog>
+    </ResponsiveDialog>
   )
 }

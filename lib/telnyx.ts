@@ -1,5 +1,6 @@
+import { TELNYX_API_URL } from "./constants";
+
 const TELNYX_API_KEY = process.env.TELNYX_API_KEY;
-const TELNYX_API_URL = "https://api.telnyx.com/v2";
 
 if (!TELNYX_API_KEY) {
   console.warn("Missing TELNYX_API_KEY in environment variables");
@@ -12,13 +13,42 @@ export type TelnyxNumber = {
   features: string[];
 };
 
+// ── Shared fetch wrapper ──
+
+async function telnyxFetch(
+  path: string,
+  options: RequestInit = {},
+): Promise<any> {
+  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+
+  const url = path.startsWith("http") ? path : `${TELNYX_API_URL}${path}`;
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${TELNYX_API_KEY}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Telnyx API error [${path}]:`, errorText);
+    throw new Error(`Telnyx API error: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+// ── Public API ──
+
 export async function searchAvailableNumbers(
   countryCode: string = "IT",
   region?: string,
   limit: number = 10,
 ): Promise<TelnyxNumber[]> {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
   const params = new URLSearchParams({
     "filter[country_code]": countryCode,
     "filter[limit]": limit.toString(),
@@ -34,35 +64,17 @@ export async function searchAvailableNumbers(
     }
   }
 
-  try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/available_phone_numbers?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          Accept: "application/json",
-        },
-      },
-    );
+  const data = await telnyxFetch(
+    `/available_phone_numbers?${params.toString()}`,
+    { method: "GET" },
+  );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx search error:", errorText);
-      throw new Error(`Telnyx API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    return data.data.map((num: any) => ({
-      phoneNumber: num.phone_number,
-      region: num.region_information?.[0]?.region_name || region || "",
-      cost: num.cost_information?.upfront_cost || "0.00",
-      features: num.features.map((f: any) => f.name),
-    }));
-  } catch (error) {
-    console.error("Error searching Telnyx numbers:", error);
-    throw error;
-  }
+  return data.data.map((num: any) => ({
+    phoneNumber: num.phone_number,
+    region: num.region_information?.[0]?.region_name || region || "",
+    cost: num.cost_information?.upfront_cost || "0.00",
+    features: num.features.map((f: any) => f.name),
+  }));
 }
 
 export async function purchasePhoneNumber(
@@ -70,220 +82,91 @@ export async function purchasePhoneNumber(
   requirementGroupId?: string,
   connectionId?: string,
 ) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+  const phoneNumberEntry: any = { phone_number: phoneNumber };
+  if (requirementGroupId) {
+    phoneNumberEntry.requirement_group_id = requirementGroupId;
+  }
 
-  try {
-    const phoneNumberEntry: any = { phone_number: phoneNumber };
-    if (requirementGroupId) {
-      phoneNumberEntry.requirement_group_id = requirementGroupId;
-    }
-
-    const payload: any = {
+  const data = await telnyxFetch("/number_orders", {
+    method: "POST",
+    body: JSON.stringify({
       phone_numbers: [phoneNumberEntry],
       connection_id: connectionId || process.env.TELNYX_CONNECTION_ID,
-    };
+    }),
+  });
 
-    const response = await fetch(`${TELNYX_API_URL}/number_orders`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx purchase error:", errorText);
-      throw new Error(`Telnyx purchase failed: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error purchasing Telnyx number:", error);
-    throw error;
-  }
+  return data;
 }
 
 export async function answerCall(callControlId: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/calls/${callControlId}/actions/answer`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          // stream_track: "inbound_track",
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      console.error("Failed to answer call", await response.text());
-      throw new Error("Failed to answer call");
-    }
-    return true;
-  } catch (error) {
-    console.error("Error answering call:", error);
-    throw error;
-  }
+  await telnyxFetch(`/calls/${callControlId}/actions/answer`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  return true;
 }
 
-export async function startRecording(callControlId: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+export async function hangupCall(callControlId: string) {
+  await telnyxFetch(`/calls/${callControlId}/actions/hangup`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  return true;
+}
 
-  try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/calls/${callControlId}/actions/record_start`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          format: "mp3",
-          channels: "single",
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      console.error("Failed to start recording", await response.text());
-      throw new Error("Failed to start recording");
-    }
-    return true;
-  } catch (error) {
-    console.error("Error starting recording:", error);
-    throw error;
-  }
+export async function startRecording(
+  callControlId: string,
+  clientState?: string,
+) {
+  await telnyxFetch(`/calls/${callControlId}/actions/record_start`, {
+    method: "POST",
+    body: JSON.stringify({
+      format: "mp3",
+      channels: "single",
+      client_state: clientState || null,
+    }),
+  });
+  return true;
 }
 
 export async function rejectCall(callControlId: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
   try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/calls/${callControlId}/actions/reject`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          cause: "USER_BUSY",
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      console.error("Failed to reject call", await response.text());
-    }
+    await telnyxFetch(`/calls/${callControlId}/actions/reject`, {
+      method: "POST",
+      body: JSON.stringify({ cause: "USER_BUSY" }),
+    });
   } catch (error) {
     console.error("Error rejecting call:", error);
   }
 }
 
 export async function transferCall(callControlId: string, to: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
   console.log(`[Telnyx Lib] Transferring call ${callControlId} to ${to}`);
 
-  try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/calls/${callControlId}/actions/transfer`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          to: to,
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      console.error("Failed to transfer call", await response.text());
-      throw new Error("Failed to transfer call");
-    }
-    return true;
-  } catch (error) {
-    console.error("Error transferring call:", error);
-    throw error;
-  }
+  await telnyxFetch(`/calls/${callControlId}/actions/transfer`, {
+    method: "POST",
+    body: JSON.stringify({ to }),
+  });
+  return true;
 }
 
 export async function getOwnedNumbers() {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
+  const data = await telnyxFetch("/phone_numbers", { method: "GET" });
 
-  try {
-    const response = await fetch(`${TELNYX_API_URL}/phone_numbers`, {
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx get owned error:", errorText);
-      throw new Error(`Telnyx API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data.map((num: any) => ({
-      id: num.id,
-      phoneNumber: num.phone_number,
-      region: num.region_information?.[0]?.region_name || "",
-      connectionId: num.connection_id,
-      status: num.status,
-    }));
-  } catch (error) {
-    console.error("Error getting owned Telnyx numbers:", error);
-    throw error;
-  }
+  return data.data.map((num: any) => ({
+    id: num.id,
+    phoneNumber: num.phone_number,
+    region: num.region_information?.[0]?.region_name || "",
+    connectionId: num.connection_id,
+    status: num.status,
+  }));
 }
 
 export async function updatePhoneNumber(id: string, connectionId: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  try {
-    const response = await fetch(`${TELNYX_API_URL}/phone_numbers/${id}`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        connection_id: connectionId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update phone number: ${errorText}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error updating Telnyx number:", error);
-    throw error;
-  }
+  return await telnyxFetch(`/phone_numbers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ connection_id: connectionId }),
+  });
 }
 
 export async function uploadDocument(fileBlob: Blob, filename: string) {
@@ -292,66 +175,42 @@ export async function uploadDocument(fileBlob: Blob, filename: string) {
   const formData = new FormData();
   formData.append("file", fileBlob, filename);
 
-  try {
-    const response = await fetch(`${TELNYX_API_URL}/documents`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-      },
-      body: formData,
-    });
+  // uploadDocument uses FormData, so we skip the JSON content-type header
+  const response = await fetch(`${TELNYX_API_URL}/documents`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TELNYX_API_KEY}`,
+    },
+    body: formData,
+  });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx upload error:", errorText);
-      throw new Error(`Telnyx upload failed: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.data; // Returns { id: string, size: number, content_type: string, ... }
-  } catch (error) {
-    console.error("Error uploading document to Telnyx:", error);
-    throw error;
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Telnyx upload error:", errorText);
+    throw new Error(`Telnyx upload failed: ${errorText}`);
   }
+
+  const data = await response.json();
+  return data.data;
 }
 
 export async function createAddress(addressData: {
   customer_reference?: string;
   street_address: string;
   extended_address?: string;
-  locality: string; // City
-  administrative_area?: string; // State/Province
+  locality: string;
+  administrative_area?: string;
   postal_code: string;
   country_code: string;
   business_name?: string;
   first_name?: string;
   last_name?: string;
 }) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  try {
-    const response = await fetch(`${TELNYX_API_URL}/addresses`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(addressData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx create address error:", errorText);
-      throw new Error(`Telnyx address creation failed: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error("Error creating address:", error);
-    throw error;
-  }
+  const data = await telnyxFetch("/addresses", {
+    method: "POST",
+    body: JSON.stringify(addressData),
+  });
+  return data.data;
 }
 
 export async function createRequirementGroup(
@@ -361,101 +220,29 @@ export async function createRequirementGroup(
   customerReference: string,
   requirements: { requirement_id: string; field_value: string }[],
 ) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  // TODO: Retrieve actual requirement IDs for Italy/Local dynamically or via config.
-  // For now, we assume the caller passes the correct requirement structure or we hardcode common ones for IT/Local if known.
-  // But usually, you query distinct requirements first. For this MVP, we might need to know them.
-  // "regulatory_requirements" usually need a specific ID.
-  //
-  // However, `requirements` argument here allows flexibility.
-
-  try {
-    const payload = {
+  const data = await telnyxFetch("/requirement_groups", {
+    method: "POST",
+    body: JSON.stringify({
       country_code: countryCode,
       phone_number_type: phoneNumberType,
       action: action,
       customer_reference: customerReference,
-      regulatory_requirements: requirements, // Note: API expects 'regulatory_requirements' array of objects
-    };
-
-    const response = await fetch(
-      "https://api.telnyx.com/v2/requirement_groups",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx create requirement group error:", errorText);
-      throw new Error(`Telnyx requirement group creation failed: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.data; // Returns { id: string, status: string, ... }
-  } catch (error) {
-    console.error("Error creating requirement group:", error);
-    throw error;
-  }
+      regulatory_requirements: requirements,
+    }),
+  });
+  return data.data;
 }
 
 export async function getRequirementGroup(id: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  try {
-    const response = await fetch(`${TELNYX_API_URL}/requirement_groups/${id}`, {
-      headers: {
-        Authorization: `Bearer ${TELNYX_API_KEY}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get requirement group: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error("Error getting requirement group:", error);
-    throw error;
-  }
+  const data = await telnyxFetch(`/requirement_groups/${id}`, {
+    method: "GET",
+  });
+  return data.data;
 }
 
 export async function submitRequirementGroup(id: string) {
-  if (!TELNYX_API_KEY) throw new Error("TELNYX_API_KEY is not set");
-
-  try {
-    const response = await fetch(
-      `${TELNYX_API_URL}/requirement_groups/${id}/submit`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Telnyx submit RG error:", errorText);
-      throw new Error(`Failed to submit requirement group: ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    console.error("Error submitting requirement group:", error);
-    throw error;
-  }
+  const data = await telnyxFetch(`/requirement_groups/${id}/submit`, {
+    method: "POST",
+  });
+  return data.data;
 }

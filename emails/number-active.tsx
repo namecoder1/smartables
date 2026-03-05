@@ -77,4 +77,9 @@ export const NumberActiveEmail = ({
   );
 };
 
+NumberActiveEmail.PreviewProps = {
+  teamName: "Ristorante Da Marco",
+  phoneNumber: "+39 0123 456789",
+} as NumberActiveEmailProps;
+
 export default NumberActiveEmail;

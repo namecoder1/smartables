@@ -18,11 +18,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+        success: <CircleCheckIcon className="size-5" />,
+        info: <InfoIcon className="size-5" />,
+        warning: <TriangleAlertIcon className="size-5" />,
+        error: <OctagonXIcon className="size-5" />,
+        loading: <Loader2Icon className="size-5 animate-spin" />,
       }}
       style={
         {
@@ -30,6 +30,18 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          "--success-bg": "rgb(34 197 94)",
+          "--success-text": "#fff",
+          "--success-border": "rgb(34 197 94)",
+          "--error-bg": "var(--destructive)",
+          "--error-text": "#fff",
+          "--error-border": "var(--destructive)",
+          "--info-bg": "rgb(59 130 246)",
+          "--info-text": "#fff",
+          "--info-border": "rgb(59 130 246)",
+          "--warning-bg": "rgb(249 115 22)",
+          "--warning-text": "#fff",
+          "--warning-border": "rgb(249 115 22)",
         } as React.CSSProperties
       }
       {...props}

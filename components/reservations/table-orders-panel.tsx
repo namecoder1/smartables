@@ -12,7 +12,7 @@ import { Loader2, Search, Plus, Minus, Send, X, ShoppingCart, UtensilsCrossed, R
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
-import { getActiveMenu } from '@/app/actions/order-actions';
+import { getActiveMenus } from '@/app/actions/order-actions';
 import Image from 'next/image';
 import { useLocationStore } from '@/store/location-store';
 
@@ -34,12 +34,15 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
 
   // Quick Add State
   const [isAdding, setIsAdding] = useState(initialMode === 'add');
+  const [availableMenus, setAvailableMenus] = useState<any[]>([]);
+  const [selectedMenu, setSelectedMenu] = useState<any | null>(null);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
   const [draftItems, setDraftItems] = useState<any[]>([]); // Items to add
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMenuSelection, setShowMenuSelection] = useState(false);
 
   const supabase = createClient();
 
@@ -60,32 +63,29 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
     fetchOrders();
   }, [tableId, refreshTrigger, isAdding]);
 
-  // Fetch Menu on Open Add
+  // Fetch Menus on Open Add
   useEffect(() => {
-    if (!isAdding || menuItems.length > 0) return;
+    if (!isAdding || availableMenus.length > 0) return;
 
-    const fetchMenu = async () => {
+    const fetchMenus = async () => {
       setLoadingMenu(true);
       try {
-        const menu = await getActiveMenu(locationId);
+        const menus = await getActiveMenus(locationId);
 
-        if (!menu) {
+        if (!menus || menus.length === 0) {
           toast.error("Nessun menu attivo");
           setLoadingMenu(false);
           return;
         }
 
-        if (menu.content) {
-          // Flatten items for search
-          const allItems: any[] = [];
-          menu.content.forEach((cat: any) => {
-            if (cat.items) {
-              cat.items.forEach((item: any) => {
-                allItems.push({ ...item, categoryName: cat.name });
-              });
-            }
-          });
-          setMenuItems(allItems);
+        setAvailableMenus(menus);
+
+        // If only one menu, auto-select it
+        if (menus.length === 1) {
+          setSelectedMenu(menus[0]);
+          processMenuContent(menus[0]);
+        } else {
+          setShowMenuSelection(true);
         }
       } catch (e) {
         console.error(e);
@@ -94,8 +94,30 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
         setLoadingMenu(false);
       }
     };
-    fetchMenu();
-  }, [isAdding, locationId, menuItems.length]);
+    fetchMenus();
+  }, [isAdding, locationId, availableMenus.length]);
+
+  const processMenuContent = (menu: any) => {
+    if (menu?.content) {
+      // Flatten items for search
+      const allItems: any[] = [];
+      menu.content.forEach((cat: any) => {
+        if (cat.items) {
+          cat.items.forEach((item: any) => {
+            allItems.push({ ...item, categoryName: cat.name });
+          });
+        }
+      });
+      setMenuItems(allItems);
+      setActiveCategory('Tutti');
+    }
+  };
+
+  const handleMenuSelect = (menu: any) => {
+    setSelectedMenu(menu);
+    processMenuContent(menu);
+    setShowMenuSelection(false);
+  };
 
   const categories = useMemo(() => {
     const cats = new Set(menuItems.map(item => item.categoryName));
@@ -199,48 +221,87 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
 
   if (isAdding) {
     return (
-      <div className="flex flex-col h-[70vh] max-h-[750px] relative -mx-6 sm:mx-0 sm:my-0 sm:h-[650px] overflow-hidden bg-background">
-        <div className="flex flex-col gap-3 p-4 border-b bg-card z-10 shrink-0">
-          <div className="flex items-center gap-2 relative">
-            <Button variant="ghost" size="icon" className="shrink-0 -ml-2 text-muted-foreground mr-1 h-9 w-9" onClick={() => setIsAdding(false)}>
+      <div className="flex flex-col h-[70vh] max-h-[750px] relative sm:my-0 sm:h-[650px] overflow-hidden bg-background">
+        <div className="flex flex-col gap-3 border-b bg-card z-10 shrink-0">
+          <div className="flex items-center gap-2 relative pb-2 pt-1">
+            <Button variant="outline" size="icon" className="shrink-0 text-muted-foreground h-9 w-9" onClick={() => {
+              if (availableMenus.length > 1 && !showMenuSelection) {
+                setShowMenuSelection(true);
+              } else {
+                setIsAdding(false);
+              }
+            }}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cerca piatto..."
-                className="pl-9 bg-muted/50 border-none h-10 rounded-xl w-full"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
+              {selectedMenu && !showMenuSelection && (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cerca piatto..."
+                      className="pl-9 bg-muted/50 border-none h-10 rounded-xl w-full"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              {(!selectedMenu || showMenuSelection) && (
+                <div className="h-10 flex items-center px-2 font-bold text-lg">
+                  Seleziona Menu
+                </div>
+              )}
             </div>
             <Button variant="outline" size="sm" className="h-10 rounded-xl px-3 shrink-0" onClick={addCustomItemToDraft}>
-              <Plus className="w-4 h-4 mr-1" />
+              <Plus className="w-4 h-4" />
               Libero
             </Button>
           </div>
 
-          <ScrollArea className="w-full whitespace-nowrap -mx-4 px-4 pb-1">
-            <div className="flex w-max space-x-2">
-              {categories.map(cat => (
-                <Badge
-                  key={cat}
-                  variant={activeCategory === cat ? 'default' : 'secondary'}
-                  className="cursor-pointer px-3 py-1 text-sm rounded-full transition-all"
-                  onClick={() => setActiveCategory(cat)}
-                >
-                  {cat}
-                </Badge>
-              ))}
-            </div>
-          </ScrollArea>
+          {!showMenuSelection && selectedMenu && (
+            <ScrollArea className="w-full whitespace-nowrap -mx-4 px-4 pb-2">
+              <div className="flex w-max space-x-2">
+                {categories.map(cat => (
+                  <Badge
+                    key={cat}
+                    variant={activeCategory === cat ? 'default' : 'secondary'}
+                    className="cursor-pointer px-3 py-1 text-sm rounded-full transition-all"
+                    onClick={() => setActiveCategory(cat)}
+                  >
+                    {cat}
+                  </Badge>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-muted/10 p-4" data-vaul-no-drag>
+        <div className="flex-1 overflow-y-auto bg-muted/10 py-4" data-vaul-no-drag>
           {loadingMenu ? (
             <div className="flex flex-col items-center justify-center p-10 h-full text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mb-4" />
               <p>Caricamento menu...</p>
+            </div>
+          ) : showMenuSelection ? (
+            <div className="space-y-3">
+              {availableMenus.map(menu => (
+                <Card
+                  key={menu.id}
+                  className={`cursor-pointer transition-all py-0 hover:border-primary/50 overflow-hidden ${selectedMenu?.id === menu.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+                  onClick={() => handleMenuSelect(menu)}
+                >
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-lg">{menu.name}</h3>
+                      {menu.description && <p className="text-sm text-muted-foreground line-clamp-1">{menu.description}</p>}
+                    </div>
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <ShoppingCart className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-10 h-full text-muted-foreground text-center">
@@ -290,7 +351,7 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
         </div>
 
         {draftItems.length > 0 && (
-          <div className="shrink-0 h-56 overflow-y-auto bg-background border rounded-xl shadow-[0_-15px_30px_-15px_rgba(0,0,0,0.15)] z-20">
+          <div className="shrink-0 h-56 overflow-y-auto bg-background border rounded-xl  z-20">
             <div className="p-3 border-b flex justify-between items-center bg-card">
               <div className="font-semibold text-sm flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4 text-primary" /> Riepilogo {draftCount} {draftCount === 1 ? 'prodotto' : 'prodotti'}
@@ -372,10 +433,10 @@ export function TableOrdersPanel({ tableId, tableName, locationId, refreshTrigge
   }
 
   return (
-    <div className="flex flex-col h-fit overflow-hidden sm:-mb-4 relative">
-      <div className="flex-1 overflow-y-auto p-4" data-vaul-no-drag>
+    <div className="flex flex-col h-fit overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto" data-vaul-no-drag>
         {orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[300px] text-center bg-muted/20 rounded-2xl border border-dashed my-4">
+          <div className="flex flex-col items-center justify-center h-[300px] text-center bg-muted/20 rounded-2xl border-2 border-dashed mb-4">
             <div className="bg-background p-4 rounded-full shadow-sm border mb-4">
               <UtensilsCrossed className="w-8 h-8 text-muted-foreground opacity-70" />
             </div>

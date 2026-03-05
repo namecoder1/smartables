@@ -28,7 +28,7 @@ export const UserMenu = ({ user, email }: { user: Profile | null, email: string 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className='group p-1 bg-card/10 dark:bg-card data-[state=open]:border-primary/60 border-2 rounded-lg dark:hover:bg-primary/10 border-border/10 dark:border-border hover:bg-primary/10 hover:border-primary/60'>
+        <button className='group p-1 bg-card/10! data-[state=open]:border-primary/60 border-2 rounded-lg hover:bg-primary/10 border-border/10 hover:border-primary/60'>
           <LuCircleUserRound size={26} className='text-white group-data-[state=open]:text-primary group-hover:text-primary/90' />
         </button>
       </DropdownMenuTrigger>

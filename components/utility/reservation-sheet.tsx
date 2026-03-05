@@ -219,6 +219,7 @@ const ReservationSheet = ({
       formData.set('date', bookingDate.toISOString()); // The action likely expects 'date' or specific fields, checked below
     }
 
+    if (location?.id) formData.set('location_id', location.id)
     formData.set('notes', notes)
 
     startTransition(async () => {
@@ -332,7 +333,7 @@ const ReservationSheet = ({
                 onChange={setPhone}
                 defaultCountry="IT"
                 disabled
-                className='w-full'
+                className='w-full h-9 border rounded-xl'
               />
             </div>
           </div>
@@ -353,7 +354,7 @@ const ReservationSheet = ({
                 value={phone}
                 onChange={setPhone}
                 defaultCountry="IT"
-                className='rounded-l-none'
+                className='rounded-l-none h-9 border rounded-xl'
                 placeholder="+39 333 1234567"
                 required
               />
@@ -369,6 +370,7 @@ const ReservationSheet = ({
               name='guests'
               placeholder="2"
               required
+              buttonHeight='h-4.5'
               value={guests}
               onValueChange={setGuests}
               context="default"

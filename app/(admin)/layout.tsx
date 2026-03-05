@@ -1,9 +1,18 @@
 import Navbar from '@/components/admin/navbar'
 import Sidebar from '@/components/admin/sidebar'
 import { SidebarProvider } from '@/components/ui/sidebar'
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 import React from 'react'
 
-const AdminLayout = ({ children }: { children: React.ReactNode }) => {
+const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user || user.app_metadata?.role !== 'superadmin') {
+    redirect('/')
+  }
+
   return (
     <div className="fixed inset-0 h-full w-full">
       <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>

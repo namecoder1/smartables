@@ -35,7 +35,7 @@ export function StarButton({ title, url, isStarred }: StarButtonProps) {
       <Star
         className={cn(
           "size-5 transition-all",
-          isStarred ? "fill-yellow-400 text-yellow-400" : "text-white/80 dark:text-foreground hover:text-yellow-400"
+          isStarred ? "fill-yellow-400 text-yellow-400" : "text-white/80 hover:text-yellow-400"
         )}
       />
     </button>

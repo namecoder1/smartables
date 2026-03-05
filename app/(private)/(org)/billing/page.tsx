@@ -84,7 +84,7 @@ export default async function BillingPage({
 
   return (
     <PageWrapper>
-      <div className='xl:hidden flex flex-col'>
+      <div className='flex flex-col'>
         <h1 className="text-3xl font-bold tracking-tight">Fatturazione</h1>
         <p className="text-muted-foreground">Gestisci il tuo abbonamento, visualizza i dettagli del piano e scarica le fatture.</p>
       </div>
@@ -151,8 +151,8 @@ export default async function BillingPage({
                 </div>
 
                 {org?.stripe_current_period_end && (
-                  <div className="flex items-center gap-2 text-sm bg-muted/50 p-3 rounded-md w-fit text-muted-foreground">
-                    <CalendarDays className="h-4 w-4" />
+                  <div className="flex items-start gap-2 text-sm bg-muted/50 p-3 rounded-md w-fit text-muted-foreground">
+                    <CalendarDays className="h-4 w-4 mt-1" />
                     {org.stripe_cancel_at_period_end ? (
                       <span>L'abbonamento scade il <span className="font-medium text-foreground">{new Date(org.stripe_current_period_end).toLocaleDateString()}</span> e non verrà rinnovato.</span>
                     ) : (
@@ -161,8 +161,8 @@ export default async function BillingPage({
                   </div>
                 )}
 
-                <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-lg p-4">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
                     <span className="font-semibold block mb-1">Nota importante:</span>
                     I limiti delle risorse (es. messaggi) sono vincolati al piano. Non è possibile acquistare pacchetti extra singolarmente.
                   </p>
@@ -178,8 +178,8 @@ export default async function BillingPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {currentPlan?.features.map((feature) => (
                     <div key={feature} className="flex items-start gap-2 text-sm group">
-                      <div className="mt-0.5 h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0 group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
-                        <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                      <div className="mt-0.5 h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0 group-hover:bg-green-200 transition-colors">
+                        <Check className="h-3 w-3 text-green-600" />
                       </div>
                       <span className="text-muted-foreground group-hover:text-foreground transition-colors">{feature}</span>
                     </div>

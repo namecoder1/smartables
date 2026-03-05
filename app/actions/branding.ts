@@ -1,25 +1,19 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { updateBusinessProfile, updateProfilePicture } from "@/lib/whatsapp";
 import { revalidatePath } from "next/cache";
+import { getAuthContext } from "@/lib/auth";
 
 export async function updateWhatsappProfile(formData: FormData) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
+  const { supabase } = await getAuthContext();
 
   const locationId = formData.get("locationId") as string;
   const description = formData.get("description") as string;
   const about = formData.get("about") as string;
   const email = formData.get("email") as string;
   const website = formData.get("website") as string;
+  const address = formData.get("address") as string;
+  const vertical = formData.get("vertical") as string;
   const profileImage = formData.get("profileImage") as File;
 
   if (!locationId) {
@@ -30,7 +24,7 @@ export async function updateWhatsappProfile(formData: FormData) {
     // 1. Get Location & Meta Phone ID
     const { data: location, error: locError } = await supabase
       .from("locations")
-      .select("meta_phone_id, id")
+      .select("meta_phone_id, id, branding")
       .eq("id", locationId)
       .single();
 
@@ -45,6 +39,8 @@ export async function updateWhatsappProfile(formData: FormData) {
       description,
       about,
       email,
+      address,
+      vertical,
       websites: website ? [website] : [],
     };
 
@@ -63,21 +59,17 @@ export async function updateWhatsappProfile(formData: FormData) {
     }
 
     // 3. Update Profile Picture (if provided)
+    let finalLogoUrl = "";
     if (profileImage && profileImage.size > 0) {
-      // We need a public URL for the WhatsApp API to fetch the image from, OR use resumable upload with bytes.
-      // The `updateProfilePicture` in `lib/whatsapp.ts` currently expects a URL and does a complex fetch-buffer-upload dance.
-      // Let's first upload to Supabase Storage to get a public URL (or signed URL), then pass that to the lib.
-
       const fileExt = profileImage.name.split(".").pop();
       const filePath = `whatsapp-profiles/${locationId}-${Date.now()}.${fileExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("compliance-docs") // Or a public bucket if possible? 'compliance-docs' might be private.
+      const { error: uploadError } = await supabase.storage
+        .from("compliance-docs")
         .upload(filePath, profileImage);
 
       if (uploadError) throw new Error("Failed to upload image to storage");
 
-      // Get Signed URL (valid for 1 hour)
       const { data: urlData } = await supabase.storage
         .from("compliance-docs")
         .createSignedUrl(filePath, 3600);
@@ -85,11 +77,34 @@ export async function updateWhatsappProfile(formData: FormData) {
       if (!urlData?.signedUrl)
         throw new Error("Failed to get signed URL for image");
 
-      // Pass this URL to the lib function
       await updateProfilePicture(phoneId, urlData.signedUrl);
+
+      const { data: publicUrlData } = supabase.storage
+        .from("compliance-docs")
+        .getPublicUrl(filePath);
+      finalLogoUrl = publicUrlData.publicUrl;
     }
 
+    // 4. Update Database Branding to keep in sync & Set Complete
+    const currentBranding = location.branding || {
+      colors: { primary: "#000000", secondary: "#ffffff", accent: "#3b82f6" },
+      logo_url: "",
+      social_links: { instagram: "", facebook: "", tiktok: "" },
+    };
+
+    await supabase
+      .from("locations")
+      .update({
+        branding: {
+          ...currentBranding,
+          logo_url: finalLogoUrl || currentBranding.logo_url,
+        },
+        is_branding_completed: true, // Mark as completed!
+      })
+      .eq("id", locationId);
+
     revalidatePath("/compliance");
+    revalidatePath("/home");
     return { success: true };
   } catch (error: any) {
     console.error("Update Branding Error:", error);

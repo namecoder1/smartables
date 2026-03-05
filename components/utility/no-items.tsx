@@ -13,7 +13,7 @@ const NoItems = ({
   button?: React.ReactNode
 }) => {
   return (
-    <div className="flex flex-col items-center rounded-xl justify-center p-12 border-2 border-dashed bg-card min-h-[400px]">
+    <div className="flex flex-col items-center rounded-3xl justify-center p-12 border-2 border-dashed bg-card min-h-[400px]">
       <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-full">
         {icon}
       </div>

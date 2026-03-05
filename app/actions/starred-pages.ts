@@ -1,17 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getAuthContext } from "@/lib/auth";
 
 export async function toggleStarredPage(title: string, url: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("User not authenticated");
-  }
+  const { supabase, user } = await getAuthContext();
 
   // Check if page is already starred
   const { data: existing } = await supabase
@@ -37,14 +30,7 @@ export async function toggleStarredPage(title: string, url: string) {
 }
 
 export async function getStarredPages() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return [];
-  }
+  const { supabase, user } = await getAuthContext();
 
   const { data } = await supabase
     .from("starred_pages")

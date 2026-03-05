@@ -6,7 +6,11 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'sonizywznazqmnbxwubw.supabase.co'
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'pps.whatsapp.net'
+      },
     ]
   },
   

@@ -80,9 +80,10 @@ const AdminPage = async () => {
 import {
   manualPurchaseNumber,
   manualMetaRegistration,
-  manualVoiceVerification
+  manualVoiceVerification,
+  syncTelnyxStatus
 } from '@/app/actions/admin-automation'
-import { BadgeCheck, Phone, RefreshCw } from 'lucide-react'
+import { BadgeCheck, Phone, RefreshCw, RotateCcw } from 'lucide-react'
 
 async function AutomationStatusTable() {
   const supabase = await createAdminClient(
@@ -146,6 +147,17 @@ function AutomationCard({ location }: { location: any }) {
         <CardDescription className="text-xs break-all">{location.id}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pb-3">
+        {/* Sync Button */}
+        <form action={async () => {
+          "use server"
+          const result = await syncTelnyxStatus(location.id)
+          console.log('[Sync Result]', result)
+        }}>
+          <Button size="sm" variant="outline" className="w-full h-7 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+            <RotateCcw className="w-3 h-3 mr-1" /> Sync Telnyx Status
+          </Button>
+        </form>
+
         {/* Step 0: Regulatory */}
         <div className="flex justify-between items-center">
           <span>Regulatory:</span>
@@ -210,13 +222,13 @@ function AutomationCard({ location }: { location: any }) {
           <span>Meta ID:</span>
           {hasMeta ? <BadgeCheck className="w-4 h-4 text-green-600" /> : <span className="text-xs text-muted-foreground">Missing</span>}
         </div>
-        {!hasMeta && hasTelnyx && (
+        {hasTelnyx && (
           <form action={async () => {
             "use server"
             await manualMetaRegistration(location.id)
           }}>
             <Button size="sm" variant="outline" className="w-full h-7 mt-1 text-xs">
-              <Phone className="w-3 h-3 mr-1" /> Force Add to Meta
+              <Phone className="w-3 h-3 mr-1" /> {hasMeta ? 'Re-register on Meta' : 'Force Add to Meta'}
             </Button>
           </form>
         )}
@@ -261,7 +273,18 @@ function AutomationCard({ location }: { location: any }) {
           </form>
         )}
 
-        <div className="pt-2 border-t mt-2">
+        <div className="pt-2 border-t mt-2 flex flex-col gap-2">
+          {/* Debug Raw Data */}
+          <div className="p-2 bg-muted rounded text-[10px] font-mono whitespace-pre overflow-x-auto">
+            <div className="font-bold border-b mb-1 pb-1">RAW DB DATA:</div>
+            ID: {location.id}
+            Status: {location.activation_status}
+            Number: {location.telnyx_phone_number || 'NULL'}
+            MetaID: {location.meta_phone_id || 'NULL'}
+            ReqID: {location.regulatory_requirement_id || 'NULL'}
+            ReqStatus: {location.requirement?.status || 'NULL'}
+          </div>
+
           <form action={async () => {
             "use server"
             await deleteLocationAction(location.id)

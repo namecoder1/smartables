@@ -23,13 +23,14 @@ export default async function OnboardingPage({ searchParams }: Props) {
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
+  if (user.app_metadata?.role === 'superadmin') redirect('/manage')
 
   const { data: organizations } = await supabase
     .from('organizations')
     .select('id')
     .eq('created_by', user.id)
 
-  if (organizations && organizations.length > 0 && user.id !== '0a82970f-1fc5-4a52-97a1-a8613de0e3f7') redirect('/home')
+  if (organizations && organizations.length > 0) redirect('/home')
 
   return (
     <div className="flex min-h-screen w-full">

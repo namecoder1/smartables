@@ -5,6 +5,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import {
   registerNumberWithMeta,
   requestVerificationCode,
+  verifyCodeWithMeta,
 } from "@/lib/meta-registration";
 
 export async function triggerVoiceVerification(
@@ -91,9 +92,13 @@ export async function triggerVoiceVerification(
   }
 }
 
-export async function submitVerificationCode(locationId: string, code: string) {
+export async function submitVerificationCode(
+  locationId: string,
+  code: string,
+  pin?: string,
+) {
   console.log(
-    `[verify-voice] Submitting manual code for location ${locationId}`,
+    `[verify-voice] Submitting manual code for location ${locationId}${pin ? " with PIN" : ""}`,
   );
   const supabase = await createAdminClient();
 
@@ -109,8 +114,14 @@ export async function submitVerificationCode(locationId: string, code: string) {
   }
 
   try {
-    // 2. Register with Meta
-    await registerNumberWithMeta(location.meta_phone_id, code);
+    // 2. Verify Code with Meta
+    await verifyCodeWithMeta(location.meta_phone_id, code);
+    console.log(
+      `[verify-voice] Code verified with Meta! Finalizing registration...`,
+    );
+
+    // 3. Register with Meta (final step)
+    await registerNumberWithMeta(location.meta_phone_id, pin);
     console.log(`[verify-voice] Successfully registered with Meta!`);
 
     // 3. Update Status & Clear Forwarding Number
@@ -119,6 +130,7 @@ export async function submitVerificationCode(locationId: string, code: string) {
       .update({
         activation_status: "verified",
         voice_forwarding_number: null, // Disable forwarding after success
+        meta_verification_otp: null, // Clear OTP after success
       })
       .eq("id", locationId);
 

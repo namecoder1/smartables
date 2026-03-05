@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
+import { updateBusinessProfile, updateProfilePicture } from "@/lib/whatsapp";
 
 // --- Locations ---
 
@@ -26,14 +27,50 @@ export async function updateLocation(
     .from("locations")
     .update(data)
     .eq("id", locationId)
-    .select();
+    .select("id, meta_phone_id, branding")
+    .single();
 
   if (error) {
     console.error("Error updating location:", error);
     throw new Error("Failed to update location");
   }
 
+  // Sync with Meta if branding changed and meta_phone_id exists
+  if (data.branding && result?.meta_phone_id) {
+    console.log(
+      `[settings] Syncing branding with Meta for phone ${result.meta_phone_id}...`,
+    );
+    try {
+      // 1. Update Profile Picture
+      if (data.branding.logo_url) {
+        await updateProfilePicture(
+          result.meta_phone_id,
+          data.branding.logo_url,
+        );
+        console.log(`[settings] Meta Profile Picture updated.`);
+      }
+
+      // 2. Update Description/About if available in branding
+      // Note: currently the main settings UI might not have these fields,
+      // but they might be in the branding object if coming from other forms.
+      const profileData: any = {};
+      if (data.branding.description)
+        profileData.description = data.branding.description;
+      if (data.branding.email) profileData.email = data.branding.email;
+
+      if (Object.keys(profileData).length > 0) {
+        await updateBusinessProfile(result.meta_phone_id, profileData);
+        console.log(`[settings] Meta Business Profile fields updated.`);
+      }
+    } catch (e) {
+      console.error("[settings] Failed to sync branding with Meta:", e);
+      // We don't throw here to avoid blocking the DB update feedback,
+      // but we log the error.
+    }
+  }
+
   revalidatePath("/settings");
+  revalidatePath("/home");
   return { success: true };
 }
 
@@ -45,53 +82,54 @@ export async function createMenu(
     pdf_url?: string;
     location_ids?: string[];
     is_active?: boolean;
+    starts_at?: string | null;
+    ends_at?: string | null;
   },
 ) {
   const supabase = await createClient();
 
   // Create menu with empty content
-  if (true) {
-    // Valid Javascript block to allow logic
-    const { location_ids, ...menuData } = data; // content is handled manually below
+  const { location_ids, ...menuData } = data;
 
-    const { data: menu, error } = await supabase
-      .from("menus")
-      .insert({
-        organization_id: organizationId,
-        name: menuData.name,
-        description: menuData.description,
-        pdf_url: menuData.pdf_url,
-        is_active: menuData.is_active,
-        content: [],
-      })
-      .select()
-      .single();
+  const { data: menu, error } = await supabase
+    .from("menus")
+    .insert({
+      organization_id: organizationId,
+      name: menuData.name,
+      description: menuData.description,
+      pdf_url: menuData.pdf_url,
+      is_active: menuData.is_active,
+      starts_at: menuData.starts_at || null,
+      ends_at: menuData.ends_at || null,
+      content: [],
+    })
+    .select()
+    .single();
 
-    if (error) {
-      console.error("Error creating menu:", error);
-      throw new Error("Failed to create menu");
-    }
-
-    // Assign to locations if provided
-    if (location_ids && location_ids.length > 0) {
-      const locationInserts = location_ids.map((locId) => ({
-        menu_id: menu.id,
-        location_id: locId,
-        is_active: true,
-      }));
-
-      const { error: locError } = await supabase
-        .from("menu_locations")
-        .insert(locationInserts);
-
-      if (locError) {
-        console.error("Error assigning menu to locations:", locError);
-      }
-    }
-
-    revalidatePath("/settings");
-    return { success: true };
+  if (error) {
+    console.error("Error creating menu:", error);
+    throw new Error("Failed to create menu");
   }
+
+  // Assign to locations if provided
+  if (location_ids && location_ids.length > 0) {
+    const locationInserts = location_ids.map((locId) => ({
+      menu_id: menu.id,
+      location_id: locId,
+      is_active: true,
+    }));
+
+    const { error: locError } = await supabase
+      .from("menu_locations")
+      .insert(locationInserts);
+
+    if (locError) {
+      console.error("Error assigning menu to locations:", locError);
+    }
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
 }
 
 export async function updateMenu(
@@ -101,6 +139,8 @@ export async function updateMenu(
     description?: string;
     is_active?: boolean;
     pdf_url?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
   },
 ) {
   const supabase = await createClient();
@@ -357,6 +397,9 @@ export async function createMenuItem(
     description?: string;
     image_url?: string;
     is_available?: boolean;
+    is_new?: boolean;
+    allergens?: string[];
+    tags?: string[];
   },
 ) {
   try {
@@ -370,6 +413,9 @@ export async function createMenuItem(
       description: data.description || "",
       price: data.price,
       is_available: data.is_available ?? true,
+      is_new: data.is_new ?? false,
+      allergens: data.allergens || [],
+      tags: data.tags || [],
       image_url: data.image_url || null,
       sort_order: (category.items || []).length,
     };
@@ -396,6 +442,9 @@ export async function updateMenuItem(
     price?: number;
     image_url?: string;
     is_available?: boolean;
+    is_new?: boolean;
+    allergens?: string[];
+    tags?: string[];
     sort_order?: number;
   },
 ) {
@@ -415,6 +464,9 @@ export async function updateMenuItem(
           if (data.image_url !== undefined) item.image_url = data.image_url;
           if (data.is_available !== undefined)
             item.is_available = data.is_available;
+          if (data.is_new !== undefined) item.is_new = data.is_new;
+          if (data.allergens !== undefined) item.allergens = data.allergens;
+          if (data.tags !== undefined) item.tags = data.tags;
           if (data.sort_order !== undefined) item.sort_order = data.sort_order;
           found = true;
           break;

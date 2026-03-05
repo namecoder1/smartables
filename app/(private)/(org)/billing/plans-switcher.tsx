@@ -32,9 +32,9 @@ const PlansSwitcher = ({
   return (
     <div className='mt-12 space-y-8'>
       <div className='flex flex-col md:flex-row items-center justify-between gap-6'>
-        <div className="flex flex-col items-start space-y-2">
+        <div className="flex flex-col items-start">
           <h2 className="text-3xl font-bold tracking-tight">Piani e Prezzi</h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground">
             Scegli il piano più adatto alla tua attività.
             
           </p>

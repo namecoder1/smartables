@@ -37,7 +37,7 @@ export default async function PrivateLayout({
 
   // 1. Get User
   if (!user || !user.user) redirect('/login')
-  if (user?.user?.id === '0a82970f-1fc5-4a52-97a1-a8613de0e3f7') redirect('/manage')
+  if (user.user.app_metadata?.role === 'superadmin') redirect('/manage')
 
   // 2. Fetch Profile to get assigned organization (for staff)
   const { data: profile } = await supabase
@@ -75,17 +75,28 @@ export default async function PrivateLayout({
   const starredPages = await getStarredPages()
 
   return (
-      <div className="fixed inset-0 h-full w-full">
-        <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
-          <OrganizationProvider
-            initialOrganization={organizations && organizations.length > 0 ? organizations[0] : null}
-          >
-            <PageTitleProvider>
-              <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
-              <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525]">
-                <Sidebar
-                  collapsible="none"
-                  className="hidden xl:flex bg-transparent"
+    <div className="fixed inset-0 h-full w-full">
+      <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
+        <OrganizationProvider
+          initialOrganization={organizations && organizations.length > 0 ? organizations[0] : null}
+        >
+          <PageTitleProvider>
+            <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
+            <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525]">
+              <Sidebar
+                collapsible="none"
+                className="hidden xl:flex bg-transparent"
+                organizationId={organizations?.[0]?.id}
+                activationStatus={locations?.[0]?.activation_status}
+                managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
+                starredPages={starredPages}
+                // @ts-ignore
+                complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
+              />
+
+              <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
+                <Navbar
+                  className="bg-transparent"
                   organizationId={organizations?.[0]?.id}
                   activationStatus={locations?.[0]?.activation_status}
                   managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
@@ -93,29 +104,18 @@ export default async function PrivateLayout({
                   // @ts-ignore
                   complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
                 />
-
-                <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
-                  <Navbar
-                    className="bg-transparent"
-                    organizationId={organizations?.[0]?.id}
-                    activationStatus={locations?.[0]?.activation_status}
-                    managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
-                    starredPages={starredPages}
-                    // @ts-ignore
-                    complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
-                  />
-                  <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-[#eeeeee] border-border h-full">
-                    {isCanceled ? (
-                      <RefundGate>{children}</RefundGate>
-                    ) : (
-                      children
-                    )}
-                  </main>
-                </div>
+                <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-[#eeeeee] border-border h-full">
+                  {isCanceled ? (
+                    <RefundGate>{children}</RefundGate>
+                  ) : (
+                    children
+                  )}
+                </main>
               </div>
-            </PageTitleProvider>
-          </OrganizationProvider>
-        </SidebarProvider>
-      </div>
+            </div>
+          </PageTitleProvider>
+        </OrganizationProvider>
+      </SidebarProvider>
+    </div>
   );
 }

@@ -1,6 +1,4 @@
-import { NextResponse } from "next/server";
-
-const WHATSAPP_API_URL = "https://graph.facebook.com/v21.0";
+import { WHATSAPP_API_URL } from "./constants";
 
 type WhatsAppMessageTemplate = {
   name: string;
@@ -42,87 +40,85 @@ export type WhatsAppWebhookPayload = {
   }[];
 };
 
+// ── Shared internal helpers ──
+
+function getWhatsAppToken(customToken?: string) {
+  const token =
+    customToken ||
+    process.env.META_SYSTEM_USER_TOKEN ||
+    process.env.META_WHATSAPP_TOKEN ||
+    process.env.WHATSAPP_ACCESS_TOKEN;
+
+  if (!token) throw new Error("Missing WhatsApp configuration");
+  return token;
+}
+
+async function sendWhatsApp(
+  to: string,
+  messageBody: Record<string, any>,
+  customPhoneNumberId?: string,
+  customToken?: string,
+) {
+  const token = getWhatsAppToken(customToken);
+  const phoneNumberId =
+    customPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!phoneNumberId) throw new Error("Missing WhatsApp phone number ID");
+
+  const response = await fetch(
+    `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to,
+        ...messageBody,
+      }),
+    },
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("WhatsApp API Error:", data);
+    throw new Error(data.error?.message || "Failed to send WhatsApp message");
+  }
+
+  return data;
+}
+
+// ── Public API ──
+
 export async function sendWhatsAppMessage(
   to: string,
   template: WhatsAppMessageTemplate,
+  customPhoneNumberId?: string,
+  customToken?: string,
 ) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) {
-    throw new Error("Missing WhatsApp configuration");
-  }
-
-  try {
-    const response = await fetch(
-      `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: to,
-          type: "template",
-          template: template,
-        }),
-      },
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("WhatsApp API Error:", data);
-      throw new Error(data.error?.message || "Failed to send WhatsApp message");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    throw error;
-  }
+  return sendWhatsApp(
+    to,
+    { type: "template", template },
+    customPhoneNumberId,
+    customToken,
+  );
 }
 
-export async function sendWhatsAppText(to: string, text: string) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) {
-    throw new Error("Missing WhatsApp configuration");
-  }
-
-  try {
-    const response = await fetch(
-      `${WHATSAPP_API_URL}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: to,
-          type: "text",
-          text: { body: text },
-        }),
-      },
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("WhatsApp API Error:", data);
-      throw new Error(data.error?.message || "Failed to send WhatsApp message");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error sending WhatsApp message:", error);
-    throw error;
-  }
+export async function sendWhatsAppText(
+  to: string,
+  text: string,
+  customPhoneNumberId?: string,
+  customToken?: string,
+) {
+  return sendWhatsApp(
+    to,
+    { type: "text", text: { body: text } },
+    customPhoneNumberId,
+    customToken,
+  );
 }
 
 export async function updateBusinessProfile(
@@ -133,42 +129,37 @@ export async function updateBusinessProfile(
     description?: string;
     email?: string;
     websites?: string[];
-    vertical?: string; // Industry
+    vertical?: string;
   },
 ) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!token) throw new Error("Missing WhatsApp configuration");
 
-  try {
-    const payload: any = {
-      messaging_product: "whatsapp",
-      ...data,
-    };
+  const payload: any = {
+    messaging_product: "whatsapp",
+    ...data,
+  };
 
-    const response = await fetch(
-      `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_profile`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+  const response = await fetch(
+    `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_profile`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify(payload),
+    },
+  );
 
-    const resData = await response.json();
+  const resData = await response.json();
 
-    if (!response.ok) {
-      console.error("WhatsApp Profile Update Error:", resData);
-      throw new Error(resData.error?.message || "Failed to update profile");
-    }
-
-    return resData.success;
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    throw error;
+  if (!response.ok) {
+    console.error("WhatsApp Profile Update Error:", resData);
+    throw new Error(resData.error?.message || "Failed to update profile");
   }
+
+  return resData.success;
 }
 
 export async function updateProfilePicture(
@@ -179,82 +170,122 @@ export async function updateProfilePicture(
   if (!token) throw new Error("Missing WhatsApp configuration");
 
   // 1. Download the image from the URL
-  // Meta Resumable Upload requires sending the binary data
-  // NOTE: This is a simplified version. For large files, use Resumable Upload.
-  // For standard profile pics (<5MB), simple upload might work depending on the endpoint,
-  // BUT Meta Cloud API specifically requires Resumable Upload for profile pictures in many contexts.
-  // However, simpler standard upload is often supported for `messaging_product` endpoints if small.
-  // Let's assume we need to fetch the bytes first.
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) throw new Error("Failed to download image from URL");
+  const imgBuffer = await imgRes.arrayBuffer();
+
+  // 2. Create Upload Session (Resumable Upload Step 1)
+  const appId = process.env.WHATSAPP_APP_ID;
+  if (!appId)
+    throw new Error(
+      "Missing WHATSAPP_APP_ID. This is required for profile picture uploads.",
+    );
+
+  const sessionUrl = `https://graph.facebook.com/v21.0/${appId}/uploads?file_length=${imgBuffer.byteLength}&file_type=${imgRes.headers.get("content-type")}&access_token=${token}`;
+
+  const sessionRes = await fetch(sessionUrl, { method: "POST" });
+  const sessionData = await sessionRes.json();
+
+  if (!sessionData.id)
+    throw new Error(`Upload session failed: ${JSON.stringify(sessionData)}`);
+
+  const uploadId = sessionData.id;
+
+  // 3. Upload Data (Resumable Upload Step 2)
+  const uploadRes = await fetch(
+    `https://graph.facebook.com/v21.0/${uploadId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `OAuth ${token}`,
+        file_offset: "0",
+      },
+      body: Buffer.from(imgBuffer),
+    },
+  );
+
+  const uploadResult = await uploadRes.json();
+  const handle = uploadResult.h;
+
+  if (!handle)
+    throw new Error(
+      `Failed to get image handle: ${JSON.stringify(uploadResult)}`,
+    );
+
+  // 4. Update Profile Picture
+  const profileRes = await fetch(
+    `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_profile`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        profile_picture_handle: handle,
+      }),
+    },
+  );
+
+  const profileData = await profileRes.json();
+  if (!profileRes.ok) throw new Error(profileData.error?.message);
+
+  return profileData.success;
+}
+
+export async function getBusinessProfile(phoneNumberId: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing WhatsApp configuration");
 
   try {
-    // A. Fetch Image
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) throw new Error("Failed to download image from URL");
-    const imgBuffer = await imgRes.arrayBuffer();
-
-    // B. Create Upload Session (Resumable Upload Step 1)
-    const sessionUrl = `https://graph.facebook.com/v21.0/${process.env.WHATSAPP_APP_ID}/uploads?file_length=${imgBuffer.byteLength}&file_type=${imgRes.headers.get("content-type")}&access_token=${token}`;
-
-    const sessionRes = await fetch(sessionUrl, { method: "POST" });
-    const sessionData = await sessionRes.json();
-
-    if (!sessionData.id)
-      throw new Error(`Upload session failed: ${JSON.stringify(sessionData)}`);
-
-    const uploadId = sessionData.id;
-
-    // C. Upload Data (Resumable Upload Step 2)
-    // We upload to the handle: https://graph.facebook.com/v21.0/{upload_id}
-    const uploadRes = await fetch(
-      `https://graph.facebook.com/v21.0/${uploadId}`,
+    const response = await fetch(
+      `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical`,
       {
-        method: "POST",
-        headers: {
-          Authorization: `OAuth ${token}`,
-          file_offset: "0",
-        },
-        body: Buffer.from(imgBuffer),
-      },
-    );
-
-    const uploadResult = await uploadRes.json();
-    if (!uploadResult.h) {
-      // 'h' is the handle usually
-      // Sometimes the direct upload gives a handle?
-      // Let's check documentation specifics.
-      // "POST /app/uploads" -> ID. Then "POST /ID" with content -> Handle.
-    }
-
-    // Let's look for 'h' (handle) in result.
-    const handle = uploadResult.h;
-
-    if (!handle)
-      throw new Error(
-        `Failed to get image handle: ${JSON.stringify(uploadResult)}`,
-      );
-
-    // D. Update Profile Picture
-    const profileRes = await fetch(
-      `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_profile`,
-      {
-        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          profile_picture_handle: handle,
-        }),
       },
     );
 
-    const profileData = await profileRes.json();
-    if (!profileRes.ok) throw new Error(profileData.error?.message);
+    const data = await response.json();
 
-    return profileData.success;
+    if (!response.ok) {
+      console.error("WhatsApp API Fetch Error:", data);
+      return null;
+    }
+
+    return data.data?.[0] || null;
   } catch (error) {
-    console.error("Error updating profile picture:", error);
-    throw error;
+    console.error("Error fetching business profile:", error);
+    return null;
+  }
+}
+
+export async function getPhoneNumberDetails(phoneNumberId: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing WhatsApp configuration");
+
+  try {
+    const response = await fetch(
+      `${WHATSAPP_API_URL}/${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("WhatsApp API Phone Details Error:", data);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching phone number details:", error);
+    return null;
   }
 }

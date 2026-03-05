@@ -10,12 +10,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { Users, Clock, ZoomIn, ZoomOut, Printer, ScrollText } from 'lucide-react';
+import { Users, Clock, ZoomIn, ZoomOut, Printer, ScrollText, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { ResponsiveDialog } from '@/components/utility/responsive-dialog';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FiEdit3 } from "react-icons/fi";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { assignBookingToTable, updateBooking, unassignBooking } from '@/app/actions/booking-actions';
+import { assignBookingToTable, updateBooking, unassignBooking } from '@/app/actions/bookings';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,9 +42,17 @@ interface ReservationsFloorPlanProps {
   bookings: Booking[];
   onAssignmentChange?: () => void;
   onTableSelect?: (table: any, booking: Booking | undefined, hasActiveOrder: boolean) => void;
+  variant: 'reservations' | 'orders'
 }
 
-export default function ReservationsFloorPlan({ locationId, selectedDate, bookings, onAssignmentChange, onTableSelect }: ReservationsFloorPlanProps) {
+export default function ReservationsFloorPlan({
+  locationId,
+  selectedDate,
+  bookings,
+  onAssignmentChange,
+  onTableSelect,
+  variant
+}: ReservationsFloorPlanProps) {
   const { theme, systemTheme } = useTheme();
   const [zones, setZones] = useState<any[]>([]);
   const [tables, setTables] = useState<any[]>([]);
@@ -90,39 +99,34 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
 
   const colors = {
     stageBg: isDark ? '#18181b' : '#ffffff',
+    paperBg: isDark ? '#18181b' : '#ffffff',
     tableFill: isDark ? '#27272a' : '#e5e7eb',
     tableStroke: isDark ? '#52525b' : '#9ca3af',
-    occupiedFill: isDark ? '#7f1d1d' : '#fecaca', // Red
-    occupiedStroke: isDark ? '#ef4444' : '#f87171',
-    selectedFill: isDark ? '#1e3a8a' : '#bfdbfe', // Blue
-    selectedStroke: isDark ? '#60a5fa' : '#3b82f6',
+    // Status colors
+    bookedFill: isDark ? '#1e3a5a' : '#dbeafe',
+    bookedStroke: isDark ? '#3b82f6' : '#2563eb',
+    occupiedFill: isDark ? '#431407' : '#ffedd5',
+    occupiedStroke: isDark ? '#ea580c' : '#ea580c',
+    freeFill: isDark ? '#14532d' : '#dcfce7',
+    freeStroke: isDark ? '#22c55e' : '#16a34a',
     text: isDark ? '#e4e4e7' : '#000000',
-    occupiedText: isDark ? '#fecaca' : '#7f1d1d',
     // Deco
     wallFill: isDark ? '#3f3f46' : '#71717a',
     wallStroke: isDark ? '#27272a' : '#52525b',
-    // Column matches Wall
     columnFill: isDark ? '#3f3f46' : '#71717a',
     columnStroke: isDark ? '#27272a' : '#52525b',
     plantFill: isDark ? '#166534' : '#bbf7d0',
     plantStroke: isDark ? '#14532d' : '#86efac',
-    // New
     doorFill: isDark ? '#3f3f46' : '#71717a',
     doorStroke: isDark ? '#27272a' : '#52525b',
-    // Counter matches Table
     counterFill: isDark ? '#27272a' : '#e5e7eb',
     counterStroke: isDark ? '#52525b' : '#9ca3af',
-    // Booth matches Wall
     boothFill: isDark ? '#3f3f46' : '#71717a',
     boothStroke: isDark ? '#27272a' : '#52525b',
-    // New
-    cashierFill: isDark ? '#7c2d12' : '#fdba74', // Orange-900 / Orange-300
-    cashierStroke: isDark ? '#c2410c' : '#f97316', // Orange-700 / Orange-500
-    restroomFill: isDark ? '#1e3a8a' : '#bfdbfe', // Blue-900 / Blue-200
-    restroomStroke: isDark ? '#1d4ed8' : '#3b82f6', // Blue-700 / Blue-500
+    cashierFill: isDark ? '#7c2d12' : '#fdba74',
+    cashierStroke: isDark ? '#c2410c' : '#f97316',
     containerFill: isDark ? 'transparent' : 'transparent',
     containerStroke: isDark ? '#52525b' : '#9ca3af',
-    containerText: isDark ? '#a1a1aa' : '#6b7280',
   };
 
   const loadFloorPlan = useCallback(async () => {
@@ -341,7 +345,8 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
 
   const handleTableClick = (table: any) => {
     // Ignore non-seatable elements
-    if (!table.seats || table.seats <= 0) return;
+    const isSeatable = table.seats > 0 && ['rect', 'circle', 'counter'].includes(table.shape);
+    if (!isSeatable) return;
 
     const existingBooking = getBookingForTable(table.id);
     const hasActiveOrder = activeOrderTableIds.has(table.id);
@@ -398,13 +403,15 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
     }
   };
 
+  console.log(currentZone)
+
 
   return (
-    <div className="flex h-[calc(100vh-220px)] relative">
+    <div className={cn("flex  relative", variant === 'reservations' ? 'h-[calc(100vh-315px)]' : 'h-[calc(100vh-250px)]')}>
       {/* Sidebar: Unassigned Bookings */}
       {!onTableSelect && (
-        <Card className={cn("w-80 shrink-0 rounded-r-none flex-col", showAssignCard ? "flex absolute top-0 left-0 z-10 h-full" : "hidden xl:flex ")}>
-          <CardHeader>
+        <Card className={cn(variant === 'reservations' ? 'rounded-t-none' : '', "w-80 gap-2 py-4 shrink-0 rounded-r-none flex-col", showAssignCard ? "flex absolute top-0 left-0 z-10 h-full" : "hidden xl:flex ")}>
+          <CardHeader className='border-b-2 pb-2! mb-2'>
             <CardTitle className="text-lg tracking-tight">Da Assegnare ({unassignedBookings.length})</CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
@@ -417,7 +424,7 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                   <div
                     key={booking.id}
                     onClick={() => setSelectedBooking(booking)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedBooking?.id === booking.id ? 'bg-zinc-100 dark:bg-zinc-800 border-primary' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'}`}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedBooking?.id === booking.id ? 'bg-primary/5 border-primary/30' : 'hover:bg-zinc-50 bg-input/30'}`}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-sm truncate">{booking.guest_name}</span>
@@ -439,14 +446,15 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
       )}
 
       {/* Main Map */}
-      <Card className={cn("flex-1 flex flex-col overflow-hidden py-0 gap-0", !onTableSelect ? "xl:border-l-0 xl:rounded-l-none" : "")}>
+      <Card className={cn("flex-1 flex flex-col overflow-hidden py-0 gap-0", variant === 'reservations' ? 'rounded-t-3xl' : '', !onTableSelect ? "xl:border-l-0 xl:rounded-l-none" : "")}>
         {zones.length > 1 && (
-          <div className="flex border-b overflow-x-auto">
+          <div className="flex border-b-2 overflow-x-auto">
             {zones.map(z => (
               <Button
                 key={z.id}
                 variant={currentZone?.id === z.id ? 'default' : 'ghost'}
                 size="sm"
+                className='rounded-none'
                 onClick={() => setCurrentZone(z)}
               >
                 {z.name}
@@ -457,22 +465,11 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
 
         <div ref={containerRef} className="flex-1 relative overflow-hidden">
           {!onTableSelect && (
-            <>
-              <div className="absolute top-4 right-4 flex gap-2 z-10">
-                {locationSlug && (
-                  <Link href={`/reservations/print-qr/${locationSlug}`} target="_blank">
-                    <Button variant="outline" size="sm" className="bg-white/90 backdrop-blur shadow-sm">
-                      <Printer className="w-4 h-4 mr-2" /> Stampa QR
-                    </Button>
-                  </Link>
-                )}
-              </div>
-              <div className="absolute top-14 right-4 flex xl:hidden gap-2 z-10">
-                <Button variant="outline" onClick={() => setShowAssignCard(!showAssignCard)} size="sm" className="bg-white/90 backdrop-blur shadow-sm">
-                  Assegna
-                </Button>
-              </div>
-            </>
+            <div className="absolute top-4 right-4 flex xl:hidden gap-2 z-10">
+              <Button variant="outline" onClick={() => setShowAssignCard(!showAssignCard)} size="icon" className="bg-white/90 backdrop-blur shadow-sm">
+                <Menu />
+              </Button>
+            </div>
           )}
           {currentZone && (
             <div className="absolute inset-0">
@@ -494,21 +491,191 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                   <Rect
                     width={currentZone.width || 1000}
                     height={currentZone.height || 800}
-                    fill={isDark ? '#000000' : '#ffffff'}
-                    shadowColor="black"
-                    shadowBlur={20}
-                    shadowOpacity={0.1}
+                    fill='#ffffff'
+                    shadowColor="gray"
+                    shadowBlur={2}
                   />
 
                   {currentTables.map(table => {
                     const booking = getBookingForTable(table.id);
                     const hasActiveOrder = activeOrderTableIds.has(table.id);
-                    const isOccupied = !!booking || hasActiveOrder;
-                    const isSeatable = table.seats > 0;
+                    const isSeatable = table.seats > 0 && ['rect', 'circle', 'counter'].includes(table.shape);
+
+                    // Status: booked (has booking, not arrived), occupied (arrived/walk-in), free
+                    const isBooked = !!booking && booking.status !== 'arrived' && booking.status !== 'no_show' && booking.status !== 'cancelled';
+                    const isOccupied = (!!booking && booking.status === 'arrived') || hasActiveOrder;
+                    const isFree = isSeatable && !isBooked && !isOccupied;
+
+                    // Pick colors based on status
+                    const statusFill = isOccupied ? colors.occupiedFill : isBooked ? colors.bookedFill : isFree ? colors.freeFill : colors.tableFill;
+                    const statusStroke = isOccupied ? colors.occupiedStroke : isBooked ? colors.bookedStroke : isFree ? colors.freeStroke : colors.tableStroke;
+                    const badgeColor = isOccupied ? '#ea580c' : isBooked ? '#2563eb' : '#22c55e';
 
                     // Safe defaults for width depending on shape (avoid 0 width rendering issues)
                     const safeWidth = table.width && table.width > 5 ? table.width : 60;
                     const safeHeight = table.height && table.height > 5 ? table.height : 60;
+
+                    const renderChairs = () => {
+                      if (!table.seats || table.seats <= 0) return null;
+                      if (table.shape !== 'rect' && table.shape !== 'circle' && table.shape !== 'counter') return null;
+
+                      const chairRadius = 10;
+                      const chairs = [];
+                      const offset = chairRadius - 1;
+
+                      const drawLineOfChairs = (count: number, side: 'top' | 'bottom' | 'left' | 'right') => {
+                        if (count === 0) return [];
+                        const lineChairs = [];
+                        for (let i = 0; i < count; i++) {
+                          let cx = 0, cy = 0, rot = 0;
+                          if (side === 'top' || side === 'bottom') {
+                            const spacing = safeWidth / (count + 1);
+                            cx = -safeWidth / 2 + spacing * (i + 1);
+                            cy = side === 'top' ? -safeHeight / 2 - offset : safeHeight / 2 + offset;
+                            rot = side === 'top' ? 180 : 0;
+                          } else {
+                            const spacing = safeHeight / (count + 1);
+                            cy = -safeHeight / 2 + spacing * (i + 1);
+                            cx = side === 'left' ? -safeWidth / 2 - offset : safeWidth / 2 + offset;
+                            rot = side === 'left' ? 270 : 90;
+                          }
+                          lineChairs.push(
+                            <Arc
+                              key={`c-${table.id}-${side}-${i}`}
+                              x={cx} y={cy}
+                              innerRadius={0}
+                              outerRadius={chairRadius}
+                              angle={180}
+                              rotation={rot}
+                              fill={colors.paperBg}
+                              stroke={statusStroke}
+                              strokeWidth={1}
+                              listening={false}
+                              perfectDrawEnabled={false}
+                            />
+                          );
+                        }
+                        return lineChairs;
+                      };
+
+                      if (table.shape === 'circle') {
+                        const tableRadius = table.radius || safeWidth / 2;
+                        const distance = tableRadius + offset;
+                        for (let i = 0; i < table.seats; i++) {
+                          const angle = (i * 2 * Math.PI) / table.seats;
+                          chairs.push(
+                            <Arc
+                              key={`c-${table.id}-${i}`}
+                              x={distance * Math.cos(angle)}
+                              y={distance * Math.sin(angle)}
+                              innerRadius={0}
+                              outerRadius={chairRadius}
+                              angle={180}
+                              rotation={(angle * 180) / Math.PI + 90}
+                              fill={colors.paperBg}
+                              stroke={statusStroke}
+                              strokeWidth={1}
+                              listening={false}
+                              perfectDrawEnabled={false}
+                            />
+                          );
+                        }
+                      } else if (table.shape === 'rect') {
+                        const w = safeWidth;
+                        const h = safeHeight;
+                        let topSeats = 0, bottomSeats = 0, leftSeats = 0, rightSeats = 0;
+                        let remaining = table.seats;
+                        if (w >= h) {
+                          topSeats = Math.ceil(remaining / 2);
+                          bottomSeats = remaining - topSeats;
+                          if (table.seats >= 6 && remaining >= 4) {
+                            leftSeats = 1; rightSeats = 1;
+                            remaining -= 2;
+                            topSeats = Math.ceil(remaining / 2);
+                            bottomSeats = remaining - topSeats;
+                          }
+                        } else {
+                          leftSeats = Math.ceil(remaining / 2);
+                          rightSeats = remaining - leftSeats;
+                          if (table.seats >= 6 && remaining >= 4) {
+                            topSeats = 1; bottomSeats = 1;
+                            remaining -= 2;
+                            leftSeats = Math.ceil(remaining / 2);
+                            rightSeats = remaining - leftSeats;
+                          }
+                        }
+                        chairs.push(...drawLineOfChairs(topSeats, 'top'));
+                        chairs.push(...drawLineOfChairs(bottomSeats, 'bottom'));
+                        chairs.push(...drawLineOfChairs(leftSeats, 'left'));
+                        chairs.push(...drawLineOfChairs(rightSeats, 'right'));
+                      } else if (table.shape === 'counter') {
+                        // For counter, just draw chairs on one side (usually bottom or top based on width/height ratio)
+                        const w = safeWidth;
+                        const h = safeHeight;
+                        if (w >= h) {
+                          chairs.push(...drawLineOfChairs(table.seats, 'bottom'));
+                        } else {
+                          chairs.push(...drawLineOfChairs(table.seats, 'right'));
+                        }
+                      }
+                      return <Group listening={false}>{chairs}</Group>;
+                    };
+
+                    const renderTableBadges = () => {
+                      if (!isSeatable) return null;
+                      const isCircle = table.shape === 'circle';
+                      const w = isCircle ? (table.radius || safeWidth / 2) * 2 : safeWidth;
+                      const h = isCircle ? (table.radius || safeWidth / 2) * 2 : safeHeight;
+
+                      const shortLabel = String(table.table_number || '?').toString().replace(/\D/g, '') || String(table.table_number || '?').substring(0, 2);
+                      const labelW = Math.max(shortLabel.length * 8 + 8, 20);
+                      const totalBadgesW = labelW + 4 + 28;
+                      const startX = -totalBadgesW / 2;
+                      const badgeY = isCircle ? -(table.radius || safeWidth / 2) - 4 : -h / 2 + 4;
+
+                      return (
+                        <Group listening={false} perfectDrawEnabled={false}>
+                          <Rect
+                            x={startX} y={badgeY}
+                            width={labelW} height={16}
+                            fill={badgeColor}
+                            cornerRadius={8}
+                          />
+                          <Text
+                            text={shortLabel}
+                            x={startX} y={badgeY}
+                            width={labelW} height={16}
+                            fill="white"
+                            fontSize={10}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                            listening={false}
+                            perfectDrawEnabled={false}
+                          />
+                          <Rect
+                            x={startX + labelW + 4} y={badgeY}
+                            width={28} height={16}
+                            fill="white"
+                            stroke={badgeColor}
+                            strokeWidth={1}
+                            cornerRadius={8}
+                          />
+                          <Text
+                            text={String(table.seats || 0)}
+                            x={startX + labelW + 4} y={badgeY}
+                            width={28} height={16}
+                            fill="#64748b"
+                            fontSize={9}
+                            fontStyle="bold"
+                            align="center"
+                            verticalAlign="middle"
+                            listening={false}
+                            perfectDrawEnabled={false}
+                          />
+                        </Group>
+                      );
+                    };
 
                     return (
                       <Group
@@ -520,6 +687,7 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                         onTap={() => handleTableClick(table)}
                         listening={true}
                       >
+                        {renderChairs()}
                         {(() => {
                           switch (table.shape) {
                             case 'rect':
@@ -527,44 +695,60 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                                 <Rect
                                   width={safeWidth}
                                   height={safeHeight}
-                                  fill={isOccupied ? colors.occupiedFill : colors.tableFill}
-                                  stroke={isOccupied ? colors.occupiedStroke : colors.tableStroke}
+                                  fill={isSeatable ? statusFill : colors.tableFill}
+                                  stroke={isSeatable ? statusStroke : colors.tableStroke}
                                   strokeWidth={2}
                                   cornerRadius={4}
                                   offsetX={safeWidth / 2}
                                   offsetY={safeHeight / 2}
                                 />
                               );
-                            case 'door':
+                            case 'door': {
+                              const isBottomHalf = table.position_y > (currentZone?.height || 800) / 2;
+                              const doorWidth = safeWidth * 0.75;
+                              const pivotX = -doorWidth / 3;
+                              const pivotY = isBottomHalf ? -safeHeight / 2 : safeHeight / 2;
+                              const arcRotation = isBottomHalf ? -90 : 0;
+                              const leafRotation = isBottomHalf ? -90 : 90;
+
                               return (
-                                <Group>
-                                  <Rect
-                                    width={safeWidth / 3} height={safeHeight}
-                                    fill={colors.doorFill}
+                                <Group offsetX={safeWidth / 2} offsetY={safeHeight / 2}>
+                                  {/* Door swing arc */}
+                                  <Arc
+                                    x={pivotX}
+                                    y={pivotY}
+                                    innerRadius={doorWidth}
+                                    outerRadius={doorWidth}
+                                    angle={90}
+                                    rotation={arcRotation}
                                     stroke={colors.doorStroke}
-                                    strokeWidth={1}
-                                    offsetX={safeWidth / 2}
-                                    offsetY={safeHeight / 2}
+                                    strokeWidth={0.8}
+                                    dash={[3, 3]}
+                                    opacity={0.5}
                                   />
+                                  {/* Door leaf */}
                                   <Rect
-                                    x={(safeWidth * 2) / 3}
-                                    width={safeWidth / 3} height={safeHeight}
+                                    x={pivotX}
+                                    y={pivotY}
+                                    width={doorWidth}
+                                    height={1.5}
                                     fill={colors.doorFill}
                                     stroke={colors.doorStroke}
-                                    strokeWidth={1}
-                                    offsetX={safeWidth / 2}
-                                    offsetY={safeHeight / 2}
+                                    strokeWidth={0.5}
+                                    rotation={leafRotation}
+                                    offsetY={0.75}
                                   />
                                 </Group>
                               );
+                            }
                             case 'counter':
                               return (
                                 <Rect
                                   width={safeWidth}
                                   height={safeHeight}
-                                  fill={colors.counterFill}
-                                  stroke={colors.counterStroke}
-                                  strokeWidth={1}
+                                  fill={isSeatable ? statusFill : colors.counterFill}
+                                  stroke={isSeatable ? statusStroke : colors.counterStroke}
+                                  strokeWidth={isSeatable ? 2 : 1}
                                   cornerRadius={2}
                                   offsetX={safeWidth / 2}
                                   offsetY={safeHeight / 2}
@@ -636,6 +820,19 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                                 </Group>
                               );
 
+                            case 'chair':
+                              return (
+                                <Arc
+                                  innerRadius={0}
+                                  outerRadius={8}
+                                  angle={180}
+                                  rotation={180}
+                                  fill={colors.paperBg}
+                                  stroke={colors.tableStroke}
+                                  strokeWidth={1}
+                                />
+                              );
+
                             case 'cashier':
                               return (
                                 <Group>
@@ -650,8 +847,8 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                                     offsetY={safeHeight / 2}
                                   />
                                   <Text
-                                    text="$"
-                                    fontSize={Math.min(safeWidth, safeHeight) * 0.6}
+                                    text="Cassa"
+                                    fontSize={Math.min(safeWidth, safeHeight) * 0.2}
                                     fill={colors.text}
                                     align="center"
                                     verticalAlign="middle"
@@ -669,24 +866,24 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                                   <Rect
                                     width={safeWidth}
                                     height={safeHeight}
-                                    fill={colors.restroomFill}
-                                    stroke={colors.restroomStroke}
+                                    fill={isDark ? '#27272a' : '#e4e4e7'}
+                                    stroke={isDark ? '#3f3f46' : '#a1a1aa'}
                                     strokeWidth={1}
                                     cornerRadius={4}
                                     offsetX={safeWidth / 2}
                                     offsetY={safeHeight / 2}
                                   />
                                   <Text
-                                    text="WC"
-                                    fontSize={Math.min(safeWidth, safeHeight) * 0.4}
-                                    fill={colors.text}
+                                    text="Bagni"
+                                    fontSize={Math.min(safeWidth, safeHeight) * 0.2}
+                                    fill={isDark ? '#a1a1aa' : '#3f3f46'}
                                     align="center"
                                     verticalAlign="middle"
                                     width={safeWidth}
                                     height={safeHeight}
                                     offsetX={safeWidth / 2}
                                     offsetY={safeHeight / 2}
-                                    pointerEvents="none"
+                                    listening={false}
                                   />
                                 </Group>
                               );
@@ -724,19 +921,23 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                               return (
                                 <Circle
                                   radius={safeWidth / 2}
-                                  fill={isOccupied ? colors.occupiedFill : colors.tableFill}
-                                  stroke={isOccupied ? colors.occupiedStroke : colors.tableStroke}
+                                  fill={isSeatable ? statusFill : colors.tableFill}
+                                  stroke={isSeatable ? statusStroke : colors.tableStroke}
                                   strokeWidth={2}
                                 />
                               );
                           }
                         })()}
 
-                        {/* Labels only for seatable tables OR specific decorative elements */}
-                        {isSeatable && (
+                        {/* Badges counter-rotated to stay upright */}
+                        <Group rotation={-(table.rotation || 0)}>
+                          {renderTableBadges()}
+                        </Group>
+
+                        {isSeatable && isOccupied && (
                           <>
                             <Text
-                              text={booking ? booking.guest_name : (hasActiveOrder ? 'Occupato' : table.table_number.toString())}
+                              text={booking ? booking.guest_name : 'Occupato'}
                               width={safeWidth}
                               height={safeHeight}
                               offsetX={!table.radius ? safeWidth / 2 : table.radius}
@@ -744,7 +945,7 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                               align="center"
                               verticalAlign="middle"
                               fontSize={10}
-                              fill={isOccupied ? colors.occupiedText : colors.text}
+                              fill={isDark ? '#fecaca' : '#7f1d1d'}
                               wrap="char"
                               pointerEvents="none"
                             />
@@ -756,7 +957,7 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                                 offsetX={!table.radius ? safeWidth / 2 : table.radius}
                                 align="center"
                                 fontSize={8}
-                                fill={colors.occupiedText}
+                                fill={isDark ? '#fecaca' : '#7f1d1d'}
                                 pointerEvents="none"
                               />
                             )}
@@ -773,7 +974,7 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
                             verticalAlign="middle"
                             fontSize={14}
                             fontStyle="bold"
-                            fill={colors.containerText}
+                            fill={isDark ? '#a1a1aa' : '#6b7280'}
                             pointerEvents="none"
                           />
                         )}
@@ -804,10 +1005,17 @@ export default function ReservationsFloorPlan({ locationId, selectedDate, bookin
           )}
 
           {/* Zoom Controls */}
-          <div className="absolute bottom-4 right-4 flex bg-white dark:bg-zinc-800 border rounded-lg shadow-lg items-center z-10">
+          <div className={cn('absolute top-4 flex bg-white border rounded-lg shadow-sm items-center z-10', variant === 'reservations' ? 'right-16 xl:right-4' : 'right-4')}>
             <Button variant="ghost" size="icon" className='rounded-r-none border-r opacity-80 hover:opacity-100' onClick={() => setScale(s => Math.max(0.1, s - 0.1))}><ZoomOut className="w-4 h-4" /></Button>
             <span className="text-xs w-12 text-center text-muted-foreground">{Math.round(scale * 100)}%</span>
             <Button variant="ghost" size="icon" className='rounded-l-none border-l opacity-80 hover:opacity-100' onClick={() => setScale(s => Math.min(3, s + 0.1))}><ZoomIn className="w-4 h-4" /></Button>
+          </div>
+
+          <div className='absolute bottom-0 right-0 px-2 pb-1.5 pr-2.5 py-1 bg-border/40 backdrop-blur-sm hover:bg-primary/30 border-t border-l rounded-tl-lg group hover:border-primary transition-colors'>
+            <Link href={`/areas-management/${currentZone?.id}`} className='text-sm flex items-center gap-2'>
+              <FiEdit3 />
+              Modifica mappa
+            </Link>
           </div>
         </div>
       </Card >

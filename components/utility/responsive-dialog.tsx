@@ -19,6 +19,8 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { cn } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface ResponsiveDialogProps {
   isOpen: boolean
@@ -26,6 +28,7 @@ interface ResponsiveDialogProps {
   title: string
   description?: string
   children: React.ReactNode
+  className?: string
 }
 
 export function ResponsiveDialog({
@@ -34,13 +37,14 @@ export function ResponsiveDialog({
   title,
   description,
   children,
+  className,
 }: ResponsiveDialogProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={cn("sm:max-w-[425px]", className)}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             {description && (
@@ -57,7 +61,7 @@ export function ResponsiveDialog({
 
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent className="pb-4">
+      <DrawerContent className="pb-4 max-h-[96vh]">
         <DrawerHeader className="text-left">
           <DrawerTitle>{title}</DrawerTitle>
           {description && (
@@ -66,9 +70,9 @@ export function ResponsiveDialog({
             </DrawerDescription>
           )}
         </DrawerHeader>
-        <div className="px-4">
+        <ScrollArea className="px-4 overflow-y-auto">
           {children}
-        </div>
+        </ScrollArea>
       </DrawerContent>
     </Drawer>
   )

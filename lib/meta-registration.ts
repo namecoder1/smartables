@@ -1,4 +1,4 @@
-const WHATSAPP_API_URL = "https://graph.facebook.com/v21.0";
+import { WHATSAPP_API_URL } from "./constants";
 
 /**
  * Requests the verification code from Meta.
@@ -58,29 +58,55 @@ export async function requestVerificationCode(
 }
 
 /**
- * Registers the phone number with the verification code.
+ * Verifies the phone number with the OTP code received via SMS or Voice.
+ * This is the step that actually validates the code.
+ */
+export async function verifyCodeWithMeta(phoneNumberId: string, code: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing WHATSAPP_ACCESS_TOKEN");
+
+  try {
+    console.log(`[Meta] Verifying code ${code} for Phone ID: ${phoneNumberId}`);
+    const response = await fetch(
+      `${WHATSAPP_API_URL}/${phoneNumberId}/verify_code`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      },
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("[Meta] Verify Code Error:", data);
+      throw new Error(data.error?.message || "Failed to verify code");
+    }
+
+    return data.success;
+  } catch (error) {
+    console.error("[Meta] Error in verifyCodeWithMeta:", error);
+    throw error;
+  }
+}
+
+/**
+ * Registers the phone number with Meta after it has been verified.
  * This is the final step to enable the number for sending messages.
  */
 export async function registerNumberWithMeta(
   phoneNumberId: string,
-  code: string,
-  pin?: string, // 6-digit PIN for 2-step verification (optional but recommended)
+  pin?: string,
 ) {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
-
   if (!token) throw new Error("Missing WHATSAPP_ACCESS_TOKEN");
 
-  let payload: any = {
-    messaging_product: "whatsapp",
-    code: code,
-  };
-
-  // If a PIN for 2-step verification is needed (or setting it up)
-  // Usually this endpoint is strictly for verifying the OTP code.
-  // There is a separate endpoint for setting the 2-step PIN.
-  // But for the initial "register" call, we pass the OTP code.
-
   try {
+    console.log(
+      `[Meta] Registering Phone ID: ${phoneNumberId}${pin ? " with PIN" : ""}`,
+    );
     const response = await fetch(
       `${WHATSAPP_API_URL}/${phoneNumberId}/register`,
       {
@@ -89,20 +115,22 @@ export async function registerNumberWithMeta(
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          ...(pin ? { pin } : {}),
+        }),
       },
     );
 
     const data = await response.json();
-
     if (!response.ok) {
-      console.error("Meta Registration Error:", data);
+      console.error("[Meta] Registration Error:", data);
       throw new Error(data.error?.message || "Failed to register number");
     }
 
     return data.success;
   } catch (error) {
-    console.error("Error registering number:", error);
+    console.error("[Meta] Error in registerNumberWithMeta:", error);
     throw error;
   }
 }

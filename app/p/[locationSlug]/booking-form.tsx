@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { createPublicBooking } from "@/app/actions/public-booking";
 import { toast } from "sonner";
 import { PhoneInput } from "@/components/ui/phone-input";
+import Link from "next/link";
 
 // Helper to determine text color based on background color
 function getContrastColor(hexColor: string) {
@@ -357,7 +358,11 @@ export function BookingForm({
       </Button>
 
       <p className="text-xs text-center text-slate-400 px-4">
-        Cliccando su conferma accetti i termini di servizio e la privacy policy di Smartables.
+        Cliccando su conferma accetti i
+        <Link href="/terms-of-service" className="text-primary hover:underline"> Termini di Servizio </Link>
+        e la
+        <Link href="/privacy-policy" className="text-primary hover:underline"> Privacy Policy </Link>
+        di Smartables.
       </p>
     </form>
   );

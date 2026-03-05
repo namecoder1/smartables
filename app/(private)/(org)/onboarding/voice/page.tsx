@@ -41,6 +41,7 @@ export default function VoiceVerificationPage() {
   // Manual Verification State
   const [forwardingNumber, setForwardingNumber] = useState("");
   const [manualCode, setManualCode] = useState("");
+  const [pin, setPin] = useState("");
   const [step, setStep] = useState<"idle" | "calling" | "entering_code">("idle");
 
   const router = useRouter();
@@ -53,13 +54,22 @@ export default function VoiceVerificationPage() {
       try {
         const { data: location } = await supabase
           .from("locations")
-          .select("activation_status")
+          .select("activation_status, meta_verification_otp")
           .eq("id", locationId)
           .single();
 
         if (location?.activation_status) {
           setStatus(location.activation_status);
         }
+
+        // Auto-fill OTP if found
+        if (location?.meta_verification_otp && step !== "entering_code") {
+          console.log("[VoicePage] Auto-detected OTP:", location.meta_verification_otp);
+          setManualCode(location.meta_verification_otp);
+          setStep("entering_code");
+          toast.success("Codice rilevato automaticamente!");
+        }
+
         if (location?.activation_status === "verified") {
           setVerifying(false);
           clearInterval(interval);
@@ -88,7 +98,7 @@ export default function VoiceVerificationPage() {
       if (profile?.organization_id) {
         const { data: location } = await supabase
           .from("locations")
-          .select("id, telnyx_phone_number, activation_status")
+          .select("id, telnyx_phone_number, activation_status, meta_verification_otp")
           .eq("organization_id", profile.organization_id)
           .single();
 
@@ -145,7 +155,7 @@ export default function VoiceVerificationPage() {
 
     setLoading(true);
     try {
-      const result = await submitVerificationCode(locationId, manualCode);
+      const result = await submitVerificationCode(locationId, manualCode, pin);
       if (result.success) {
         toast.success("Codice verificato!");
         setStatus("verified");
@@ -249,7 +259,7 @@ export default function VoiceVerificationPage() {
                   </div>
                 )}
 
-                {step === "idle" && status === "pending_verification" && (
+                {step === "idle" && (status === "pending_verification" || status === "active") && (
                   <div className="space-y-4 animate-in slide-in-from-left-2 fade-in duration-300">
                     <div className="space-y-2">
                       <Label>Il tuo numero di cellulare</Label>
@@ -272,21 +282,44 @@ export default function VoiceVerificationPage() {
                       {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Smartphone className="mr-2 h-5 w-5" />}
                       Chiama il mio numero
                     </Button>
+
+                    <div className="text-center mt-2">
+                      <button
+                        onClick={() => setStep("entering_code")}
+                        className="text-sm text-primary hover:underline font-medium"
+                      >
+                        Hai già un codice? Inseriscilo manualmente
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {step === "entering_code" && (
                   <div className="space-y-4 animate-in slide-in-from-right-2 fade-in duration-300">
                     <div className="bg-green-50/50 p-6 rounded-xl border border-green-100 flex flex-col items-center gap-4">
-                      <Label className="text-green-800 font-semibold text-lg">Inserisci il codice di 6 cifre</Label>
-                      <Input
-                        placeholder="123456"
-                        className="text-center text-3xl tracking-[0.5em] w-64 h-16 font-mono font-bold border-2 focus-visible:ring-green-500"
-                        maxLength={6}
-                        value={manualCode}
-                        onChange={(e) => setManualCode(e.target.value)}
-                        autoFocus
-                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <Label className="text-green-800 font-semibold text-lg">Codice di 6 cifre</Label>
+                        <Input
+                          placeholder="123456"
+                          className="text-center text-3xl tracking-[0.5em] w-64 h-16 font-mono font-bold border-2 focus-visible:ring-green-500"
+                          maxLength={6}
+                          value={manualCode}
+                          onChange={(e) => setManualCode(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="flex flex-col items-center gap-2 mt-2">
+                        <Label className="text-muted-foreground text-xs uppercase tracking-wider font-bold">PIN a 2 Fattori (Opzionale)</Label>
+                        <Input
+                          placeholder="123456"
+                          className="text-center text-xl tracking-[0.2em] w-48 h-12 font-mono border focus-visible:ring-blue-500"
+                          maxLength={6}
+                          value={pin}
+                          onChange={(e) => setPin(e.target.value)}
+                        />
+                        <p className="text-[10px] text-muted-foreground italic">Inseriscilo solo se lo hai attivato nel Business Manager</p>
+                      </div>
                     </div>
 
                     <Button

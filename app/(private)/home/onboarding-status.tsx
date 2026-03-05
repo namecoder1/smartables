@@ -20,7 +20,7 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
     { id: 'docs', label: 'Documenti Aziendali', description: 'Carica la visura e i documenti del legale rappresentante.', link: '/compliance', completed: data.documents, time: '2 min' },
     { id: 'phone', label: 'Acquisto Numero', description: 'Scegli il numero fisso o mobile per il tuo ristorante.', link: '/onboarding/phone', completed: data.phone, time: '1 min' },
     { id: 'voice', label: 'Verifica Vocale', description: 'Rispondi alla chiamata automatica per verificare il numero.', link: '/onboarding/voice', completed: data.voice, time: '2 min' },
-    { id: 'brand', label: 'Personalizzazione', description: 'Imposta logo, colori e nome del tuo assistente.', link: '/onboarding/brand', completed: data.branding, time: '5 min' },
+    { id: 'brand', label: 'Personalizzazione', description: 'Imposta logo, colori e nome del tuo assistente.', link: '/whatsapp-management', completed: data.branding, time: '5 min' },
     { id: 'test', label: 'Test Finale', description: 'Invia un messaggio di prova per assicurarti che tutto funzioni.', link: '/onboarding/test', completed: data.test, time: '1 min' },
   ]
 
@@ -72,7 +72,7 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
                 {/* Status Icon */}
                 <div className="shrink-0 mt-0.5">
                   {isCompleted ? (
-                    <div className="h-8 w-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center border border-green-200 dark:border-green-800">
+                    <div className="h-8 w-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center border border-green-200">
                       <Check className="h-4 w-4" />
                     </div>
                   ) : isActive ? (
@@ -166,14 +166,14 @@ export const OnboardingStatus = ({ data }: OnboardingStatusProps) => {
 
 const DashboardReadyState = () => {
   return (
-    <Card className="border shadow-sm bg-card overflow-hidden">
+    <Card className="border shadow-sm bg-card overflow-hidden py-0">
       <div className="bg-green-500/10 border-b border-green-500/20 p-6 flex items-center gap-4">
         <div className="h-12 w-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center shrink-0 border border-green-200">
           <Check className="h-6 w-6" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-green-900 dark:text-green-100">Assistente Attivo</h2>
-          <p className="text-green-700 dark:text-green-300 text-sm">Il tuo ristorante è pronto per ricevere chiamate automatiche.</p>
+          <h2 className="text-xl font-semibold text-green-900">Assistente Attivo</h2>
+          <p className="text-green-700 text-sm">Il tuo ristorante è pronto per ricevere chiamate automatiche.</p>
         </div>
       </div>
 

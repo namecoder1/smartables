@@ -13,6 +13,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+import { RiUserStarLine, RiUserSettingsLine, RiUserShared2Line } from "react-icons/ri";
+
 import {
   Select,
   SelectContent,
@@ -86,7 +89,7 @@ const CollaboratorsView = ({ collaborators, user, organizationLocations }: Colla
 
   return (
     <PageWrapper className='relative'>
-      <div className="flex xl:hidden items-center justify-between gap-10">
+      <div className="flex items-center justify-between gap-10">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestisci collaboratori</h1>
           <p className="text-muted-foreground">Gestisci i collaboratori della tua organizzazione.</p>
@@ -94,7 +97,7 @@ const CollaboratorsView = ({ collaborators, user, organizationLocations }: Colla
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="shadow-sm">
+            <Button className="shadow-sm hidden xl:flex">
               <Plus className="h-4 w-4" /> Aggiungi
             </Button>
           </DialogTrigger>
@@ -201,17 +204,20 @@ const CollaboratorsView = ({ collaborators, user, organizationLocations }: Colla
           {
             title: 'Collaboratori totali',
             value: collaborators.length,
-            description: ''
+            description: '',
+            icon: <RiUserShared2Line size={24} className='text-primary' />
           },
           {
             title: 'Collaboratori attivi',
             value: collaborators.filter((collaborator) => collaborator.role !== 'owner').length,
-            description: 'attivi'
+            description: 'attivi',
+            icon: <RiUserStarLine size={24} className='text-primary' />
           },
           {
             title: 'Collaboratori massimi',
             value: organization?.billing_tier === "starter" ? 1 : organization?.billing_tier === "growth" ? 3 : 5,
-            description: 'max'
+            description: 'max',
+            icon: <RiUserSettingsLine size={24} className='text-primary' />
           }
         ]}
       />
@@ -285,7 +291,7 @@ const CollaboratorsView = ({ collaborators, user, organizationLocations }: Colla
         </Table>
       </div>
 
-      <Button className="shadow-sm absolute bottom-6 hidden xl:flex right-6" disabled={collaborators.length >= collaboratorCount} onClick={() => setOpen(true)}>
+      <Button className="shadow-sm absolute bottom-6 flex xl:hidden right-6" disabled={collaborators.length >= collaboratorCount} onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" /> Aggiungi
       </Button>
     </PageWrapper>

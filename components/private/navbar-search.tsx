@@ -50,16 +50,16 @@ const NavbarSearch = () => {
 
   return (
     <>
-      <div className='relative py-4 hidden sm:block' onClick={() => setOpen(true)}>
+      <div className='relative py-4 hidden sm:block group' onClick={() => setOpen(true)}>
         <Input
           placeholder='Cerca...'
-          className='max-w-40 w-full border-2 border-border/10 dark:border-border bg-card/10 placeholder:text-white dark:bg-card! cursor-pointer'
+          className='max-w-40 w-full border-2 border-border/10 bg-card/10! placeholder:text-white group-hover:border-primary/60 group-hover:bg-primary/10! cursor-pointer'
           readOnly
         />
         <div className='flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2'>
-          <Kbd className='bg-white/10 text-white border border-white/20'>Ctrl</Kbd>
+          <Kbd className='bg-white/10 text-white border border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>Ctrl</Kbd>
           +
-          <Kbd className='bg-white/10 text-white border border-white/20'>K</Kbd>
+          <Kbd className='bg-white/10 text-white border border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>K</Kbd>
         </div>
       </div>
 

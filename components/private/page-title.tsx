@@ -56,6 +56,11 @@ const pathToDataMap: Record<string, PageData> = {
     path: { current: "Ordinazioni" },
     description: "Gestisci, visualizza e modifica le ordinazioni dei tuoi tavoli"
   },
+  "/orders/new": {
+    title: "Nuovo ordine",
+    path: { current: "Nuovo ordine" },
+    description: "Crea un nuovo ordine"
+  },
   "/analytics": {
     title: "Analitiche",
     path: { current: "Analitiche" },
@@ -80,6 +85,11 @@ const pathToDataMap: Record<string, PageData> = {
     title: "Collaboratori",
     path: { current: "Collaboratori" },
     description: "Gestisci i permessi e i collaboratori"
+  },
+  "/whatsapp-management": {
+    title: "Gestione WhatsApp",
+    path: { current: "WhatsApp" },
+    description: "Gestisci la tua linea WhatsApp Business"
   },
   "/promotions": {
     title: "Promozioni",
@@ -187,18 +197,18 @@ export default function PageTitle({ title, description, starredPages }: PageTitl
   return (
     <div className="hidden xl:flex xl:flex-col xl:items-start xl:justify-center pl-2">
       <div className="flex items-center gap-1.5">
-        <nav className="flex items-center gap-1.5 text-sm font-medium text-white/50 dark:text-muted-foreground/50">
+        <nav className="flex items-center gap-1.5 text-sm font-medium text-white/50">
           {finalBreadcrumbs.map((crumb, index) => (
             <React.Fragment key={`${crumb.href}-${index}`}>
               {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-white/30" />}
               {crumb.isLast ? (
-                <span className="text-white dark:text-foreground font-bold text-lg tracking-tighter">
+                <span className="hover:text-white text-white/90 cursor-default transition-colors font-bold tracking-tighter">
                   {crumb.label}
                 </span>
               ) : (
                 <Link
                   href={crumb.href}
-                  className="hover:text-white dark:hover:text-foreground transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   {crumb.label}
                 </Link>

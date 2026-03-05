@@ -106,12 +106,18 @@ const DetailsSheet = ({
                 </div>
 
                 <div className="flex flex-col justify-between">
-                  <p className=" text-sm font-bold uppercase tracking-wider mb-2">Ospiti</p>
+                  <p className="text-sm font-bold uppercase tracking-wider mb-2">Ospiti</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-4xl font-black tracking-tighter text-foreground">
+                    <p className="text-2xl font-black tracking-tighter text-foreground">
                       {selectedBooking.guests_count}
                     </p>
                     <span className="text-sm font-bold text-zinc-500 uppercase">persone</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-black tracking-tighter text-foreground">
+                      {selectedBooking.children_count || 0}
+                    </p>
+                    <span className="text-sm font-bold text-zinc-500 uppercase">bambini</span>
                   </div>
                 </div>
               </div>
@@ -122,6 +128,11 @@ const DetailsSheet = ({
           <div className="rounded-3xl border border-border">
             <p className="text-sm bg-zinc-100/50 font-bold rounded-t-3xl px-4 py-5 uppercase tracking-wider border-b">Note Prenotazione</p>
             <p className="text-base p-4 leading-relaxed font-medium text-muted-foreground">{selectedBooking.notes || "Nessuna nota comunicata."}</p>
+          </div>
+
+          <div className="rounded-3xl border border-border">
+            <p className="text-sm bg-zinc-100/50 font-bold rounded-t-3xl px-4 py-5 uppercase tracking-wider border-b">Intolleranze / Allergie</p>
+            <p className="text-base p-4 leading-relaxed font-medium text-muted-foreground">{selectedBooking.allergies || "Nessuna allergia comunicata."}</p>
           </div>
 
           {/* Extra / Stats Cliente */}

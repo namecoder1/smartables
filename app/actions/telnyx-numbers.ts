@@ -4,13 +4,11 @@ import { createClient } from "@/utils/supabase/server";
 import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx";
 import { revalidatePath } from "next/cache";
 
+import { getAuthContext } from "@/lib/auth";
+
 export async function searchNumbersAction(countryCode: string, region: string) {
   // Validate session
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  await getAuthContext();
 
   try {
     const numbers = await searchAvailableNumbers(countryCode, region);
@@ -25,11 +23,7 @@ export async function buyNumberAction(
   locationId: string,
   requirementGroupId: string,
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await getAuthContext();
 
   try {
     // 1. Atomic Lock for Purchase (Double Spending Protection)

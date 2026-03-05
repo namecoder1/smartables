@@ -76,18 +76,16 @@ export async function getOnboardingStatus(
   const phoneStatus =
     !!location.telnyx_phone_number &&
     location.activation_status !== "purchasing";
-  const voiceStatus =
-    location.activation_status === "verified" ||
-    location.activation_status === "active";
-  const brandingStatus = !!(location.branding && location.branding.logo_url);
+  const voiceStatus = location.activation_status === "verified";
+  const brandingStatus = !!location.is_branding_completed;
   // Check association with organization for WhatsApp
   // Using 'organization' join from above
   const organization = location.organization as unknown as Organization;
 
-  // Test status: check if whatsapp_usage_count > 0
-  const testStatus = organization?.whatsapp_usage_count > 0;
+  // Test status: check if the explicit flag is true
+  const testStatus = !!location.is_test_completed;
 
-  return {
+  const result: OnboardingData = {
     documents: documentsStatus,
     phone: phoneStatus,
     voice: voiceStatus,
@@ -97,4 +95,6 @@ export async function getOnboardingStatus(
     activationStatus: location.activation_status || "pending",
     rejectionReason: rejectionReason,
   };
+
+  return result;
 }

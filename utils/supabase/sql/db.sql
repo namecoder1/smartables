@@ -10,6 +10,9 @@ DO $$ BEGIN
     CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled', 'no_show', 'arrived');
     CREATE TYPE booking_source AS ENUM ('whatsapp_auto', 'manual', 'web', 'phone');
     CREATE TYPE compliance_status AS ENUM ('pending', 'approved', 'rejected', 'more_info_required', 'unapproved');
+    CREATE TYPE promotion_type AS ENUM ('percentage', 'fixed_amount', 'bundle', 'cover_override');
+    CREATE TYPE promotion_item_target_type AS ENUM ('menu_item', 'category', 'full_menu', 'cover');
+    CREATE TYPE promotion_item_role AS ENUM ('target', 'condition');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 3. TABLES (User Provided Schema)
@@ -67,6 +70,8 @@ CREATE TABLE public.menus (
   pdf_url text,
   content jsonb DEFAULT '[]'::jsonb,
   is_active boolean DEFAULT true,
+  starts_at timestamp with time zone,
+  ends_at timestamp with time zone,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT menus_pkey PRIMARY KEY (id),
   CONSTRAINT menus_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
@@ -199,12 +204,75 @@ CREATE TABLE public.feedbacks (
   CONSTRAINT feedbacks_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
+CREATE TABLE public.promotions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  name text NOT NULL,
+  description text,
+  image_url text,
+  type promotion_type NOT NULL DEFAULT 'percentage',
+  value numeric,
+  all_locations boolean DEFAULT false,
+  all_menus boolean DEFAULT false,
+  starts_at timestamp with time zone,
+  ends_at timestamp with time zone,
+  recurring_schedule jsonb,
+  visit_threshold integer,
+  is_active boolean DEFAULT true,
+  priority integer DEFAULT 0,
+  stackable boolean DEFAULT false,
+  notify_via_whatsapp boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT promotions_pkey PRIMARY KEY (id),
+  CONSTRAINT promotions_organization_id_fkey FOREIGN KEY (organization_id)
+    REFERENCES public.organizations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.promotion_locations (
+  promotion_id uuid NOT NULL,
+  location_id uuid NOT NULL,
+  CONSTRAINT promotion_locations_pkey PRIMARY KEY (promotion_id, location_id),
+  CONSTRAINT promotion_locations_promotion_id_fkey FOREIGN KEY (promotion_id)
+    REFERENCES public.promotions(id) ON DELETE CASCADE,
+  CONSTRAINT promotion_locations_location_id_fkey FOREIGN KEY (location_id)
+    REFERENCES public.locations(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.promotion_menus (
+  promotion_id uuid NOT NULL,
+  menu_id uuid NOT NULL,
+  CONSTRAINT promotion_menus_pkey PRIMARY KEY (promotion_id, menu_id),
+  CONSTRAINT promotion_menus_promotion_id_fkey FOREIGN KEY (promotion_id)
+    REFERENCES public.promotions(id) ON DELETE CASCADE,
+  CONSTRAINT promotion_menus_menu_id_fkey FOREIGN KEY (menu_id)
+    REFERENCES public.menus(id) ON DELETE CASCADE
+);
+
+CREATE TABLE public.promotion_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  promotion_id uuid NOT NULL,
+  target_type promotion_item_target_type NOT NULL DEFAULT 'menu_item',
+  target_ref text,
+  role promotion_item_role DEFAULT 'target',
+  override_value numeric,
+  override_type text,
+  CONSTRAINT promotion_items_pkey PRIMARY KEY (id),
+  CONSTRAINT promotion_items_promotion_id_fkey FOREIGN KEY (promotion_id)
+    REFERENCES public.promotions(id) ON DELETE CASCADE
+);
+
 -- 4. INDEXES (Consolidated from DB and Migrations)
 CREATE UNIQUE INDEX IF NOT EXISTS locations_organization_id_slug_key ON public.locations (organization_id, slug);
 CREATE INDEX IF NOT EXISTS idx_locations_telnyx_phone_hash ON public.locations USING HASH (telnyx_phone_number);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON public.customers(phone_number);
 CREATE INDEX IF NOT EXISTS idx_bookings_location ON public.bookings(location_id);
 CREATE INDEX IF NOT EXISTS idx_message_logs_customer_sent_at ON public.message_logs (customer_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_promotions_organization_id ON public.promotions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_promotions_is_active ON public.promotions(is_active);
+CREATE INDEX IF NOT EXISTS idx_promotion_locations_location_id ON public.promotion_locations(location_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_menus_menu_id ON public.promotion_menus(menu_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_items_promotion_id ON public.promotion_items(promotion_id);
 
 -- 5. LOGIC (Functions & Triggers)
 
@@ -269,6 +337,7 @@ BEGIN
   -- 3. Delete relational data in correct order (respecting FK constraints)
 
   DELETE FROM public.feedbacks WHERE organization_id = v_org_id;
+  DELETE FROM public.promotions WHERE organization_id = v_org_id;
   DELETE FROM public.message_logs WHERE organization_id = v_org_id;
 
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
@@ -349,6 +418,10 @@ ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promotion_locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promotion_menus ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.promotion_items ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 
@@ -396,7 +469,7 @@ CREATE POLICY "Admins can view all compliance requests" ON telnyx_regulatory_req
 FOR SELECT TO authenticated
 USING (
   EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
-  OR auth.uid() = '0a82970f-1fc5-4a52-97a1-a8613de0e3f7'
+  OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'superadmin'
 );
 CREATE POLICY "Users can create compliance requests" ON telnyx_regulatory_requirements FOR INSERT TO authenticated WITH CHECK (true);
 
@@ -413,6 +486,22 @@ CREATE POLICY "Org users can view feedbacks" ON public.feedbacks
   FOR SELECT USING (organization_id = public.get_auth_organization_id());
 CREATE POLICY "Authenticated users can insert feedbacks" ON public.feedbacks
   FOR INSERT TO authenticated WITH CHECK (profile_id = auth.uid());
+
+-- Promotions
+CREATE POLICY "Org Access Promotions" ON public.promotions USING (organization_id = public.get_auth_organization_id());
+CREATE POLICY "Org Insert Promotions" ON public.promotions FOR INSERT WITH CHECK (organization_id = public.get_auth_organization_id());
+
+CREATE POLICY "Org Access Promotion Locations" ON public.promotion_locations FOR ALL USING (
+  promotion_id IN (SELECT id FROM public.promotions WHERE organization_id = public.get_auth_organization_id())
+);
+
+CREATE POLICY "Org Access Promotion Menus" ON public.promotion_menus FOR ALL USING (
+  promotion_id IN (SELECT id FROM public.promotions WHERE organization_id = public.get_auth_organization_id())
+);
+
+CREATE POLICY "Org Access Promotion Items" ON public.promotion_items FOR ALL USING (
+  promotion_id IN (SELECT id FROM public.promotions WHERE organization_id = public.get_auth_organization_id())
+);
 
 
 -- 7. SEED DATA (Updated for Agency Model)
@@ -449,6 +538,7 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('compliance-docs', 'compl
 INSERT INTO storage.buckets (id, name, public) VALUES ('location-logo', 'location-logo', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('menu-images', 'menu-images', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('menu-files', 'menu-files', true) ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('promotion-images', 'promotion-images', true) ON CONFLICT (id) DO NOTHING;
 
 -- Compliance Docs Policies
 CREATE POLICY "Authenticated users can upload compliance docs" ON storage.objects FOR INSERT TO authenticated WITH CHECK ( bucket_id = 'compliance-docs' );
@@ -540,5 +630,31 @@ CREATE POLICY "Org users can delete menu files" ON storage.objects
 FOR DELETE TO authenticated 
 USING (
   bucket_id = 'menu-files' AND
+  (storage.foldername(name))[1] = public.get_auth_organization_id()::text
+);
+
+-- Promotion Images Policies (org-based access via org_id in path: {org_id}/filename)
+CREATE POLICY "Org users can upload promotion images" ON storage.objects 
+FOR INSERT TO authenticated 
+WITH CHECK (
+  bucket_id = 'promotion-images' AND
+  (storage.foldername(name))[1] = public.get_auth_organization_id()::text
+);
+
+CREATE POLICY "Anyone can view promotion images" ON storage.objects 
+FOR SELECT TO public
+USING (bucket_id = 'promotion-images');
+
+CREATE POLICY "Org users can update promotion images" ON storage.objects 
+FOR UPDATE TO authenticated 
+USING (
+  bucket_id = 'promotion-images' AND
+  (storage.foldername(name))[1] = public.get_auth_organization_id()::text
+);
+
+CREATE POLICY "Org users can delete promotion images" ON storage.objects 
+FOR DELETE TO authenticated 
+USING (
+  bucket_id = 'promotion-images' AND
   (storage.foldername(name))[1] = public.get_auth_organization_id()::text
 );

@@ -26,7 +26,7 @@ interface InviteUserEmailProps {
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
   ? process.env.NEXT_PUBLIC_SITE_URL
-  : "";
+  : "https://smartables.app";
 
 export const InviteUserEmail = ({
   username,
@@ -36,7 +36,7 @@ export const InviteUserEmail = ({
   teamImage,
   inviteLink,
 }: InviteUserEmailProps) => {
-  const previewText = `Unisciti a ${teamName} su Smartables`;
+  const previewText = `Sei stato invitato a unirti a ${teamName} su Smartables`;
 
   return (
     <Html>
@@ -50,27 +50,25 @@ export const InviteUserEmail = ({
                 src={teamImage || `${baseUrl}/static/smartables-logo.png`}
                 width="40"
                 height="37"
-                alt="Smartables"
+                alt="Smartables Logo"
                 className="my-0 mx-auto"
               />
             </Section>
+
             <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
-              Unisciti a <strong>{teamName}</strong> su <strong>Smartables</strong>
+              Benvenuto, {username}!
             </Heading>
+
             <Text className="text-black text-[14px] leading-[24px]">
-              Ciao {username},
+              <strong>{invitedByUsername}</strong> ({invitedByEmail}) ti ha invitato a collaborare nel team <strong>{teamName}</strong> su Smartables.
             </Text>
-            <Text className="text-black text-[14px] leading-[24px]">
-              <strong>{invitedByUsername}</strong> (
-              <Link
-                href={`mailto:${invitedByEmail}`}
-                className="text-blue-600 no-underline"
-              >
-                {invitedByEmail}
-              </Link>
-              ) ti ha invitato a unirti al team <strong>{teamName}</strong> su{" "}
-              <strong>Smartables</strong>, la piattaforma all-in-one per la gestione del tuo ristorante.
-            </Text>
+
+            <Section className="bg-[#f9f9f9] rounded p-[20px] my-[20px] border border-solid border-[#eaeaea]">
+              <Text className="text-[#666666] text-[13px] leading-[20px] m-0 italic text-center">
+                Smartables è la piattaforma intelligente per gestire il tuo locale: ordini, menu digitali, prenotazioni e analytics, tutto in un unico posto.
+              </Text>
+            </Section>
+
             <Section className="text-center mt-[32px] mb-[32px]">
               <Button
                 className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center px-5 py-3"
@@ -79,23 +77,41 @@ export const InviteUserEmail = ({
                 Accetta l'invito
               </Button>
             </Section>
+
             <Text className="text-black text-[14px] leading-[24px]">
-              oppure copia e incolla questo URL nel tuo browser:{" "}
-              <Link href={inviteLink} className="text-blue-600 no-underline">
+              Se il pulsante non funziona, copia e incolla questo link nel browser: {' '}
+              <Link href={inviteLink} className="text-orange-400 no-underline">
                 {inviteLink}
               </Link>
             </Text>
+
             <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
+
             <Text className="text-[#666666] text-[12px] leading-[24px]">
-              Questo invito è destinato a{" "}
-              <span className="text-black">{username}</span>. Se non ti aspettavi
-              questo invito, puoi ignorare questa email.
+              Copyright © 2024 Smartables. <br />
+              Hai bisogno di aiuto? <Link href="https://smartables.it/docs" className="text-orange-400 no-underline">Consulta la nostra guida</Link>
             </Text>
           </Container>
+
+          <Section className="text-center mt-[32px] mb-[32px]">
+            <Text className="text-[#666666] text-[10px] leading-[16px]">
+              Ricevi questa email perché sei stato invitato a unirti a un team su Smartables. <br />
+              Se non ti aspettavi questo invito, puoi ignorare tranquillamente questa email.
+            </Text>
+          </Section>
         </Body>
       </Tailwind>
     </Html>
   );
 };
+
+InviteUserEmail.PreviewProps = {
+  username: "Tobia Bartolomei",
+  invitedByUsername: "Marco Bini",
+  invitedByEmail: "marcobini@damarco.it",
+  teamName: "Ristorante Da Marco",
+  teamImage: "http://localhost:3000/static/logo.png",
+  inviteLink: "http://localhost:3000/invite",
+} as InviteUserEmailProps;
 
 export default InviteUserEmail;

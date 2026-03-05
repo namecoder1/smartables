@@ -135,12 +135,12 @@ const ActivitiesView = () => {
   return (
     <PageWrapper className="relative">
       {/* Header */}
-      <div className="xl:hidden flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestisci sedi</h1>
           <p className="text-muted-foreground">Gestisci le sedi della tua organizzazione.</p>
         </div>
-        <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"} className="shadow-sm">
+        <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"} className="shadow-sm hidden xl:flex">
           <Plus className="h-4 w-4" /> Aggiungi
         </Button>
       </div>
@@ -150,17 +150,20 @@ const ActivitiesView = () => {
           {
             title: 'Totale sedi',
             value: locations.length,
-            description: 'sedi'
+            description: 'sedi',
+            icon: <Store size={24} className="text-primary" />
           },
           {
             title: 'Sedi massime',
             value: organization.billing_tier === "starter" ? 1 : organization.billing_tier === "growth" ? 3 : 5,
-            description: 'sedi'
+            description: 'sedi',
+            icon: <Store size={24} className="text-primary" />
           },
           {
             title: 'Il tuo abbonamento',
             value: organization.billing_tier.charAt(0).toUpperCase() + organization.billing_tier.slice(1),
-            description: ''
+            description: '',
+            icon: <Store size={24} className="text-primary" />
           }
         ]}
       />
@@ -170,7 +173,7 @@ const ActivitiesView = () => {
           <Button
             onClick={handleOpenAdd}
             disabled={organization?.billing_tier === "starter"}
-            className="absolute bottom-6 right-6 hidden xl:flex"
+            className="absolute bottom-6 right-6 flex xl:hidden"
           >
             <Plus className="h-4 w-4" /> Aggiungi
           </Button>
@@ -256,6 +259,7 @@ const ActivitiesView = () => {
                   <NumberInput
                     id="seats"
                     name="seats"
+                    buttonHeight="h-4.5"
                     placeholder="es: 100"
                     className="pl-9 w-full"
                     value={seats}
@@ -284,6 +288,7 @@ const ActivitiesView = () => {
                 <PhoneInput
                   id="phone"
                   defaultCountry="IT"
+                  className="h-10 border rounded-xl"
                   value={phoneNumber}
                   onChange={(value) => setPhoneNumber(value || "")}
                   required

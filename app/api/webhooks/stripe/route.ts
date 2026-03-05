@@ -2,8 +2,41 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/utils/stripe/client";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { PLANS } from "@/lib/plans";
+import { findPlanByPriceId } from "@/lib/plans";
 import Stripe from "stripe";
+
+// ── Helpers ──
+
+async function createTransactionRecord(
+  supabase: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  invoice: Stripe.Invoice,
+) {
+  // Check if transaction already exists (avoid duplicates)
+  const { data: existingTx } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("stripe_invoice_id", invoice.id)
+    .single();
+
+  if (existingTx) return; // already recorded
+
+  await supabase.from("transactions").insert({
+    organization_id: organizationId,
+    amount: invoice.amount_paid / 100,
+    currency: invoice.currency,
+    status: "succeeded",
+    type: "subscription",
+    stripe_invoice_id: invoice.id,
+    stripe_payment_intent_id: (invoice as any).payment_intent as string,
+    invoice_pdf: invoice.invoice_pdf,
+    period_start: new Date(
+      invoice.lines.data[0].period.start * 1000,
+    ).toISOString(),
+    period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
+    description: invoice.lines.data[0].description || "Subscription Payment",
+  });
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -94,10 +127,7 @@ export async function POST(req: Request) {
             stripe_status: subscription.status,
             stripe_current_period_end: periodEnd,
             current_billing_cycle_start: periodStart,
-            billing_tier:
-              PLANS.find(
-                (p) => p.priceIdMonth === priceId || p.priceIdYear === priceId,
-              )?.id || "starter",
+            billing_tier: findPlanByPriceId(priceId)?.id || "starter",
             stripe_cancel_at_period_end: subscription.cancel_at_period_end,
 
             ...getPlanUpdates(priceId),
@@ -119,24 +149,7 @@ export async function POST(req: Request) {
           const invoiceId = session.invoice as string;
           const invoice = await stripe.invoices.retrieve(invoiceId);
 
-          await supabase.from("transactions").insert({
-            organization_id: organizationId,
-            amount: invoice.amount_paid / 100,
-            currency: invoice.currency,
-            status: "succeeded",
-            type: "subscription",
-            stripe_invoice_id: invoice.id,
-            stripe_payment_intent_id: (invoice as any).payment_intent as string,
-            invoice_pdf: invoice.invoice_pdf,
-            period_start: new Date(
-              invoice.lines.data[0].period.start * 1000,
-            ).toISOString(),
-            period_end: new Date(
-              invoice.lines.data[0].period.end * 1000,
-            ).toISOString(),
-            description:
-              invoice.lines.data[0].description || "Subscription Payment",
-          });
+          await createTransactionRecord(supabase, organizationId, invoice);
         }
       }
       // Handle legacy topup or just ignore?
@@ -162,12 +175,8 @@ export async function POST(req: Request) {
       const oldPriceId = previousAttributes.items?.data?.[0]?.price?.id;
       const newPriceId = subscription.items.data[0].price.id;
       if (oldPriceId && oldPriceId !== newPriceId) {
-        const oldPlan = PLANS.find(
-          (p) => p.priceIdMonth === oldPriceId || p.priceIdYear === oldPriceId,
-        );
-        const newPlan = PLANS.find(
-          (p) => p.priceIdMonth === newPriceId || p.priceIdYear === newPriceId,
-        );
+        const oldPlan = findPlanByPriceId(oldPriceId);
+        const newPlan = findPlanByPriceId(newPriceId);
         console.log(
           `=== PLAN CHANGE DETECTED === ${oldPlan?.name || oldPriceId} → ${newPlan?.name || newPriceId}`,
         );
@@ -191,11 +200,8 @@ export async function POST(req: Request) {
         stripe_status: subscription.status,
         stripe_price_id: subscription.items.data[0].price.id,
         billing_tier:
-          PLANS.find(
-            (p) =>
-              p.priceIdMonth === subscription.items.data[0].price.id ||
-              p.priceIdYear === subscription.items.data[0].price.id,
-          )?.id || "starter",
+          findPlanByPriceId(subscription.items.data[0].price.id)?.id ||
+          "starter",
         stripe_current_period_end: periodEnd,
         current_billing_cycle_start: periodStart,
         stripe_cancel_at_period_end: subscription.cancel_at_period_end,
@@ -282,25 +288,7 @@ export async function POST(req: Request) {
           .single();
 
         if (!existingTx) {
-          // Create transaction record
-          await supabase.from("transactions").insert({
-            organization_id: orgData.id,
-            amount: invoice.amount_paid / 100, // Convert cents to EUR
-            currency: invoice.currency,
-            status: "succeeded",
-            type: "subscription",
-            stripe_invoice_id: invoice.id,
-            stripe_payment_intent_id: (invoice as any).payment_intent as string,
-            invoice_pdf: invoice.invoice_pdf,
-            period_start: new Date(
-              invoice.lines.data[0].period.start * 1000,
-            ).toISOString(),
-            period_end: new Date(
-              invoice.lines.data[0].period.end * 1000,
-            ).toISOString(),
-            description:
-              invoice.lines.data[0].description || "Subscription Payment",
-          });
+          await createTransactionRecord(supabase, orgData.id, invoice);
         }
       }
     }
@@ -394,9 +382,7 @@ export async function POST(req: Request) {
 }
 
 function getPlanUpdates(priceId: string) {
-  const plan = PLANS.find(
-    (p) => p.priceIdMonth === priceId || p.priceIdYear === priceId,
-  );
+  const plan = findPlanByPriceId(priceId);
 
   if (!plan) return {};
 

@@ -1,7 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/utils/supabase/admin";
 import {
   uploadDocument,
   createRequirementGroup,
@@ -10,45 +9,23 @@ import {
 import { TELNYX_REQ_IDS } from "@/lib/telnyx-req-ids";
 import { Resend } from "resend";
 import { revalidatePath } from "next/cache";
+import { getAuthContext } from "@/lib/auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const REQ_ID_IDENTITY_PROOF = "86649686-5e33-469b-8169-2f5407cb591d";
-const REQ_ID_ADDRESS_PROOF = "363e79bd-1002-4217-8854-5188c0051e73";
-
 export async function approveComplianceRequest(requirementId: string) {
   console.log("[Admin] approveComplianceRequest STARTED", { requirementId });
-  const supabase = await createClient();
 
-  // 1. Verify Admin (Basic role check or rely on RLS/Middleware if admin path is protected)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    console.error("[Admin] Unauthorized: No user found");
-    throw new Error("Unauthorized");
-  }
-
-  // Optional: Check if user has admin role from profiles
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const ADMIN_ID = "0a82970f-1fc5-4a52-97a1-a8613de0e3f7";
-  if (profile?.role !== "admin" && user.id !== ADMIN_ID) {
-    console.error("[Admin] Unauthorized: User is not admin", {
+  // 1. Verify Admin
+  const { supabase, user } = await getAuthContext();
+  if (user.app_metadata?.role !== "superadmin") {
+    console.error("[Admin] Unauthorized: User is not superadmin", {
       userId: user.id,
-      role: profile?.role,
     });
     throw new Error("Unauthorized: Admin Access Required");
   }
 
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabaseAdmin = createAdminClient();
 
   console.log("[Admin] Locking request...");
   // 2. Atomic Lock: Transition from 'pending_review' to 'pending'
@@ -324,27 +301,11 @@ export async function rejectComplianceRequest(
   requirementId: string,
   reason: string,
 ) {
-  const supabase = await createClient();
-
   // 1. Verify Admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { user } = await getAuthContext();
+  if (user.app_metadata?.role !== "superadmin") throw new Error("Unauthorized");
 
-  const ADMIN_ID = "0a82970f-1fc5-4a52-97a1-a8613de0e3f7";
-  if (profile?.role !== "admin" && user.id !== ADMIN_ID)
-    throw new Error("Unauthorized");
-
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabaseAdmin = createAdminClient();
 
   // 2. Update DB
   await supabaseAdmin
@@ -360,10 +321,7 @@ export async function rejectComplianceRequest(
 }
 
 export async function resetComplianceStatusAction(requirementId: string) {
-  const supabase = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabase = createAdminClient();
 
   await supabase
     .from("telnyx_regulatory_requirements")

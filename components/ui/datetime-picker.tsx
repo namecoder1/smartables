@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (date?: Date) => void }) {
+export function DateTimePicker({ value, onChange, dateLabel = 'Data', timeLabel = 'Ora' }: { value?: Date, onChange?: (date?: Date) => void, dateLabel?: string, timeLabel?: string }) {
   const [open, setOpen] = React.useState(false)
 
   // Helper to handle time change
@@ -33,16 +33,16 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
   // Helper to handle date change
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!onChange || !selectedDate) return
-    
+
     const newDate = new Date(selectedDate)
     if (value) {
-        // Preserve time from existing value
-        newDate.setHours(value.getHours())
-        newDate.setMinutes(value.getMinutes())
+      // Preserve time from existing value
+      newDate.setHours(value.getHours())
+      newDate.setMinutes(value.getMinutes())
     } else {
-        // Default to 10:30 if no previous time
-        newDate.setHours(10)
-        newDate.setMinutes(30)
+      // Default to 10:30 if no previous time
+      newDate.setHours(10)
+      newDate.setMinutes(30)
     }
     onChange(newDate)
     setOpen(false)
@@ -52,7 +52,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
     <div className="flex w-full items-center justify-center gap-2">
       <div className="flex w-full flex-1 flex-col gap-2">
         <Label htmlFor="date-picker" className="px-1">
-          Data
+          {dateLabel}
         </Label>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -78,7 +78,7 @@ export function DateTimePicker({ value, onChange }: { value?: Date, onChange?: (
       </div>
       <div className="flex w-full flex-1 flex-col gap-2">
         <Label htmlFor="time-picker" className="px-1">
-          Ora
+          {timeLabel}
         </Label>
         <Input
           type="time"

@@ -88,7 +88,7 @@ const InputComponent = React.forwardRef<
       className={cn(
         className,
         'rounded-l-none! border-l-0',
-        isOnboarding && "h-12 text-lg text-black rounded-l-none! border-0"
+        isOnboarding ? "h-full text-lg text-black rounded-l-none! border-0" : 'h-full border-0'
       )}
       {...props}
       placeholder="Inserisci il numero"
@@ -132,7 +132,7 @@ const CountrySelect = ({
           type="button"
           className={cn(
             "flex items-center gap-1 border-r-0 px-3 focus:z-10 rounded-l-xl",
-            isOnboarding ? "bg-[#f4f4f480] border-gray-200 text-gray-900 hover:bg-gray-50 h-12" : 'bg-background dark:bg-input/30 border h-9'
+            isOnboarding ? "bg-[#f4f4f480] border-gray-200 text-gray-900 hover:bg-gray-50 h-12" : 'bg-input/30 border-r-2 h-full'
           )}
           disabled={disabled}
         >
@@ -157,11 +157,11 @@ const CountrySelect = ({
           "w-[300px] p-0 shadow-lg border-2",
           isOnboarding
             ? "bg-white border-gray-200"
-            : "bg-background dark:bg-input/30 border-border"
+            : "bg-input/30 border-border"
         )}
       >
         <Command shouldFilter={false} className={cn(
-          isOnboarding ? "bg-[#f4f4f480]" : "bg-background dark:bg-[#181818]"
+          isOnboarding ? "bg-[#f4f4f480]" : "bg-[#F3F3F4]"
         )}>
           <CommandInput
             value={searchValue}
@@ -235,7 +235,7 @@ const CountrySelectOption = ({
           "data-[selected=true]:bg-gray-100",
           "aria-selected:bg-gray-100",
         ] : [
-          "text-white",
+          "text-black",
           "hover:bg-gray-200 dark:hover:bg-gray-100/10",
           "data-[selected=true]:bg-gray-200 dark:data-[selected=true]:bg-gray-100/10",
           "aria-selected:bg-gray-200 dark:aria-selected:bg-gray-100/10",
@@ -246,17 +246,17 @@ const CountrySelectOption = ({
       <FlagComponent country={country} countryName={countryName} />
       <span className={cn(
         "flex-1 text-sm",
-        isOnboarding ? "text-gray-900" : "text-black dark:text-white"
+        isOnboarding ? "text-gray-900" : "text-black"
       )}>{countryName}</span>
       <span className={cn(
         "text-sm",
-        isOnboarding ? "text-gray-500" : "text-black dark:text-white"
+        isOnboarding ? "text-gray-500" : "text-black"
       )}>{`+${RPNInput.getCountryCallingCode(country)}`}</span>
       <CheckIcon
         className={cn(
           "ml-auto size-4",
           country === selectedCountry ? "opacity-100" : "opacity-0",
-          isOnboarding ? "text-gray-900" : 'text-black dark:text-white'
+          isOnboarding ? "text-gray-900" : 'text-black'
         )}
       />
     </CommandItem>

@@ -76,11 +76,15 @@ const ReservationsTable = ({
             </div>
           </div>
         ) : (
-          <NoItems 
-            icon={<CircleQuestionMark className="w-10 h-10 text-foreground" />}
-            title="Nessuna prenotazione"
-            description="Non ci sono prenotazioni per questo periodo."
-          />
+          <div className="flex flex-col items-center rounded-3xl justify-center p-12 bg-card min-h-[400px]">
+            <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-full">
+              <CircleQuestionMark className="w-10 h-10 text-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Nessuna prenotazione</h3>
+            <p className='text-muted-foreground text-center max-w-md mb-0'>
+              Non ci sono prenotazioni per questo periodo.
+            </p>
+          </div>
         )}
       </div>
     )
@@ -89,7 +93,7 @@ const ReservationsTable = ({
   return (
     <div>
       {data && data.length > 0 ? (
-        <div className="rounded-xl border-2 bg-card">
+        <div className="rounded-3xl border-2 bg-card">
           <div className="relative w-full overflow-auto">
             <table className="w-full caption-bottom text-sm">
               <thead className="[&_tr]:border-b-2">

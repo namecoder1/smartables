@@ -2,8 +2,9 @@ import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, FileText, ChevronRight, Utensils, CalendarDays, MapPin, UtensilsCrossed } from "lucide-react";
+import { ExternalLink, FileText, ChevronRight, Utensils, CalendarDays, MapPin, UtensilsCrossed, Percent, DollarSign, Package, UtensilsCrossed as CoverIcon, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TbRosetteDiscount } from "react-icons/tb";
 
 export const metadata = {
   title: "Menu Digitale | Smartables",
@@ -16,6 +17,23 @@ type Menu = {
   description: string | null;
   pdf_url: string | null;
   is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+type PublicPromotion = {
+  id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  value: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  visit_threshold: number | null;
+  // The menu IDs this promo applies to (empty if all_menus)
+  all_menus?: boolean;
+  menuIds?: string[];
 };
 
 export default async function PublicMenuPage({
@@ -48,20 +66,74 @@ export default async function PublicMenuPage({
         name,
         description,
         pdf_url,
-        is_active
+        is_active,
+        starts_at,
+        ends_at
       )
     `)
     .eq("location_id", location.id)
     .eq("is_active", true)
     .filter("menu.is_active", "eq", true);
 
-  const activeMenus = (menus?.map((m) => m.menu).filter((m) => m !== null) as unknown as Menu[]) || [];
+  const now = new Date().toISOString();
+  const allFetchedMenus = (menus?.map((m) => m.menu).filter((m) => m !== null) as unknown as Menu[]) || [];
+  // Filter out menus outside their validity window
+  const activeMenus = allFetchedMenus.filter((m) => {
+    if (m.starts_at && new Date(m.starts_at) > new Date(now)) return false;
+    if (m.ends_at && new Date(m.ends_at) < new Date(now)) return false;
+    return true;
+  });
+  const activeMenuIds = activeMenus.map((m) => m.id);
   const orgName = location.organizations?.name || "Ristorante";
+
+  // 3. Fetch ACTIVE PROMOTIONS for this location
+
+  // Fetch all active promotions for this organization
+  const { data: allPromotions } = await supabase
+    .from("promotions")
+    .select(`
+      id, name, description, image_url, type, value, starts_at, ends_at, visit_threshold,
+      all_locations, all_menus,
+      promotion_locations(location_id),
+      promotion_menus(menu_id)
+    `)
+    .eq("organization_id", location.organization_id)
+    .eq("is_active", true);
+
+  // Filter client-side for location + menu scope + date validity
+  const activePromotions: PublicPromotion[] = (allPromotions || []).filter((promo) => {
+    // Check location scope
+    const locationMatch = promo.all_locations ||
+      promo.promotion_locations?.some((pl: any) => pl.location_id === location.id);
+    if (!locationMatch) return false;
+
+    // Check menu scope
+    const menuMatch = promo.all_menus ||
+      promo.promotion_menus?.some((pm: any) => activeMenuIds.includes(pm.menu_id));
+    if (!menuMatch) return false;
+
+    // Check date range
+    if (promo.starts_at && new Date(promo.starts_at) > new Date(now)) return false;
+    if (promo.ends_at && new Date(promo.ends_at) < new Date(now)) return false;
+
+    // Skip visit-threshold-only promotions from public view (they're triggered per-customer)
+    if (promo.visit_threshold && promo.visit_threshold > 0 && !promo.description) return false;
+
+    return true;
+  }).map((promo) => ({
+    ...promo,
+    all_menus: promo.all_menus,
+    menuIds: promo.promotion_menus?.map((pm: any) => pm.menu_id) || [],
+  }));
+
+  // Helper: count promotions per menu
+  const getPromoCountForMenu = (menuId: string) =>
+    activePromotions.filter((p) => p.all_menus || p.menuIds?.includes(menuId)).length;
 
   // Branding Logic
   const branding = location.branding;
-  const primaryColor = branding?.colors?.primary || "#3b82f6"; // Default Blue-500
-  const secondaryColor = branding?.colors?.secondary || "#a855f7"; // Default Purple-500
+  const primaryColor = branding?.colors?.primary || "#3b82f6";
+  const secondaryColor = branding?.colors?.secondary || "#a855f7";
   const logoUrl = branding?.logo_url;
 
   return (
@@ -160,47 +232,197 @@ export default async function PublicMenuPage({
                     menu={menu}
                     locationSlug={locationSlug}
                     primaryColor={primaryColor}
+                    promoCount={getPromoCountForMenu(menu.id)}
                   />
                 ))}
               </div>
             )}
           </div>
+
+          {/* Promotions Section */}
+          {activePromotions.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 px-2">
+                <div
+                  className="h-8 w-1 rounded-full"
+                  style={{ background: `linear-gradient(to bottom, ${primaryColor}, ${secondaryColor})` }}
+                />
+                <h2 className="text-xl font-bold text-slate-800">
+                  Promozioni Attive
+                </h2>
+              </div>
+
+              <div className="grid gap-3">
+                {activePromotions.map((promo) => (
+                  <PromotionCard
+                    key={promo.id}
+                    promotion={promo}
+                    primaryColor={primaryColor}
+                    secondaryColor={secondaryColor}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <footer className="py-8 text-center text-xs text-slate-400 bg-white border-t border-slate-100">
         <p>© {new Date().getFullYear()} {orgName}</p>
         <div className="mt-2 flex items-center justify-center gap-1 opacity-70">
-          <span>Powered by</span>
-          <span className="font-semibold text-slate-600">Smartables</span>
+          <span>Realizzato da</span>
+          <a href="https://smartables.it" target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-600">Smartables</a>
         </div>
       </footer>
     </div>
   );
 }
 
-function MenuCard({ menu, locationSlug, primaryColor }: { menu: Menu; locationSlug: string; primaryColor: string }) {
+// ===== Promotion Card =====
+
+function formatPromoValue(type: string, value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  switch (type) {
+    case 'percentage': return `-${value}%`;
+    case 'fixed_amount': return `-${value}€`;
+    case 'bundle': return `${value}€`;
+    case 'cover_override': return value === 0 ? 'Gratis' : `${value}€`;
+    default: return null;
+  }
+}
+
+function formatPromoDate(startsAt: string | null, endsAt: string | null) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  if (startsAt && endsAt) return `${fmt(startsAt)} — ${fmt(endsAt)}`;
+  if (endsAt) return `Fino al ${fmt(endsAt)}`;
+  return null;
+}
+
+const PROMO_TYPE_CONFIG: Record<string, { label: string; emoji: string }> = {
+  percentage: { label: 'Sconto %', emoji: '🏷️' },
+  fixed_amount: { label: 'Sconto €', emoji: '💰' },
+  bundle: { label: 'Bundle', emoji: '🎁' },
+  cover_override: { label: 'Coperto', emoji: '🍽️' },
+};
+
+function PromotionCard({
+  promotion,
+  primaryColor,
+  secondaryColor,
+}: {
+  promotion: PublicPromotion;
+  primaryColor: string;
+  secondaryColor: string;
+}) {
+  const typeConfig = PROMO_TYPE_CONFIG[promotion.type] || PROMO_TYPE_CONFIG.percentage;
+  const valueLabel = formatPromoValue(promotion.type, promotion.value);
+  const dateLabel = formatPromoDate(promotion.starts_at, promotion.ends_at);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-md">
+      {/* Gradient accent bar */}
+      <div
+        className="h-1"
+        style={{ background: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` }}
+      />
+
+      <div className="p-5">
+        <div className="flex gap-4">
+          {/* Image or icon */}
+          {promotion.image_url ? (
+            <div className="shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-slate-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={promotion.image_url}
+                alt={promotion.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div
+              className="shrink-0 w-16 h-16 rounded-xl flex items-center justify-center text-2xl"
+              style={{ backgroundColor: `${primaryColor}10` }}
+            >
+              {typeConfig.emoji}
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-bold text-slate-800 text-base leading-snug">{promotion.name}</h3>
+              {valueLabel && (
+                <span
+                  className="shrink-0 text-lg font-extrabold tracking-tight"
+                  style={{ color: primaryColor }}
+                >
+                  {valueLabel}
+                </span>
+              )}
+            </div>
+
+            {promotion.description && (
+              <p className="text-sm text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                {promotion.description}
+              </p>
+            )}
+
+            {/* Tags row */}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-2 h-5 border"
+                style={{
+                  backgroundColor: `${primaryColor}12`,
+                  color: primaryColor,
+                  borderColor: `${primaryColor}25`,
+                }}
+              >
+                {typeConfig.label}
+              </Badge>
+
+              {dateLabel && (
+                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3" />
+                  {dateLabel}
+                </span>
+              )}
+
+              {promotion.visit_threshold && promotion.visit_threshold > 0 && (
+                <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                  ⭐ Ogni {promotion.visit_threshold} visite
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== Menu Card =====
+
+function MenuCard({ menu, locationSlug, primaryColor, promoCount = 0 }: { menu: Menu; locationSlug: string; primaryColor: string; promoCount?: number }) {
   const isPdf = !!menu.pdf_url;
   const href = isPdf && menu.pdf_url ? menu.pdf_url : `/m/${locationSlug}/${menu.id}`;
   const target = isPdf ? "_blank" : "_self";
+  const isSpecial = !!(menu.starts_at || menu.ends_at);
+  const endDateLabel = menu.ends_at
+    ? `Fino al ${new Date(menu.ends_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}`
+    : null;
 
   return (
     <Link
       href={href}
       target={target}
       className="group block bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-slate-100"
-      style={{
-        // We can use CSS variables or direct styles for hover states if we use a wrapper or styled component.
-        // For inline styles in React, handling hover colors is tricky without state or CSS-in-JS.
-        // Alternatively, we leave the hover shadow as default or subtle, and focus on the static elements.
-      }}
     >
       <div className="flex p-5 gap-4">
         {/* Icon/Image Placeholder */}
         <div
           className={`shrink-0 w-16 h-16 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105`}
           style={{
-            backgroundColor: isPdf ? '#fef2f2' : `${primaryColor}10`, // Red-50 or Primary with 10% opacity
+            backgroundColor: isPdf ? '#fef2f2' : `${primaryColor}10`,
             color: isPdf ? '#ef4444' : primaryColor
           }}
         >
@@ -226,10 +448,10 @@ function MenuCard({ menu, locationSlug, primaryColor }: { menu: Menu; locationSl
           </div>
 
           <p className="text-sm text-slate-500 line-clamp-2 mt-1 leading-relaxed">
-            {menu.description || "Scopri i deliziosi piatti di questo menu."}
+            Scopri i deliziosi piatti di questo menu.
           </p>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
             {isPdf ? (
               <Badge variant="secondary" className="bg-red-50 text-red-600 hover:bg-red-100 border-red-100 text-[10px] px-2 h-5">PDF</Badge>
             ) : (
@@ -243,6 +465,16 @@ function MenuCard({ menu, locationSlug, primaryColor }: { menu: Menu; locationSl
                 }}
               >
                 DIGITALE
+              </Badge>
+            )}
+            {isSpecial && (
+              <Badge variant="secondary" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 h-5">
+                ✨ Speciale{endDateLabel ? ` · ${endDateLabel}` : ''}
+              </Badge>
+            )}
+            {promoCount > 0 && (
+              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 h-5">
+                🏷️ {promoCount} {promoCount === 1 ? 'promo' : 'promo'}
               </Badge>
             )}
           </div>

@@ -27,7 +27,7 @@ const ActionSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl bg-background flex flex-col gap-0 p-0 overflow-hidden">
+      <SheetContent className="w-full sm:max-w-md bg-background flex flex-col gap-0 p-0 overflow-hidden">
         <SheetHeader className="p-6 border-b bg-white">
           <SheetTitle className='text-2xl font-bold tracking-tight text-foreground'>{title}</SheetTitle>
           <SheetDescription className='text-muted-foreground font-medium'>

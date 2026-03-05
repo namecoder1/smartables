@@ -1,68 +1,46 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { getAuthContext } from "@/lib/auth";
 
 export async function searchCustomers(query: string) {
-  const supabase = await createClient();
+  try {
+    const { supabase, organizationId } = await getAuthContext();
 
-  // Get current user and organization
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+    const { data: customers, error } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .ilike("name", `%${query}%`)
+      .limit(10);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
+    if (error) {
+      console.error("Error searching customers:", error);
+      return [];
+    }
 
-  if (!profile || !profile.organization_id) return [];
-
-  // Search customers by name (case insensitive)
-  const { data: customers, error } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("organization_id", profile.organization_id)
-    .ilike("name", `%${query}%`)
-    .limit(10);
-
-  if (error) {
-    console.error("Error searching customers:", error);
+    return customers;
+  } catch {
     return [];
   }
-
-  return customers;
 }
 
 export async function getAllCustomers() {
-  const supabase = await createClient();
+  try {
+    const { supabase, organizationId } = await getAuthContext();
 
-  // Get current user and organization
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+    const { data: customers, error } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
+    if (error) {
+      console.error("Error fetching all customers:", error);
+      return [];
+    }
 
-  if (!profile || !profile.organization_id) return [];
-
-  // Fetch all customers ordered by name
-  const { data: customers, error } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("organization_id", profile.organization_id)
-    .order("name", { ascending: true });
-
-  if (error) {
-    console.error("Error fetching all customers:", error);
+    return customers;
+  } catch {
     return [];
   }
-
-  return customers;
 }

@@ -1,15 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getAuthContext } from "@/lib/auth";
 
 export async function resetComplianceAction(locationId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) throw new Error("Unauthorized");
+  const { supabase, user } = await getAuthContext();
 
   try {
     // 1. Get the current requirement ID
