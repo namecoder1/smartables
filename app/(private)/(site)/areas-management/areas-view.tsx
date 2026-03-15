@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocationStore } from '@/store/location-store';
 import { FloorPlanList } from './components/floor-plan-list';
-import { deleteFloorPlan, getFloorPlan } from '@/app/actions/floor-plan';
+import { deleteFloorPlan, getFloorPlan, updateZoneBlock } from '@/app/actions/floor-plan';
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Plus, PlusCircle, Store } from 'lucide-react';
+import { Plus, Store } from 'lucide-react';
 import ConfirmDialog from '@/components/utility/confirm-dialog';
 import PageWrapper from '@/components/private/page-wrapper';
 import ZoneWizard from './components/zone-wizard';
@@ -21,21 +21,27 @@ import { PLANS } from '@/lib/plans';
 import { Lock } from 'lucide-react';
 import NoItems from '@/components/utility/no-items';
 import OverviewCards from '@/components/private/overview-cards';
-
-const PLAN_LIMITS = {
-  starter: 5,
-  pro: 18,     // Growth
-  business: 35 // Business
-};
+import { FaqContent } from '@/components/private/faq-section';
+import { SanityFaq } from '@/utils/sanity/queries';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { RangePicker } from '@/components/ui/range-picker';
 
 interface Zone {
   id: string;
   name: string;
   width: number;
   height: number;
+  blocked_from?: string | null;
+  blocked_until?: string | null;
+  blocked_reason?: string | null;
 }
 
-const AreasView = () => {
+const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
   const router = useRouter();
   const { selectedLocationId, getSelectedLocation } = useLocationStore();
   const location = getSelectedLocation();
@@ -50,11 +56,23 @@ const AreasView = () => {
   // Determine current limit based on plan
   const currentPlan = PLANS.find(p => p.priceIdMonth === organization?.stripe_price_id || p.priceIdYear === organization?.stripe_price_id);
   const planId = currentPlan?.id || 'starter'; // Default to starter if no plan found (e.g. Free)
-  const maxZones = PLAN_LIMITS[planId as keyof typeof PLAN_LIMITS] || 5;
+  const maxZones = limits.max_zones
+
   const isLimitReached = orgZoneCount >= maxZones;
 
   // State for delete confirmation
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
+
+  // State for zone blocking dialog
+  const [zoneToBlock, setZoneToBlock] = useState<Zone | null>(null);
+  const [blockMode, setBlockMode] = useState<'free' | 'shift'>('free');
+  const [blockFrom, setBlockFrom] = useState<Date | undefined>(undefined);
+  const [blockUntil, setBlockUntil] = useState<Date | undefined>(undefined);
+  const [blockReason, setBlockReason] = useState('');
+  const [selectedShift, setSelectedShift] = useState<string>('');
+  const [blockDateFrom, setBlockDateFrom] = useState<Date | undefined>(undefined);
+  const [blockDateUntil, setBlockDateUntil] = useState<Date | undefined>(undefined);
+  const [isSavingBlock, setIsSavingBlock] = useState(false);
 
   // Fetch zones on load
   const loadZones = useCallback(async () => {
@@ -121,6 +139,77 @@ const AreasView = () => {
     router.push(`/areas-management/${zone.id}`);
   };
 
+  const openBlockDialog = (zone: Zone) => {
+    setZoneToBlock(zone);
+    if (zone.blocked_from) {
+      setBlockFrom(new Date(zone.blocked_from));
+    } else {
+      setBlockFrom(undefined);
+    }
+    if (zone.blocked_until) {
+      setBlockUntil(new Date(zone.blocked_until));
+    } else {
+      setBlockUntil(undefined);
+    }
+    setBlockReason(zone.blocked_reason || '');
+    setBlockMode('free');
+    setSelectedShift('');
+    setBlockDateFrom(undefined);
+    setBlockDateUntil(undefined);
+  };
+
+  // Opening hours shifts for the selected location, used in shift mode
+  const openingHoursShifts = (() => {
+    const hours = location?.opening_hours;
+    if (!hours) return [];
+    const shifts: { label: string; open: string; close: string }[] = [];
+    Object.entries(hours).forEach(([, slots]) => {
+      (slots as any[]).forEach((slot) => {
+        const key = `${slot.open}-${slot.close}`;
+        if (!shifts.some(s => `${s.open}-${s.close}` === key)) {
+          shifts.push({ label: `${slot.open} – ${slot.close}`, open: slot.open, close: slot.close });
+        }
+      });
+    });
+    return shifts;
+  })();
+
+  const handleSaveBlock = async () => {
+    if (!zoneToBlock) return;
+    setIsSavingBlock(true);
+    try {
+      let finalFrom: string | null = null;
+      let finalUntil: string | null = null;
+
+      if (blockMode === 'free') {
+        finalFrom = blockFrom ? blockFrom.toISOString() : null;
+        finalUntil = blockUntil ? blockUntil.toISOString() : null;
+      } else {
+        // Shift mode: combine shift times with selected dates
+        const shift = openingHoursShifts.find(s => `${s.open}-${s.close}` === selectedShift);
+        if (shift && blockDateFrom && blockDateUntil) {
+          const [openH, openM] = shift.open.split(':').map(Number);
+          const [closeH, closeM] = shift.close.split(':').map(Number);
+          const from = new Date(blockDateFrom);
+          from.setHours(openH, openM, 0, 0);
+          const until = new Date(blockDateUntil);
+          until.setHours(closeH, closeM, 0, 0);
+          finalFrom = from.toISOString();
+          finalUntil = until.toISOString();
+        }
+      }
+
+      await updateZoneBlock(zoneToBlock.id, finalFrom, finalUntil, blockReason || null);
+      toast.success(finalFrom ? 'Blocco impostato' : 'Blocco rimosso');
+      setZoneToBlock(null);
+      loadZones();
+    } catch (e) {
+      toast.error('Errore nel salvataggio del blocco');
+    } finally {
+      setIsSavingBlock(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!zoneToDelete) return;
 
@@ -156,16 +245,21 @@ const AreasView = () => {
 
       {mode === 'list' && (
         <PageWrapper className='relative'>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Mappe ristorante</h1>
-              <p className="text-muted-foreground">Gestisci le mappe del tuo locale, crea, modifica e sposta i tavoli per adattarle alle tue esigenze.</p>
+          <div className="flex flex-col items-start md:flex-row md:items-center gap-10 md:justify-between">
+            <div className='flex flex-col gap-1'>
+              <h1 className="text-3xl font-bold tracking-tight">Mappe ristorante</h1>
+              <p className="text-muted-foreground max-w-2xl">Gestisci le mappe del tuo locale, crea, modifica e sposta i tavoli per adattarle alle tue esigenze.</p>
             </div>
-            {zones.length > 0 && (
-              <Button onClick={handleCreate} disabled={isLimitReached} className='hidden xl:flex'>
-                {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                Nuova Mappa
-              </Button>
+            {zones.length > 0 ? (
+              <ButtonGroup>
+                <FaqContent title='Aiuto' variant='minimized' faqs={faqs} />
+                <Button type='submit' onClick={handleCreate} disabled={isLimitReached}>
+                  {isLimitReached ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  Mappa
+                </Button>
+              </ButtonGroup>
+            ) : (
+              <FaqContent title='Aiuto' variant='minimized' faqs={faqs} />
             )}
           </div>
 
@@ -176,19 +270,19 @@ const AreasView = () => {
                   title: 'Totale coperti',
                   value: allTables.reduce((acc, table) => acc + (table.seats || 0), 0),
                   description: '',
-                  icon: <GiHotMeal size={24} className='text-primary' />
+                  icon: <GiHotMeal className='text-primary size-6 2xl:size-8' />
                 },
                 {
                   title: 'Capienza Sede',
                   value: location.seats,
                   description: 'coperti',
-                  icon: <FaPeopleLine size={24} className='text-primary' />
+                  icon: <FaPeopleLine className='text-primary size-6 2xl:size-8' />
                 },
                 {
                   title: 'Totale sale',
                   value: `${orgZoneCount}/${maxZones}`,
                   description: 'sale',
-                  icon: <PiBlueprint size={24} className='text-primary' />
+                  icon: <PiBlueprint className='text-primary size-6 2xl:size-8' />
                 }
               ]}
             />
@@ -210,17 +304,10 @@ const AreasView = () => {
                 location={location}
                 onEdit={handleEdit}
                 onDelete={(zone) => setZoneToDelete(zone as any)}
+                onBlock={openBlockDialog}
               />
             )}
           </div>
-
-          {zones.length > 0 && (
-            <Button onClick={handleCreate} disabled={isLimitReached} className='absolute right-6 bottom-6 z-50 flex xl:hidden'>
-              {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-              Nuova Mappa
-            </Button>
-          )}
-
         </PageWrapper>
       )}
 
@@ -237,6 +324,137 @@ const AreasView = () => {
           onConfirm={confirmDelete}
         />
       )}
+
+      {/* Zone Blocking Dialog */}
+      <Dialog open={!!zoneToBlock} onOpenChange={(open) => !open && setZoneToBlock(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Blocca sala — {zoneToBlock?.name}</DialogTitle>
+            <DialogDescription>
+              Imposta un periodo in cui questa sala sarà bloccata e non prenotabile.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2">
+            {/* Mode selector */}
+            {openingHoursShifts.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={blockMode === 'free' ? 'default' : 'outline'}
+                  onClick={() => setBlockMode('free')}
+                >
+                  Date libere
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={blockMode === 'shift' ? 'default' : 'outline'}
+                  onClick={() => setBlockMode('shift')}
+                >
+                  Per turno
+                </Button>
+              </div>
+            )}
+
+            {blockMode === 'free' ? (
+              <>
+                <DateTimePicker
+                  dateLabel="Blocca dal"
+                  timeLabel="Ora"
+                  value={blockFrom}
+                  onChange={setBlockFrom}
+                />
+                <DateTimePicker
+                  dateLabel="Blocca fino al"
+                  timeLabel="Ora"
+                  value={blockUntil}
+                  onChange={setBlockUntil}
+                />
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-2 w-full">
+                  <Label>Turno</Label>
+                  <Select value={selectedShift} onValueChange={setSelectedShift}>
+                    <SelectTrigger className='w-full!'>
+                      <SelectValue placeholder="Seleziona turno..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {openingHoursShifts.map((s) => (
+                        <SelectItem key={`${s.open}-${s.close}`} value={`${s.open}-${s.close}`}>
+                          {s.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex flex-col gap-2 w-full">
+                  <Label>Periodo</Label>
+                  <RangePicker
+                    variant="input"
+                    className='w-full'
+                    placeholder='Scegli date'
+                    date={{ from: blockDateFrom, to: blockDateUntil }}
+                    onChange={(range) => {
+                      setBlockDateFrom(range?.from);
+                      setBlockDateUntil(range?.to);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Label>Motivo (opzionale)</Label>
+              <Input
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="es. Evento privato, manutenzione..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            {(zoneToBlock?.blocked_from || zoneToBlock?.blocked_until) && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  if (!zoneToBlock) return;
+                  setIsSavingBlock(true);
+                  try {
+                    await updateZoneBlock(zoneToBlock.id, null, null, null);
+                    toast.success('Blocco rimosso');
+                    setZoneToBlock(null);
+                    loadZones();
+                  } catch {
+                    toast.error('Errore nella rimozione del blocco');
+                  } finally {
+                    setIsSavingBlock(false);
+                  }
+                }}
+                disabled={isSavingBlock}
+              >
+                Rimuovi
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setZoneToBlock(null)}
+              disabled={isSavingBlock}
+            >
+              Annulla
+            </Button>
+            <Button onClick={handleSaveBlock} disabled={isSavingBlock}>
+              {isSavingBlock ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

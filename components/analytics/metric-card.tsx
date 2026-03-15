@@ -13,7 +13,7 @@ export function MetricCard({ title, value, description, icon: Icon, className }:
   return (
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
+        <CardTitle className="text-md font-medium">
           {title}
         </CardTitle>
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
@@ -21,7 +21,7 @@ export function MetricCard({ title, value, description, icon: Icon, className }:
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
         {description && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {description}
           </p>
         )}

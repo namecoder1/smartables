@@ -1,5 +1,5 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { createClient } from "@/utils/supabase/server";
+import { getUser } from "@/lib/supabase-helpers";
 import { OrganizationProvider } from "@/components/providers/organization-provider";
 import { LocationInitializer } from "@/components/private/location-initializer";
 import { redirect } from "next/navigation";
@@ -10,6 +10,7 @@ import { getStarredPages } from "@/app/actions/starred-pages";
 import RefundGate from "@/components/private/refund-gate";
 import { PageTitleProvider } from "@/components/providers/page-title-context";
 import { ThemeProvider } from "@/components/utility/theme-provider";
+import { NavDataProvider } from "@/components/providers/nav-context";
 
 export const metadata = {
   title: {
@@ -32,18 +33,17 @@ export default async function PrivateLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createClient()
-  const { data: user } = await supabase.auth.getUser()
+  const { supabase, user } = await getUser()
 
   // 1. Get User
-  if (!user || !user.user) redirect('/login')
-  if (user.user.app_metadata?.role === 'superadmin') redirect('/manage')
+  if (!user) redirect('/login')
+  if (user.app_metadata?.role === 'superadmin') redirect('/manage')
 
   // 2. Fetch Profile to get assigned organization (for staff)
   const { data: profile } = await supabase
     .from("profiles")
     .select("organization_id")
-    .eq("id", user.user.id)
+    .eq("id", user.id)
     .single()
 
   // 3. Fetch Organization (either created by user OR assigned to user)
@@ -52,7 +52,7 @@ export default async function PrivateLayout({
   if (profile?.organization_id) {
     query = query.eq("id", profile.organization_id)
   } else {
-    query = query.eq("created_by", user.user.id)
+    query = query.eq("created_by", user.id)
   }
 
   const { data: organizations } = await query
@@ -62,8 +62,8 @@ export default async function PrivateLayout({
   }
   const { data: locations } = await supabase
     .from("locations")
-    .select("*, telnyx_regulatory_requirements:telnyx_regulatory_requirements!telnyx_regulatory_requirements_location_id_fkey(status)")
-    .in("organization_id", organizations?.map((o) => o.id) || []);
+    .select("*")
+    .in("organization_id", (organizations as { id: string }[]).map((o) => o.id));
 
   // Check if subscription was canceled (refunded) — gate user to billing only
   const isCanceled = organizations[0]?.stripe_status === "canceled"
@@ -81,38 +81,32 @@ export default async function PrivateLayout({
           initialOrganization={organizations && organizations.length > 0 ? organizations[0] : null}
         >
           <PageTitleProvider>
-            <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
-            <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525]">
-              <Sidebar
-                collapsible="none"
-                className="hidden xl:flex bg-transparent"
-                organizationId={organizations?.[0]?.id}
-                activationStatus={locations?.[0]?.activation_status}
-                managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
-                starredPages={starredPages}
-                // @ts-ignore
-                complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
-              />
-
-              <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
-                <Navbar
-                  className="bg-transparent"
-                  organizationId={organizations?.[0]?.id}
-                  activationStatus={locations?.[0]?.activation_status}
-                  managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
-                  starredPages={starredPages}
-                  // @ts-ignore
-                  complianceStatus={locations?.[0]?.telnyx_regulatory_requirements?.status}
+            <NavDataProvider
+              organizationId={organizations?.[0]?.id}
+              activationStatus={locations?.[0]?.activation_status}
+              managedAccountId={organizations?.[0]?.telnyx_managed_account_id}
+              complianceStatus={locations?.[0]?.regulatory_status}
+              starredPages={starredPages ?? []}
+            >
+              <LocationInitializer locations={locations} activeLocationId={activeLocationId} />
+              <div className="flex h-full w-full xl:p-4 xl:pt-0 xl:pl-2 bg-[#252525]">
+                <Sidebar
+                  collapsible="none"
+                  className="hidden xl:flex bg-transparent"
                 />
-                <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-[#eeeeee] border-border h-full">
-                  {isCanceled ? (
-                    <RefundGate>{children}</RefundGate>
-                  ) : (
-                    children
-                  )}
-                </main>
+
+                <div className="flex flex-1 flex-col h-full overflow-hidden xl:ml-2">
+                  <Navbar className="bg-transparent" />
+                  <main className="flex-1 overflow-y-auto border-2 xl:rounded-3xl bg-[#eeeeee] border-border h-full">
+                    {isCanceled ? (
+                      <RefundGate>{children}</RefundGate>
+                    ) : (
+                      children
+                    )}
+                  </main>
+                </div>
               </div>
-            </div>
+            </NavDataProvider>
           </PageTitleProvider>
         </OrganizationProvider>
       </SidebarProvider>

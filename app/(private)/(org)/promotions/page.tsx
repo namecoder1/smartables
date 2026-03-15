@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import PromotionsView from './promotions-view'
+import { getFaqsByTopic } from '@/utils/sanity/queries'
 
 export const metadata = {
   title: "Promozioni",
@@ -35,12 +36,7 @@ export default async function PromotionsPage() {
   // Fetch promotions with relations
   const { data: promotions } = await supabase
     .from('promotions')
-    .select(`
-      *,
-      promotion_locations(*),
-      promotion_menus(*),
-      promotion_items(*)
-    `)
+    .select('*')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
 
@@ -55,12 +51,17 @@ export default async function PromotionsPage() {
     .select('*')
     .eq('organization_id', organizationId)
 
+  const [promoFaqs] = await Promise.all([
+    getFaqsByTopic('promos')
+  ])
+
   return (
     <PromotionsView
       promotions={promotions || []}
       locations={locations || []}
       menus={menus || []}
       organizationId={organizationId}
+      faqs={promoFaqs}
     />
   )
 }

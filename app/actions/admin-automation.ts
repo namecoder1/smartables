@@ -9,7 +9,7 @@ import {
 import {
   addNumberToWaba,
   requestVerificationCode,
-} from "@/lib/meta-registration";
+} from "@/lib/whatsapp-registration";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -20,15 +20,13 @@ export async function syncTelnyxStatus(locationId: string) {
   const supabase = createAdminClient();
 
   try {
-    // 1. Fetch location with its requirement data
+    // 1. Fetch location with its regulatory data
     const { data: location, error: locError } = await supabase
       .from("locations")
       .select(
         `
         id, telnyx_phone_number, activation_status,
-        requirement:regulatory_requirement_id (
-          id, status, telnyx_requirement_group_id
-        )
+        regulatory_status, telnyx_requirement_group_id
       `,
       )
       .eq("id", locationId)
@@ -38,41 +36,36 @@ export async function syncTelnyxStatus(locationId: string) {
       throw new Error("Location not found");
     }
 
-    const requirementData = location.requirement as any;
-    const requirement = Array.isArray(requirementData)
-      ? requirementData[0]
-      : requirementData;
-
     console.log("[Sync Debug] BEFORE State:", {
       id: location.id,
       telnyx_phone_number: location.telnyx_phone_number,
       activation_status: location.activation_status,
-      reqId: requirement?.id,
-      reqStatus: requirement?.status,
-      reqGroupId: requirement?.telnyx_requirement_group_id,
+      reqStatus: location.regulatory_status,
+      reqGroupId: location.telnyx_requirement_group_id,
     });
 
     const results: string[] = [];
-    const reqGroupId = requirement?.telnyx_requirement_group_id;
+    const reqGroupId = location.telnyx_requirement_group_id;
 
     // 2. Check Requirement Group status on Telnyx
     if (reqGroupId) {
       try {
         const telnyxGroup = await getRequirementGroup(reqGroupId);
         const telnyxStatus = telnyxGroup.status?.toLowerCase();
-        const localStatus = requirement?.status;
+        const localStatus = location.regulatory_status;
 
         if (telnyxStatus !== localStatus) {
           await supabase
-            .from("telnyx_regulatory_requirements")
+            .from("locations")
             .update({
-              status: telnyxStatus === "unapproved" ? "pending" : telnyxStatus,
-              rejection_reason:
+              regulatory_status:
+                telnyxStatus === "unapproved" ? "pending" : telnyxStatus,
+              regulatory_rejection_reason:
                 telnyxStatus === "approved"
                   ? null
                   : telnyxGroup.rejection_reason || null,
             })
-            .eq("id", requirement.id);
+            .eq("id", locationId);
 
           results.push(`Req Group: ${localStatus} → ${telnyxStatus}`);
         } else {
@@ -98,13 +91,16 @@ export async function syncTelnyxStatus(locationId: string) {
 
           // If number is active, the order was completed — force req group to approved
           if (matched.status === "active") {
-            if (requirement?.id && requirement.status !== "approved") {
+            if (location.regulatory_status !== "approved") {
               await supabase
-                .from("telnyx_regulatory_requirements")
-                .update({ status: "approved", rejection_reason: null })
-                .eq("id", requirement.id);
+                .from("locations")
+                .update({
+                  regulatory_status: "approved",
+                  regulatory_rejection_reason: null,
+                })
+                .eq("id", locationId);
               results.push(
-                `Req Group forzato: ${requirement.status} → approved (numero attivo)`,
+                `Req Group forzato: ${location.regulatory_status} → approved (numero attivo)`,
               );
             }
 

@@ -88,7 +88,7 @@ const InputComponent = React.forwardRef<
       className={cn(
         className,
         'rounded-l-none! border-l-0',
-        isOnboarding ? "h-full text-lg text-black rounded-l-none! border-0" : 'h-full border-0'
+        isOnboarding ? "h-full bg-white! text-lg text-black rounded-l-none! border-0" : 'h-full border-0'
       )}
       {...props}
       placeholder="Inserisci il numero"
@@ -132,7 +132,7 @@ const CountrySelect = ({
           type="button"
           className={cn(
             "flex items-center gap-1 border-r-0 px-3 focus:z-10 rounded-l-xl",
-            isOnboarding ? "bg-[#f4f4f480] border-gray-200 text-gray-900 hover:bg-gray-50 h-12" : 'bg-input/30 border-r-2 h-full'
+            isOnboarding ? "border-gray-200 border-r-2 text-gray-900 h-12" : 'bg-input/30 border-r-2 h-full'
           )}
           disabled={disabled}
         >
@@ -154,7 +154,7 @@ const CountrySelect = ({
         side="bottom"
         sideOffset={8}
         className={cn(
-          "w-[300px] p-0 shadow-lg border-2",
+          "w-75 p-0 shadow-lg border-2",
           isOnboarding
             ? "bg-white border-gray-200"
             : "bg-input/30 border-border"

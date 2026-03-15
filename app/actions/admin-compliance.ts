@@ -5,11 +5,14 @@ import {
   uploadDocument,
   createRequirementGroup,
   createAddress,
+  TELNYX_REQ_IDS,
 } from "@/lib/telnyx";
-import { TELNYX_REQ_IDS } from "@/lib/telnyx-req-ids";
+
 import { Resend } from "resend";
+import { render } from "@react-email/components";
 import { revalidatePath } from "next/cache";
-import { getAuthContext } from "@/lib/auth";
+import { requireAuth } from "@/lib/supabase-helpers";
+import ComplianceRejectedEmail from "@/emails/compliance-rejected";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -17,7 +20,9 @@ export async function approveComplianceRequest(requirementId: string) {
   console.log("[Admin] approveComplianceRequest STARTED", { requirementId });
 
   // 1. Verify Admin
-  const { supabase, user } = await getAuthContext();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Non autorizzato");
+  const { supabase, user } = auth;
   if (user.app_metadata?.role !== "superadmin") {
     console.error("[Admin] Unauthorized: User is not superadmin", {
       userId: user.id,
@@ -32,10 +37,10 @@ export async function approveComplianceRequest(requirementId: string) {
   // This prevents race conditions where two admins click approve simultaneously.
   // We use 'pending' because 'processing' is not in the Enum, and 'pending' effectively locks it from being picked up again (since we query for pending_review)
   const { data: request, error: updateError } = await supabaseAdmin
-    .from("telnyx_regulatory_requirements")
-    .update({ status: "pending" })
+    .from("locations")
+    .update({ regulatory_status: "pending" })
     .eq("id", requirementId)
-    .eq("status", "pending_review")
+    .eq("regulatory_status", "pending_review")
     .select("*")
     .single();
 
@@ -212,7 +217,7 @@ export async function approveComplianceRequest(requirementId: string) {
       );
     }
 
-    const customerReference = `loc_${request.location_id}_${request.area_code}`; // Precise ref
+    const customerReference = `loc_${request.id}_${request.documents_data?.area_code || "IT"}`; // Precise ref
     console.log("[Admin] Creating Requirement Group...", {
       customerReference,
       requirementsCount: requirements.length,
@@ -240,15 +245,15 @@ export async function approveComplianceRequest(requirementId: string) {
       error: finalUpdateError,
       count: updatedCount,
     } = await supabaseAdmin
-      .from("telnyx_regulatory_requirements")
+      .from("locations")
       .update({
-        status:
+        regulatory_status:
           requirementGroup.status.toLowerCase() === "unapproved"
             ? "pending"
-            : requirementGroup.status.toLowerCase(), // Map 'unapproved' to 'pending' as 'unapproved' might not be in our ENUM
+            : requirementGroup.status.toLowerCase(),
         telnyx_requirement_group_id: requirementGroup.id,
-        documents_data: {
-          ...request.documents_data,
+        regulatory_documents_data: {
+          ...request.regulatory_documents_data,
           telnyx_identity_id: telnyxIdentityDoc.id,
           telnyx_address_id: addressDoc.id,
         },
@@ -278,10 +283,10 @@ export async function approveComplianceRequest(requirementId: string) {
     console.error("[Admin] CRITICAL Approval Error:", error);
     // Rollback: Revert to pending_review so it reappears in dashboard and can be retried
     const { error: rollbackError } = await supabaseAdmin
-      .from("telnyx_regulatory_requirements")
-      .update({ status: "pending_review" })
+      .from("locations")
+      .update({ regulatory_status: "pending_review" })
       .eq("id", requirementId)
-      .eq("status", "pending"); // Safety check
+      .eq("regulatory_status", "pending"); // Safety check
 
     if (rollbackError) {
       console.error(
@@ -302,31 +307,53 @@ export async function rejectComplianceRequest(
   reason: string,
 ) {
   // 1. Verify Admin
-  const { user } = await getAuthContext();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Non autorizzato");
+  const { user } = auth;
   if (user.app_metadata?.role !== "superadmin") throw new Error("Unauthorized");
 
   const supabaseAdmin = createAdminClient();
 
   // 2. Update DB
-  await supabaseAdmin
-    .from("telnyx_regulatory_requirements")
+  const { data: location } = await supabaseAdmin
+    .from("locations")
     .update({
-      status: "rejected",
-      rejection_reason: reason,
+      regulatory_status: "rejected",
+      regulatory_rejection_reason: reason,
     })
-    .eq("id", requirementId);
+    .eq("id", requirementId)
+    .select("organization:organizations(name, billing_email)")
+    .single();
+
+  // 3. Notify org owner by email
+  try {
+    const org = (location?.organization as any);
+    if (org?.billing_email) {
+      const html = await render(
+        ComplianceRejectedEmail({ teamName: org.name ?? "Smartables", reason }),
+      );
+      await resend.emails.send({
+        from: "Smartables <noreply@smartables.it>",
+        to: org.billing_email,
+        subject: "Richiesta di conformità rifiutata",
+        html,
+      });
+    }
+  } catch (emailErr) {
+    console.error("[rejectComplianceRequest] Failed to send email:", emailErr);
+  }
 
   revalidatePath("/manage");
   return { success: true };
 }
 
-export async function resetComplianceStatusAction(requirementId: string) {
+export async function resetComplianceStatusAction(locationId: string) {
   const supabase = createAdminClient();
 
   await supabase
-    .from("telnyx_regulatory_requirements")
-    .update({ status: "pending_review" })
-    .eq("id", requirementId);
+    .from("locations")
+    .update({ regulatory_status: "pending_review" })
+    .eq("id", locationId);
 
   revalidatePath("/manage");
 }

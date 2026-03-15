@@ -88,9 +88,7 @@ export default async function DigitalMenuPage({
     .from("promotions")
     .select(`
       id, name, description, image_url, type, value, starts_at, ends_at, visit_threshold,
-      all_locations, all_menus,
-      promotion_locations(location_id),
-      promotion_menus(menu_id)
+      all_locations, all_menus, target_location_ids, target_menu_ids
     `)
     .eq("organization_id", location.organization_id)
     .eq("is_active", true);
@@ -98,12 +96,12 @@ export default async function DigitalMenuPage({
   const menuPromotions: PublicPromotion[] = (allPromotions || []).filter((promo) => {
     // Check location scope
     const locationMatch = promo.all_locations ||
-      promo.promotion_locations?.some((pl: any) => pl.location_id === location.id);
+      (promo.target_location_ids || []).includes(location.id);
     if (!locationMatch) return false;
 
     // Check menu scope — must apply to THIS menu
     const menuMatch = promo.all_menus ||
-      promo.promotion_menus?.some((pm: any) => pm.menu_id === menuId);
+      (promo.target_menu_ids || []).includes(menuId);
     if (!menuMatch) return false;
 
     // Check date range

@@ -79,14 +79,14 @@ const CustomToolbar = (toolbar: any) => {
   }
 
   return (
-    <div className='bg-card rounded-t-2xl'>
-      <div className="flex flex-col gap-2 p-2 border-b-2 md:flex-row md:items-center md:justify-between">
-        <div className="md:hidden w-full text-center pb-2 border-b-2 border-border/50">
+    <div className='bg-[#e2e2e2] rounded-t-[16px]'>
+      <div className="flex flex-col gap-2 p-2 border-b-2 border-black/5 md:flex-row md:items-center md:justify-between">
+        <div className="md:hidden w-full text-center py-1 border-2 border-black/10 bg-white rounded-xl">
           {label()}
         </div>
 
         <div className="flex items-center justify-between w-full gap-4">
-          <div className="flex items-center gap-1 p-1 border-2 bg-input/30 dark:bg-card rounded-xl">
+          <div className="flex items-center gap-1 p-1 border-2 border-black/15 bg-input/30 dark:bg-card rounded-xl">
             <Button variant="outline" size="icon" onClick={goToBack} className="h-8 w-8 border-2">
               <ChevronLeft className="h-4 w-4" />
             </Button>

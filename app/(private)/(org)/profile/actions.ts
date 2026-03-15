@@ -173,6 +173,9 @@ export async function deleteAccountAction() {
   // menu-files: {orgId}/...
   await deleteStorageFolder(admin, "menu-files", orgId);
 
+  // promotion-images: {orgId}/...
+  await deleteStorageFolder(admin, "promotion-images", orgId);
+
   // 5. Delete user from auth (triggers cascade for relational data)
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) throw new Error(error.message);

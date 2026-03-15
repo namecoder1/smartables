@@ -141,6 +141,7 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locat
                   value={table.width}
                   onValueChange={(val) => onUpdate(table.uniqueId, { width: val || 10 })}
                   className="h-9"
+                  buttonHeight="h-4.5"
                 />
               </div>
               <div className="space-y-1.5">
@@ -149,6 +150,7 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locat
                   value={table.height}
                   onValueChange={(val) => onUpdate(table.uniqueId, { height: val || 10 })}
                   className="h-9"
+                  buttonHeight="h-4.5"
                 />
               </div>
             </>
@@ -185,6 +187,7 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locat
                     });
                   }}
                   className="h-9"
+                  buttonHeight="h-4.5"
                 />
               </div>
             </div>

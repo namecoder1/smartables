@@ -24,7 +24,7 @@ const CalendarPage = () => {
         </div>
         <Button className='hidden xl:flex' onClick={() => setOpen(true)}>
           <Plus />
-          Nuova prenotazione
+          Aggiungi
         </Button>
       </div>
       <Button onClick={() => setOpen(true)} className='xl:hidden absolute bottom-6 right-6 z-50'>

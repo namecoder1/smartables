@@ -13,7 +13,7 @@ export function EmptyChartState({
   icon
 }: EmptyChartStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center p-6 text-center h-full min-h-[200px] border border-dashed rounded-lg bg-muted/5", className)}>
+    <div className={cn("flex flex-col items-center justify-center p-6 text-center h-full min-h-50 border border-dashed rounded-lg bg-muted/5", className)}>
       <div className="bg-muted/50 p-3 rounded-full mb-3">
         {icon || <TrendingUp className="h-5 w-5 text-muted-foreground" />}
       </div>

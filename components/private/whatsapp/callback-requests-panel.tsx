@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { Phone, CheckCircle2, Archive, Clock, Loader2 } from "lucide-react";
+import ConfirmDialog from "@/components/utility/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +11,7 @@ import {
   archiveCallback,
 } from "@/app/actions/call-management";
 import { formatPhoneNumber } from "@/lib/utils";
+import NoItems from "@/components/utility/no-items";
 
 interface CallbackRequest {
   id: string;
@@ -67,16 +69,12 @@ export function CallbackRequestsPanel({ locationId }: { locationId: string }) {
   return (
     <div className="space-y-4">
       {pending.length === 0 && completed.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-xl">
-          <Phone className="h-8 w-8 text-muted-foreground/50 mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Nessuna richiesta di richiamata.
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            Quando un cliente clicca &quot;Richiamatemi&quot; sul messaggio
-            WhatsApp, apparirà qui.
-          </p>
-        </div>
+        <NoItems 
+          variant="children"
+          icon={<Phone className="h-8 w-8 text-primary" />}
+          title="Nessuna richiesta di richiamata"
+          description="Quando un cliente clicca 'Richiamatemi' sul messaggio WhatsApp, apparirà qui."
+        />
       ) : (
         <>
           {pending.length > 0 && (
@@ -116,15 +114,22 @@ export function CallbackRequestsPanel({ locationId }: { locationId: string }) {
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                       Richiamato
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-xs text-muted-foreground"
-                      disabled={isPending}
-                      onClick={() => handleArchive(req.id)}
-                    >
-                      <Archive className="h-3.5 w-3.5" />
-                    </Button>
+                    <ConfirmDialog
+                      title="Archivia richiesta"
+                      description="Sei sicuro di voler archiviare questa richiesta di richiamata?"
+                      confirmLabel="Archivia"
+                      onConfirm={() => handleArchive(req.id)}
+                      trigger={
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs text-muted-foreground"
+                          disabled={isPending}
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
                   </div>
                 </div>
               ))}
@@ -160,15 +165,22 @@ export function CallbackRequestsPanel({ locationId }: { locationId: string }) {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 text-xs text-muted-foreground"
-                    disabled={isPending}
-                    onClick={() => handleArchive(req.id)}
-                  >
-                    <Archive className="h-3.5 w-3.5" />
-                  </Button>
+                  <ConfirmDialog
+                    title="Archivia richiesta"
+                    description="Sei sicuro di voler archiviare questa richiesta di richiamata?"
+                    confirmLabel="Archivia"
+                    onConfirm={() => handleArchive(req.id)}
+                    trigger={
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs text-muted-foreground"
+                        disabled={isPending}
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                      </Button>
+                    }
+                  />
                 </div>
               ))}
             </div>

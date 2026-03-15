@@ -61,6 +61,8 @@ export default async function PublicMenuPage({
     .from("menu_locations")
     .select(`
       is_active,
+      daily_from,
+      daily_until,
       menu:menus (
         id,
         name,
@@ -75,12 +77,22 @@ export default async function PublicMenuPage({
     .eq("is_active", true)
     .filter("menu.is_active", "eq", true);
 
-  const now = new Date().toISOString();
-  const allFetchedMenus = (menus?.map((m) => m.menu).filter((m) => m !== null) as unknown as Menu[]) || [];
-  // Filter out menus outside their validity window
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const allFetchedMenus = (menus?.map((m) => ({
+    ...(m.menu as unknown as Menu),
+    daily_from: (m as any).daily_from as string | null,
+    daily_until: (m as any).daily_until as string | null,
+  })).filter((m) => (m as any).id !== undefined)) || [];
+  // Filter out menus outside their validity window and daily time range
   const activeMenus = allFetchedMenus.filter((m) => {
-    if (m.starts_at && new Date(m.starts_at) > new Date(now)) return false;
-    if (m.ends_at && new Date(m.ends_at) < new Date(now)) return false;
+    if (m.starts_at && new Date(m.starts_at) > now) return false;
+    if (m.ends_at && new Date(m.ends_at) < now) return false;
+    if (m.daily_from && m.daily_until) {
+      const [fromH, fromM] = m.daily_from.split(':').map(Number);
+      const [untilH, untilM] = m.daily_until.split(':').map(Number);
+      if (nowMinutes < fromH * 60 + fromM || nowMinutes > untilH * 60 + untilM) return false;
+    }
     return true;
   });
   const activeMenuIds = activeMenus.map((m) => m.id);
@@ -93,9 +105,7 @@ export default async function PublicMenuPage({
     .from("promotions")
     .select(`
       id, name, description, image_url, type, value, starts_at, ends_at, visit_threshold,
-      all_locations, all_menus,
-      promotion_locations(location_id),
-      promotion_menus(menu_id)
+      all_locations, all_menus, target_location_ids, target_menu_ids
     `)
     .eq("organization_id", location.organization_id)
     .eq("is_active", true);
@@ -104,12 +114,12 @@ export default async function PublicMenuPage({
   const activePromotions: PublicPromotion[] = (allPromotions || []).filter((promo) => {
     // Check location scope
     const locationMatch = promo.all_locations ||
-      promo.promotion_locations?.some((pl: any) => pl.location_id === location.id);
+      (promo.target_location_ids || []).includes(location.id);
     if (!locationMatch) return false;
 
     // Check menu scope
     const menuMatch = promo.all_menus ||
-      promo.promotion_menus?.some((pm: any) => activeMenuIds.includes(pm.menu_id));
+      (promo.target_menu_ids || []).some((mid: string) => activeMenuIds.includes(mid));
     if (!menuMatch) return false;
 
     // Check date range
@@ -123,7 +133,7 @@ export default async function PublicMenuPage({
   }).map((promo) => ({
     ...promo,
     all_menus: promo.all_menus,
-    menuIds: promo.promotion_menus?.map((pm: any) => pm.menu_id) || [],
+    menuIds: promo.target_menu_ids || [],
   }));
 
   // Helper: count promotions per menu
@@ -176,7 +186,7 @@ export default async function PublicMenuPage({
 
           <div className="flex items-center justify-center text-white/90 text-sm gap-2 font-medium bg-white/10 backdrop-blur-sm py-1.5 px-4 rounded-full w-fit mx-auto border border-white/10">
             <MapPin className="w-4 h-4" />
-            <span className="max-w-[250px] truncate">{location.address || "Vieni a trovarci"}</span>
+            <span className="max-w-62.5 truncate">{location.address || "Vieni a trovarci"}</span>
           </div>
         </div>
       </div>

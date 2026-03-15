@@ -2,33 +2,32 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Store, MapPin, Loader2, Share2, ImageIcon, Palette, Users, HelpCircle, Timer, Armchair, CalendarOff } from 'lucide-react'
+import { Store, Loader2, CalendarOff, Star, Calendar, CheckCircle2, AlertCircle, ExternalLink, CalendarClock, Info, Workflow } from 'lucide-react'
 import { LocationBranding as Branding, Location } from '@/types/general'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateLocation } from '@/app/actions/settings'
+import { updateLocation, saveGoogleReviewUrl } from '@/app/actions/settings'
+import { trackStorageUpload } from '@/app/actions/storage'
 import ColorPicker from '@/components/ui/color-picker'
 import { toast } from 'sonner'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { ImageUpload } from '@/components/private/image-upload'
 import { createClient } from '@/utils/supabase/client'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa'
+import { FaInstagram, FaFacebook, FaTiktok, FaGoogle } from 'react-icons/fa'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WeeklyHoursSelector } from '@/components/utility/weekly-hours-selector'
 import { NumberInput } from '@/components/ui/number-input'
 import SupportCard from '@/components/utility/support-card'
 import { FaqContent } from '@/components/private/faq-section'
 import { SanityFaq } from '@/utils/sanity/queries'
-import { SpecialClosuresPanel } from '@/components/private/settings/special-closures-panel'
+import { SpecialClosuresPanel } from './special-closures-panel'
 
-
-
-const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[] }) => {
+const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], faqs: SanityFaq[], googleReviewUrl?: string | null }) => {
   const location = locations && locations.length > 0 ? locations[0] : undefined
   const [formData, setFormData] = useState<Partial<Location>>({})
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [reviewUrl, setReviewUrl] = useState(googleReviewUrl || '')
 
   const [branding, setBranding] = useState<Branding>({
     colors: { primary: '#000000', secondary: '#ffffff', accent: '#3b82f6' },
@@ -92,6 +91,7 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
           .getPublicUrl(filePath)
 
         finalLogoUrl = publicUrl
+        await trackStorageUpload(logoFile.size)
       }
 
       await updateLocation(location.id, {
@@ -104,6 +104,8 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
 
       setBranding(prev => ({ ...prev, logo_url: finalLogoUrl }))
       setLogoFile(null)
+
+      await saveGoogleReviewUrl(location.id, reviewUrl)
 
       toast.success('Impostazioni salvate con successo')
     } catch (error) {
@@ -126,23 +128,28 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
 
   return (
     <div className='flex flex-col gap-8'>
-      <div className='grid grid-cols-1 xl:grid-cols-3 gap-8'>
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Main Form Section */}
-        <div className='xl:col-span-2 flex flex-col gap-6'>
+        <div className='lg:col-span-2 flex flex-col gap-6'>
           <div className='bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden'>
-            <div className='p-6 border-b-2'>
+            <div className='px-6 py-5 border-b-2'>
               <h2 className='text-2xl font-bold tracking-tight'>Dati della Sede</h2>
-              <p className='text-muted-foreground text-sm mt-1'>Gestisci le informazioni principali e l&apos;identità della tua attività.</p>
             </div>
 
             <div className='p-6'>
               <Tabs defaultValue='info' className="w-full">
                 <TabsList className='max-w-lg'>
-                  <TabsTrigger value='info' className='flex-1'>Informazioni</TabsTrigger>
-                  <TabsTrigger value='hours' className='flex-1'>Orari</TabsTrigger>
+                  <TabsTrigger value='info' className='flex-1'>
+                    Informazioni
+                  </TabsTrigger>
+                  <TabsTrigger value='hours' className='flex-1'>
+                    Orari
+                  </TabsTrigger>
                   <TabsTrigger value='closures' className='flex-1'>
-                    <CalendarOff className='h-4 w-4 mr-1.5' />
                     Chiusure
+                  </TabsTrigger>
+                  <TabsTrigger value='connections' className='flex-1'>
+                    Connessioni
                   </TabsTrigger>
                 </TabsList>
 
@@ -213,7 +220,7 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
                     </div>
                   </div>
 
-                  <div className='h-px bg-border' />
+                  <div className='h-0.5 bg-border' />
 
                   {/* Branding & Social Sections */}
                   <div className='grid grid-cols-1 lg:grid-cols-2 gap-10'>
@@ -225,51 +232,48 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
                       </div>
 
                       <div className='space-y-4'>
-                        <div className='flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5'>
-                          <div className='flex items-center gap-3'>
+                        <div className='flex items-center justify-between rounded-3xl border-2 bg-muted/5'>
+                          <div className='flex items-center justify-between w-full gap-3'>
                             <ColorPicker
                               shape="square"
                               color={branding.colors.primary}
                               onChange={(color) => setBranding({ ...branding, colors: { ...branding.colors, primary: color } })}
                             />
-                            <div className='flex flex-col'>
-                              <span className='text-sm font-semibold'>Colore Primario</span>
-                              <span className='text-[10px] text-muted-foreground uppercase'>{branding.colors.primary}</span>
+                            <div className='ml-auto mr-4'>
+                              <span className='text-sm'>Colore Primario</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className='flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5'>
-                          <div className='flex items-center gap-3'>
+                        <div className='flex items-center justify-between rounded-3xl border-2 bg-muted/5'>
+                          <div className='flex items-center justify-between w-full gap-3'>
                             <ColorPicker
                               shape="square"
                               color={branding.colors.accent}
                               onChange={(color) => setBranding({ ...branding, colors: { ...branding.colors, accent: color } })}
                             />
-                            <div className='flex flex-col'>
-                              <span className='text-sm font-semibold'>Colore Accento</span>
-                              <span className='text-[10px] text-muted-foreground uppercase'>{branding.colors.accent}</span>
+                            <div className='ml-auto mr-4'>
+                              <span className='text-sm'>Colore Accento</span>
                             </div>
                           </div>
                         </div>
 
 
-                        <div className='flex items-center justify-between p-4 rounded-2xl border-2 bg-muted/5'>
-                          <div className='flex items-center gap-3'>
+                        <div className='flex items-center justify-between rounded-3xl border-2 bg-muted/5'>
+                          <div className='flex items-center justify-between w-full gap-3'>
                             <ColorPicker
                               shape="square"
                               color={branding.colors.secondary}
                               onChange={(color) => setBranding({ ...branding, colors: { ...branding.colors, secondary: color } })}
                             />
-                            <div className='flex flex-col'>
-                              <span className='text-sm font-semibold'>Colore Secondario</span>
-                              <span className='text-[10px] text-muted-foreground uppercase'>{branding.colors.secondary}</span>
+                            <div className='ml-auto mr-4'>
+                              <span className='text-sm'>Colore Secondario</span>
                             </div>
                           </div>
                         </div>
 
                         <div className='pt-2'>
-                          <div className='flex flex-col items-center gap-4 p-6 rounded-3xl border-2 border-dashed bg-muted/20'>
+                          <div className='flex flex-col items-center gap-4'>
                             <ImageUpload
                               value={branding.logo_url}
                               aspect="square"
@@ -279,7 +283,7 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
                                 setBranding(prev => ({ ...prev, logo_url: url || '' }))
                               }}
                             />
-                            <p className="text-[10px] text-muted-foreground text-center line-clamp-2 max-w-[200px]">
+                            <p className="text-[10px] text-muted-foreground text-center line-clamp-2 max-w-50">
                               Consigliato 200x200px (JPG, PNG, WebP)
                             </p>
                           </div>
@@ -339,18 +343,102 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
                 </TabsContent>
 
                 <TabsContent value='hours' className='mt-0'>
-                  <div className='rounded-3xl border-2 p-1 overflow-hidden'>
-                    <WeeklyHoursSelector
-                      key={location.id}
-                      initialData={formData.opening_hours || undefined}
-                      context='settings'
-                      onChange={(hours) => setFormData(prev => ({ ...prev, opening_hours: hours }))}
-                    />
-                  </div>
+                  <WeeklyHoursSelector
+                    key={location.id}
+                    initialData={formData.opening_hours || undefined}
+                    context='settings'
+                    onChange={(hours) => setFormData(prev => ({ ...prev, opening_hours: hours }))}
+                  />
                 </TabsContent>
 
                 <TabsContent value='closures' className='mt-0'>
                   <SpecialClosuresPanel locationId={location.id} />
+                </TabsContent>
+
+                <TabsContent value='connections' className='mt-0'>
+                  <div>
+
+                    <div className='divide-y-2'>
+                      {/* Google Business Profile */}
+                      <div className='p-6 flex flex-col sm:flex-row sm:items-start gap-6'>
+                        <div className='flex items-center gap-3 sm:w-56 shrink-0'>
+                          <div className='w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center'>
+                            <Star className='w-4 h-4 text-yellow-500' />
+                          </div>
+                          <div>
+                            <p className='text-sm font-semibold'>Google Business</p>
+                            <p className='text-xs text-muted-foreground'>Recensioni clienti</p>
+                          </div>
+                        </div>
+
+                        <div className='flex-1 flex flex-col gap-3'>
+                          <div className='flex items-center gap-2'>
+                            {reviewUrl ? (
+                              <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full'>
+                                <CheckCircle2 className='w-3.5 h-3.5' />
+                                Configurato
+                              </span>
+                            ) : (
+                              <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full'>
+                                <AlertCircle className='w-3.5 h-3.5' />
+                                Non configurato
+                              </span>
+                            )}
+                          </div>
+
+                          <div className='space-y-1.5'>
+                            <Label className='text-xs font-semibold ml-1'>URL pagina recensioni Google</Label>
+                            <div className='flex gap-2'>
+                              <Input
+                                placeholder='https://g.page/r/PLACE_ID/review'
+                                value={reviewUrl}
+                                className='h-11 rounded-xl border-2 text-sm flex-1'
+                                onChange={e => setReviewUrl(e.target.value)}
+                              />
+                              {reviewUrl && (
+                                <a
+                                  href={reviewUrl}
+                                  target='_blank'
+                                  rel='noopener noreferrer'
+                                  className='h-11 w-11 shrink-0 rounded-xl border-2 flex items-center justify-center hover:bg-muted transition-colors'
+                                >
+                                  <ExternalLink className='w-4 h-4 text-muted-foreground' />
+                                </a>
+                              )}
+                            </div>
+                            <p className='text-[11px] text-muted-foreground ml-1'>
+                              Trovalo su Google Maps → la tua attività → &quot;Ottieni link alle recensioni&quot;
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Google Calendar */}
+                      <div className='p-6 flex flex-col sm:flex-row sm:items-start gap-6 opacity-60'>
+                        <div className='flex items-center gap-3 sm:w-56 shrink-0'>
+                          <div className='w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center'>
+                            <Calendar className='w-4 h-4 text-blue-500' />
+                          </div>
+                          <div>
+                            <p className='text-sm font-semibold'>Google Calendar</p>
+                            <p className='text-xs text-muted-foreground'>Sync prenotazioni</p>
+                          </div>
+                        </div>
+
+                        <div className='flex-1 flex flex-col gap-3'>
+                          <div className='flex items-center gap-2'>
+                            <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full'>
+                              In arrivo
+                            </span>
+                          </div>
+                          <p className='text-sm text-muted-foreground'>
+                            La sincronizzazione automatica delle prenotazioni su Google Calendar sarà disponibile dopo l&apos;approvazione API da parte di Google.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
@@ -362,7 +450,7 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
               <Button
                 onClick={handleSave}
                 disabled={isLoading}
-                className='rounded-2xl h-12 px-8 font-bold text-md shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]'
+                className='rounded-2xl h-12 px-8 font-bold text-md'
               >
                 {isLoading ? (
                   <>
@@ -377,8 +465,7 @@ const SettingsView = ({ locations, faqs }: { locations: any[], faqs: SanityFaq[]
 
         {/* FAQ Side Section */}
         <div className='flex flex-col gap-6'>
-          <FaqContent title='domande frequenti' faqs={faqs} />
-
+          <FaqContent title='Domande frequenti' faqs={faqs} />
           <SupportCard />
         </div>
       </div>

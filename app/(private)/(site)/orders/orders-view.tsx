@@ -119,19 +119,19 @@ const OrdersView = () => {
         title: 'Ordini attivi',
         value: activeOrders,
         description: `ordin${activeOrders === 1 ? 'e' : 'i'}`,
-        icon: <LuNotebookPen size={24} className='text-primary' />
+        icon: <LuNotebookPen className='text-primary size-6 2xl:size-8' />
       },
       {
         title: 'Tempo medio',
         value: `${(avgTime / 60).toFixed(0)}`,
         description: 'ore di attesa',
-        icon: <RxLapTimer size={24} className='text-primary' />
+        icon: <RxLapTimer className='text-primary size-6 2xl:size-8' />
       },
       {
         title: 'Completati',
         value: completedToday,
         description: '',
-        icon: <FaListCheck size={24} className='text-primary' />
+        icon: <FaListCheck className='text-primary size-6 2xl:size-8' />
       }
     ]
   }, [orders, now])
@@ -177,7 +177,7 @@ const OrdersView = () => {
           />
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto flex-1 items-start snap-x">
+        <div className="flex gap-4 pb-2 overflow-x-auto flex-1 items-start snap-x">
           {columns.map(col => (
             <div key={col.id} className={cn("flex flex-col shrink-0 w-80 md:w-96 rounded-3xl shadow-sm p-4 h-full bg-card snap-start border-2 border-t-4 rounded-t-none", col.bg)}>
               <div className="flex justify-between items-center mb-4 px-1 shrink-0">
@@ -190,7 +190,7 @@ const OrdersView = () => {
               <ScrollArea className="flex-1 -mx-2 px-2">
                 <div className="space-y-4 pb-4">
                   {col.orders.map(order => (
-                    <Card key={order.id} className="border-0 py-0 shadow-sm overflow-hidden bg-white hover:shadow-md transition-shadow">
+                    <Card key={order.id} className="border-2 py-0 shadow-none overflow-hidden bg-white transition-shadow">
                       <CardContent className="p-4 flex flex-col gap-4">
                         <div className="flex justify-between items-start">
                           <div className="flex flex-col gap-1">

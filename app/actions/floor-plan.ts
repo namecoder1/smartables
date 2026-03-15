@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
+import { PATHS } from "@/lib/revalidation-paths";
 
 export async function getFloorPlan(locationId: string) {
   const supabase = await createClient();
@@ -37,7 +39,9 @@ export async function saveFloorPlan(
   zones: any[],
   tables: any[],
 ) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Unauthorized");
+  const { supabase } = auth;
 
   // 1. Upsert Zones
   // For simplicity, we assume one zone "Main" for now if not specified,
@@ -130,12 +134,14 @@ export async function saveFloorPlan(
 
   if (tablesError) throw new Error(tablesError.message);
 
-  revalidatePath("/(private)/(platform)/settings/floor-plan");
+  revalidatePath(PATHS.FLOOR_PLAN);
   return { success: true };
 }
 
 export async function deleteFloorPlan(zoneId: any) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Unauthorized");
+  const { supabase } = auth;
 
   const { error } = await supabase
     .from("restaurant_zones")
@@ -144,7 +150,32 @@ export async function deleteFloorPlan(zoneId: any) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/(private)/(platform)/settings/floor-plan");
+  revalidatePath(PATHS.FLOOR_PLAN);
+  return { success: true };
+}
+
+export async function updateZoneBlock(
+  zoneId: string,
+  blockedFrom: string | null,
+  blockedUntil: string | null,
+  blockedReason: string | null,
+) {
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Unauthorized");
+  const { supabase } = auth;
+
+  const { error } = await supabase
+    .from("restaurant_zones")
+    .update({
+      blocked_from: blockedFrom,
+      blocked_until: blockedUntil,
+      blocked_reason: blockedReason,
+    })
+    .eq("id", zoneId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(PATHS.FLOOR_PLAN);
   return { success: true };
 }
 

@@ -1,35 +1,34 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthContext } from "@/lib/auth";
+import { requireAuth } from "@/lib/supabase-helpers";
+import { ok, fail } from "@/lib/action-response";
+import { PATHS } from "@/lib/revalidation-paths";
+import { getStr, getNullableStr, getInt, getBool } from "@/lib/form-parsers";
+import { createNotification } from "@/lib/notifications";
 import type { CreateBookingState } from "@/types/general";
 
 export async function createBooking(
   prevState: CreateBookingState,
   formData: FormData,
 ): Promise<CreateBookingState> {
-  let supabase, organizationId;
-  try {
-    const ctx = await getAuthContext();
-    supabase = ctx.supabase;
-    organizationId = ctx.organizationId;
-  } catch {
-    return { error: "Unauthorized", success: false };
-  }
+  const auth = await requireAuth();
+  if (!auth.success) return { error: auth.error, success: false };
+  const { supabase, organizationId } = auth;
 
   // 2. Extract Data
-  const isKnownCustomer = formData.get("isKnownCustomer") === "true";
-  const selectedCustomerId = formData.get("selectedCustomer") as string | null;
-  const locationId = formData.get("location_id") as string | null;
+  const isKnownCustomer = getBool(formData, "isKnownCustomer");
+  const selectedCustomerId = getNullableStr(formData, "selectedCustomer");
+  const locationId = getNullableStr(formData, "location_id");
 
-  const guestName = formData.get("name") as string;
-  const guestPhone = formData.get("phone") as string;
-  const guestsCount = parseInt(formData.get("guests") as string);
-  const childrenCount = formData.get("children_count") as string | null;
-  const allergies = formData.get("allergies") as string | null;
+  const guestName = getStr(formData, "name");
+  const guestPhone = getStr(formData, "phone");
+  const guestsCount = getInt(formData, "guests");
+  const childrenCount = getInt(formData, "children_count", 0);
+  const allergies = getNullableStr(formData, "allergies");
 
-  const bookingTime = formData.get("date") as string; // ISO string
-  const notes = formData.get("notes") as string;
+  const bookingTime = getStr(formData, "date"); // ISO string
+  const notes = getStr(formData, "notes");
 
   // Validation
   if (!guestsCount || !bookingTime || !locationId) {
@@ -74,7 +73,7 @@ export async function createBooking(
       finalCustomerId = upsertedId;
     }
 
-    const { error: bookingError } = await createBookingRecord(
+    const { data: newBooking, error: bookingError } = await createBookingRecord(
       supabase,
       organizationId,
       locationId,
@@ -93,12 +92,65 @@ export async function createBooking(
       console.error("Booking Creation Error:", bookingError);
       return { error: "Failed to create booking", success: false };
     }
+
+    // Notify staff about new booking
+    if (newBooking) {
+      const bookingDate = new Date(bookingTime);
+      const formattedDate = bookingDate.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+      const formattedTime = bookingDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      createNotification(supabase, {
+        organizationId,
+        locationId: locationId ?? null,
+        type: "new_booking",
+        title: "Nuova prenotazione",
+        body: `${guestName} — ${guestsCount} persone il ${formattedDate} alle ${formattedTime}`,
+        link: "/reservations",
+        metadata: { bookingId: newBooking.id, guestsCount, bookingTime },
+      });
+    }
+
+    // Trigger the 24h reminder job for non-same-day bookings with phone number
+    if (newBooking && guestPhone) {
+      const bookingDate = new Date(bookingTime);
+      const hoursUntilBooking = (bookingDate.getTime() - Date.now()) / (1000 * 60 * 60);
+      if (hoursUntilBooking > 24) {
+        try {
+          const { tasks } = await import("@trigger.dev/sdk/v3");
+          const { verifyBooking } = await import("@/trigger/verify-booking");
+          await tasks.trigger<typeof verifyBooking>("verify-booking", {
+            bookingId: newBooking.id,
+            locationId: locationId!,
+            customerId: finalCustomerId || undefined,
+            guestName: guestName || "Ospite",
+            guestPhone,
+            bookingTime,
+          });
+        } catch (triggerErr) {
+          // Non-blocking: log but don't fail the booking creation
+          console.error("[createBooking] Failed to trigger verify-booking:", triggerErr);
+        }
+      }
+
+      // Trigger review request at booking time (for all bookings with a phone number)
+      try {
+        const { tasks } = await import("@trigger.dev/sdk/v3");
+        const { requestReview } = await import("@/trigger/request-review");
+        await tasks.trigger<typeof requestReview>("request-review", {
+          bookingId: newBooking.id,
+          locationId: locationId!,
+          guestPhone,
+          bookingTime,
+        });
+      } catch (triggerErr) {
+        console.error("[createBooking] Failed to trigger request-review:", triggerErr);
+      }
+    }
   } catch (err) {
     console.error("Unexpected error:", err);
     return { error: "An unexpected error occurred", success: false };
   }
 
-  revalidatePath("/(private)/(platform)/reservations", "layout");
+  revalidatePath(PATHS.RESERVATIONS_PLATFORM_LAYOUT, "layout");
   return { success: true, message: "Booking created successfully" };
 }
 
@@ -110,13 +162,9 @@ export async function updateBooking(
 ): Promise<
   CreateBookingState | { error?: string; success: boolean; message?: string }
 > {
-  let supabase;
-  try {
-    const ctx = await getAuthContext();
-    supabase = ctx.supabase;
-  } catch {
-    return { error: "Unauthorized", success: false };
-  }
+  const auth = await requireAuth();
+  if (!auth.success) return { error: auth.error, success: false };
+  const { supabase } = auth;
 
   // If called directly with data (like from assignBookingToTable or floor plan)
   if (!formData) {
@@ -127,22 +175,22 @@ export async function updateBooking(
       return { error: "Failed to update booking", success: false };
     }
 
-    revalidatePath("/(private)/(platform)/reservations", "layout");
-    revalidatePath("/(private)/(org)/reservations");
+    revalidatePath(PATHS.RESERVATIONS_PLATFORM_LAYOUT, "layout");
+    revalidatePath(PATHS.RESERVATIONS_ORG);
     return { success: true, message: "Booking updated successfully" };
   }
 
   // Otherwise, it was called from a form
-  const guestName = formData.get("name") as string;
-  const guestPhone = formData.get("phone") as string;
-  const guestsCount = parseInt(formData.get("guests") as string);
-  const childrenCount = formData.get("children_count") as string | null;
-  const allergies = formData.get("allergies") as string | null;
+  const guestName = getStr(formData, "name");
+  const guestPhone = getStr(formData, "phone");
+  const guestsCount = getInt(formData, "guests");
+  const childrenCount = getInt(formData, "children_count", 0);
+  const allergies = getNullableStr(formData, "allergies");
 
-  const bookingTime = formData.get("date") as string;
-  const notes = formData.get("notes") as string;
-  const isKnownCustomer = formData.get("isKnownCustomer") === "true";
-  const selectedCustomerId = formData.get("selectedCustomer") as string | null;
+  const bookingTime = getStr(formData, "date");
+  const notes = getStr(formData, "notes");
+  const isKnownCustomer = getBool(formData, "isKnownCustomer");
+  const selectedCustomerId = getNullableStr(formData, "selectedCustomer");
 
   // Validation for form submission
   if (!guestsCount || !bookingTime) {
@@ -187,8 +235,8 @@ export async function updateBooking(
     return { error: "Failed to update booking", success: false };
   }
 
-  revalidatePath("/(private)/(platform)/reservations", "layout");
-  revalidatePath("/(private)/(org)/reservations");
+  revalidatePath(PATHS.RESERVATIONS_PLATFORM_LAYOUT, "layout");
+  revalidatePath(PATHS.RESERVATIONS_ORG);
   return { success: true, message: "Booking updated successfully" };
 }
 
@@ -248,13 +296,9 @@ export async function upsertCustomerForBooking(
 }
 
 export async function assignBookingToTable(bookingId: string, tableId: string) {
-  let supabase;
-  try {
-    const ctx = await getAuthContext();
-    supabase = ctx.supabase;
-  } catch {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Non autorizzato");
+  const { supabase } = auth;
 
   const { error } = await supabase
     .from("bookings")
@@ -265,17 +309,13 @@ export async function assignBookingToTable(bookingId: string, tableId: string) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/(private)/(org)/reservations");
+  revalidatePath(PATHS.RESERVATIONS_ORG);
 }
 
 export async function unassignBooking(bookingId: string) {
-  let supabase;
-  try {
-    const ctx = await getAuthContext();
-    supabase = ctx.supabase;
-  } catch {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Non autorizzato");
+  const { supabase } = auth;
 
   const { error } = await supabase
     .from("bookings")
@@ -286,7 +326,7 @@ export async function unassignBooking(bookingId: string) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/(private)/(org)/reservations");
+  revalidatePath(PATHS.RESERVATIONS_ORG);
 }
 
 export async function createWalkInBooking(
@@ -294,13 +334,9 @@ export async function createWalkInBooking(
   tableId: string,
   guestsCount: number,
 ) {
-  let supabase;
-  try {
-    const ctx = await getAuthContext();
-    supabase = ctx.supabase;
-  } catch {
-    throw new Error("Unauthorized");
-  }
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Non autorizzato");
+  const { supabase } = auth;
 
   const { data: loc } = await supabase
     .from("locations")
@@ -329,7 +365,7 @@ export async function createWalkInBooking(
     throw new Error(error.message);
   }
 
-  revalidatePath("/(private)/(org)/reservations");
+  revalidatePath(PATHS.RESERVATIONS_ORG);
   return data;
 }
 
@@ -346,7 +382,7 @@ export async function createBookingRecord(
   providedGuestPhone: string,
   guestsCount: number,
   bookingTime: string,
-  childrenCount?: string | null,
+  childrenCount?: number | null,
   allergies?: string | null,
   source: string = "manual",
   notes?: string | null,
@@ -375,4 +411,31 @@ export async function createBookingRecord(
     })
     .select()
     .single();
+}
+
+export async function deleteBookings(ids: string[]) {
+  const auth = await requireAuth();
+  if (!auth.success) return fail(auth.error);
+  const { supabase, user, organizationId } = auth;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin" && profile?.role !== "owner") {
+    return fail("Solo gli amministratori possono eliminare le prenotazioni");
+  }
+
+  const { error } = await supabase
+    .from("bookings")
+    .delete()
+    .in("id", ids)
+    .eq("organization_id", organizationId);
+
+  if (error) return fail(error.message);
+
+  revalidatePath(PATHS.RESERVATIONS);
+  return ok("Prenotazioni eliminate con successo");
 }

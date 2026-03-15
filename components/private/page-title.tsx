@@ -4,6 +4,7 @@ import React from "react"
 import { usePathname } from "next/navigation"
 import { StarButton } from "./star-button"
 import { usePageTitleOverride } from "@/components/providers/page-title-context"
+import { useNavData } from "@/components/providers/nav-context"
 
 interface PageData {
   title: string
@@ -86,15 +87,25 @@ const pathToDataMap: Record<string, PageData> = {
     path: { current: "Collaboratori" },
     description: "Gestisci i permessi e i collaboratori"
   },
-  "/whatsapp-management": {
-    title: "Gestione WhatsApp",
-    path: { current: "WhatsApp" },
-    description: "Gestisci la tua linea WhatsApp Business"
+  "/bot-settings": {
+    title: "Impostazioni Bot",
+    path: { current: "Impostazioni Bot" },
+    description: "Gestisci le impostazioni del tuo bot"
+  },
+  "/bot-memory": {
+    title: "Memoria Bot",
+    path: { current: "Memoria Bot" },
+    description: "Gestisci la memoria del tuo bot"
   },
   "/promotions": {
     title: "Promozioni",
     path: { current: "Promozioni" },
     description: "Gestisci le tue promozioni."
+  },
+  "/inbox": {
+    title: "Inbox",
+    path: { current: "Inbox" },
+    description: "Gestisci le chat del tuo bot."
   },
   "/activities-management": {
     title: "Gestione sedi",
@@ -105,6 +116,11 @@ const pathToDataMap: Record<string, PageData> = {
     title: "Fatturazione",
     path: { current: "Fatturazione" },
     description: "Informazioni sul tuo abbonamento e fatture"
+  },
+  "/limits": {
+    title: "Limiti",
+    path: { current: "Limiti" },
+    description: "Gestisci i limiti del tuo account"
   },
   "/general-settings": {
     title: "Impostazioni generali",
@@ -138,15 +154,15 @@ const pathToDataMap: Record<string, PageData> = {
 interface PageTitleProps {
   title?: string
   description?: string
-  starredPages?: { id: string; url: string; title: string }[]
 }
 
 import { ChevronRight } from "lucide-react"
 import Link from "next/link"
 
-export default function PageTitle({ title, description, starredPages }: PageTitleProps) {
+export default function PageTitle({ title, description }: PageTitleProps) {
   const pathname = usePathname()
   const { override } = usePageTitleOverride()
+  const { starredPages } = useNavData()
 
   // Helper to get nested data from path map
   const getPageData = (path: string): PageData | null => {

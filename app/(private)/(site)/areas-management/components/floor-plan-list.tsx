@@ -2,9 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Map, Pencil, Trash2 } from "lucide-react";
+import { Map, Pencil, Trash2, Lock, LockOpen } from "lucide-react";
 import { Location } from "@/types/general";
 import DataContainer from "@/components/utility/data-container";
+import { Badge } from "@/components/ui/badge";
+import { isZoneBlocked } from "@/lib/menu-helpers";
+import { ButtonGroup } from "@/components/ui/button-group";
 
 interface Zone {
   id: string;
@@ -12,6 +15,9 @@ interface Zone {
   width: number;
   height: number;
   updated_at?: string;
+  blocked_from?: string | null;
+  blocked_until?: string | null;
+  blocked_reason?: string | null;
 }
 
 interface FloorPlanListProps {
@@ -19,10 +25,11 @@ interface FloorPlanListProps {
   tables: any[]; // Changed to accept tables
   onEdit: (zone: Zone) => void;
   onDelete: (zone: Zone) => void;
+  onBlock: (zone: Zone) => void;
   location: Location;
 }
 
-export function FloorPlanList({ zones, tables, onEdit, onDelete, location }: FloorPlanListProps) {
+export function FloorPlanList({ zones, tables, onEdit, onDelete, onBlock, location }: FloorPlanListProps) {
   return (
     <DataContainer>
       {zones.map((zone) => {
@@ -34,6 +41,7 @@ export function FloorPlanList({ zones, tables, onEdit, onDelete, location }: Flo
             zoneTables={zoneTables}
             onEdit={onEdit}
             onDelete={onDelete}
+            onBlock={onBlock}
             location={location}
           />
         );
@@ -47,14 +55,19 @@ const FloorPlanCard = ({
   zoneTables,
   onEdit,
   onDelete,
+  onBlock,
   location
 }: {
   zone: Zone,
   zoneTables: any[],
   onEdit: (zone: Zone) => void,
   onDelete: (zone: Zone) => void,
+  onBlock: (zone: Zone) => void,
   location: Location
 }) => {
+  const blocked = isZoneBlocked(zone);
+  const hasScheduledBlock = !blocked && zone.blocked_from && zone.blocked_until;
+
   return (
     <Card key={zone.id} className="group relative overflow-hidden shadow-none">
       <CardHeader>
@@ -68,32 +81,57 @@ const FloorPlanCard = ({
               {zone.width}x{zone.height}px
             </CardDescription>
           </div>
+          <div className="flex flex-col items-end gap-1">
+            {blocked && (
+              <Badge variant="destructive" className="text-[10px] px-2 py-0.5">
+                <Lock className="h-3 w-3 mr-1" />
+                Bloccata
+              </Badge>
+            )}
+            {hasScheduledBlock && (
+              <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700">
+                Blocco programmato
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <p className="text-sm">{zoneTables.length} tavoli</p>
-          <p className="text-sm">{zone.updated_at}</p>
+          {blocked && zone.blocked_reason && (
+            <p className="text-xs text-muted-foreground italic truncate max-w-35">{zone.blocked_reason}</p>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2 pt-0">
-        <Button
-          variant="outline"
-          size="sm"
-          className="cursor-pointer"
-          onClick={() => onEdit(zone)}
-        >
-          <Pencil className="mr-2 h-3.5 w-3.5" />
-          Modifica
-        </Button>
-        <Button
-          variant="destructive"
-          className="cursor-pointer"
-          size="sm"
-          onClick={() => onDelete(zone)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <ButtonGroup>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="cursor-pointer"
+            onClick={() => onBlock(zone)}
+            title={blocked ? "Sblocca sala" : "Blocca sala"}
+          >
+            {blocked ? <LockOpen className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="cursor-pointer"
+            onClick={() => onEdit(zone)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="destructive"
+            className="cursor-pointer"
+            size="icon-sm"
+            onClick={() => onDelete(zone)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </ButtonGroup>
       </CardFooter>
     </Card>
   )

@@ -203,3 +203,114 @@ export async function createStripePortalSession() {
     redirect(session.url);
   }
 }
+
+/**
+ * Add an add-on pack to the active subscription.
+ * If the same price already exists as a subscription item, increments its quantity.
+ * Charges prorated amount immediately via always_invoice.
+ */
+export async function addAddonToSubscription(formData: FormData) {
+  const priceId = formData.get("priceId") as string;
+  if (!priceId) throw new Error("Missing price ID");
+
+  const { supabase, organizationId } = await getAuthContext();
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("stripe_subscription_id, stripe_status")
+    .eq("id", organizationId)
+    .single();
+
+  if (!org?.stripe_subscription_id || org.stripe_status !== "active") {
+    throw new Error("Nessun abbonamento attivo trovato");
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(
+    org.stripe_subscription_id,
+  );
+  const existingItem = subscription.items.data.find(
+    (item) => item.price.id === priceId,
+  );
+
+  if (existingItem) {
+    await stripe.subscriptions.update(org.stripe_subscription_id, {
+      items: [{ id: existingItem.id, quantity: (existingItem.quantity ?? 1) + 1 }],
+      proration_behavior: "always_invoice",
+    });
+  } else {
+    await stripe.subscriptions.update(org.stripe_subscription_id, {
+      items: [{ price: priceId, quantity: 1 }],
+      proration_behavior: "always_invoice",
+    });
+  }
+
+  // Save transaction directly using admin client (bypasses RLS, same as webhook)
+  try {
+    const { createAdminClient } = await import("@/utils/supabase/admin");
+    const adminSupabase = createAdminClient();
+
+    const updatedSub = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
+    if (updatedSub.latest_invoice) {
+      const invoice = await stripe.invoices.retrieve(updatedSub.latest_invoice as string);
+      if (invoice.status === "paid" && invoice.amount_paid > 0) {
+        const { data: existingTx } = await adminSupabase
+          .from("transactions")
+          .select("id")
+          .eq("stripe_invoice_id", invoice.id)
+          .maybeSingle();
+        if (!existingTx) {
+          const lineItem = invoice.lines?.data?.[0];
+          await adminSupabase.from("transactions").insert({
+            organization_id: organizationId,
+            amount: invoice.amount_paid / 100,
+            currency: invoice.currency,
+            status: "succeeded",
+            type: "subscription",
+            stripe_invoice_id: invoice.id,
+            stripe_payment_intent_id: (invoice as any).payment_intent as string,
+            invoice_pdf: invoice.invoice_pdf,
+            description: lineItem?.description || "Add-on acquistato",
+            period_start: lineItem ? new Date(lineItem.period.start * 1000).toISOString() : null,
+            period_end: lineItem ? new Date(lineItem.period.end * 1000).toISOString() : null,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[addAddon] Failed to save transaction directly:", e);
+  }
+
+  redirect(`${getUrl()}/billing?success=true&event=purchase`);
+}
+
+/**
+ * Remove an add-on from the active subscription.
+ * immediately=true  → credit_proration: credit for remaining days issued immediately
+ * immediately=false → proration_behavior: none: no refund, item removed now
+ */
+export async function removeAddonFromSubscription(priceId: string, immediately: boolean) {
+  if (!priceId) throw new Error("Missing price ID");
+
+  const { supabase, organizationId } = await getAuthContext();
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("stripe_subscription_id, stripe_status")
+    .eq("id", organizationId)
+    .single();
+
+  if (!org?.stripe_subscription_id || org.stripe_status !== "active") {
+    throw new Error("Nessun abbonamento attivo trovato");
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(org.stripe_subscription_id);
+  const existingItem = subscription.items.data.find((item) => item.price.id === priceId);
+
+  if (!existingItem) throw new Error("Add-on non trovato nell'abbonamento");
+
+  await stripe.subscriptionItems.del(existingItem.id, {
+    proration_behavior: immediately ? "always_invoice" : "none",
+  });
+
+  redirect(`${getUrl()}/billing?success=true?event=cancel`);
+}

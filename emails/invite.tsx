@@ -44,8 +44,8 @@ export const InviteUserEmail = ({
       <Preview>{previewText}</Preview>
       <Tailwind>
         <Body className="bg-white my-auto mx-auto font-sans px-2">
-          <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[465px]">
-            <Section className="mt-[32px]">
+          <Container className="border border-solid border-[#eaeaea] rounded my-10 mx-auto p-5 max-w-116.25">
+            <Section className="mt-8">
               <Img
                 src={teamImage || `${baseUrl}/static/smartables-logo.png`}
                 width="40"
@@ -55,21 +55,21 @@ export const InviteUserEmail = ({
               />
             </Section>
 
-            <Heading className="text-black text-[24px] font-normal text-center p-0 my-[30px] mx-0">
+            <Heading className="text-black text-[24px] font-normal text-center p-0 my-7.5 mx-0">
               Benvenuto, {username}!
             </Heading>
 
-            <Text className="text-black text-[14px] leading-[24px]">
+            <Text className="text-black text-[14px] leading-6">
               <strong>{invitedByUsername}</strong> ({invitedByEmail}) ti ha invitato a collaborare nel team <strong>{teamName}</strong> su Smartables.
             </Text>
 
-            <Section className="bg-[#f9f9f9] rounded p-[20px] my-[20px] border border-solid border-[#eaeaea]">
-              <Text className="text-[#666666] text-[13px] leading-[20px] m-0 italic text-center">
+            <Section className="bg-[#f9f9f9] rounded p-5 my-5 border border-solid border-[#eaeaea]">
+              <Text className="text-[#666666] text-[13px] leading-5 m-0 italic text-center">
                 Smartables è la piattaforma intelligente per gestire il tuo locale: ordini, menu digitali, prenotazioni e analytics, tutto in un unico posto.
               </Text>
             </Section>
 
-            <Section className="text-center mt-[32px] mb-[32px]">
+            <Section className="text-center mt-8 mb-8">
               <Button
                 className="bg-[#000000] rounded text-white text-[12px] font-semibold no-underline text-center px-5 py-3"
                 href={inviteLink}
@@ -78,23 +78,23 @@ export const InviteUserEmail = ({
               </Button>
             </Section>
 
-            <Text className="text-black text-[14px] leading-[24px]">
+            <Text className="text-black text-[14px] leading-6">
               Se il pulsante non funziona, copia e incolla questo link nel browser: {' '}
               <Link href={inviteLink} className="text-orange-400 no-underline">
                 {inviteLink}
               </Link>
             </Text>
 
-            <Hr className="border border-solid border-[#eaeaea] my-[26px] mx-0 w-full" />
+            <Hr className="border border-solid border-[#eaeaea] my-6.5 mx-0 w-full" />
 
-            <Text className="text-[#666666] text-[12px] leading-[24px]">
+            <Text className="text-[#666666] text-[12px] leading-6">
               Copyright © 2024 Smartables. <br />
               Hai bisogno di aiuto? <Link href="https://smartables.it/docs" className="text-orange-400 no-underline">Consulta la nostra guida</Link>
             </Text>
           </Container>
 
-          <Section className="text-center mt-[32px] mb-[32px]">
-            <Text className="text-[#666666] text-[10px] leading-[16px]">
+          <Section className="text-center mt-8 mb-8">
+            <Text className="text-[#666666] text-[10px] leading-5">
               Ricevi questa email perché sei stato invitato a unirti a un team su Smartables. <br />
               Se non ti aspettavi questo invito, puoi ignorare tranquillamente questa email.
             </Text>

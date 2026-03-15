@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,19 +11,15 @@ const AdminPage = async () => {
   const supabase = await createClient()
 
   // Fetch Pending Requests using Admin Client to bypass RLS on organizations/locations
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabaseAdmin = createAdminClient()
 
   const { data: requests, error } = await supabaseAdmin
-    .from("telnyx_regulatory_requirements")
+    .from("locations")
     .select(`
       *,
-      organization:organization_id ( name ),
-      location:location_id ( * )
+      organization:organization_id ( name )
     `)
-    .eq('status', 'pending_review')
+    .eq('regulatory_status', 'pending_review')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -34,18 +30,19 @@ const AdminPage = async () => {
   const requestsWithUrls = await Promise.all((requests || []).map(async (req) => {
     let identityUrl = null;
     let addressUrl = null;
+    const docsData = req.regulatory_documents_data as any;
 
-    if (req.documents_data?.identity_path) {
-      const { data } = await supabase.storage.from('compliance-docs').createSignedUrl(req.documents_data.identity_path, 3600);
+    if (docsData?.identity_path) {
+      const { data } = await supabase.storage.from('compliance-docs').createSignedUrl(docsData.identity_path, 3600);
       identityUrl = data?.signedUrl;
     }
 
-    if (req.documents_data?.address_path) {
-      const { data } = await supabase.storage.from('compliance-docs').createSignedUrl(req.documents_data.address_path, 3600);
+    if (docsData?.address_path) {
+      const { data } = await supabase.storage.from('compliance-docs').createSignedUrl(docsData.address_path, 3600);
       addressUrl = data?.signedUrl;
     }
 
-    return { ...req, identityUrl, addressUrl };
+    return { ...req, identityUrl, addressUrl, documents_data: docsData };
   }));
 
   return (
@@ -86,29 +83,24 @@ import {
 import { BadgeCheck, Phone, RefreshCw, RotateCcw } from 'lucide-react'
 
 async function AutomationStatusTable() {
-  const supabase = await createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const supabase = createAdminClient()
 
-  // Fetch locations with their requirement status
+  // Fetch locations with their regulatory status
   const { data: locations } = await supabase
     .from("locations")
     .select(`
       *,
-      organization:organization_id ( name ),
-      requirement:regulatory_requirement_id ( id, status, telnyx_requirement_group_id, rejection_reason )
+      organization:organization_id ( name )
     `)
     .order('created_at', { ascending: false })
-    .not('regulatory_requirement_id', 'is', null)
+    .not('regulatory_status', 'is', null)
     .limit(20) // Just recent ones
 
   console.log('[Admin] Automation Status - Locations:', locations?.map(l => ({
     id: l.id,
     name: l.name,
-    reqId: l.regulatory_requirement_id,
-    reqStatus: l.requirement?.status,
-    telnyxGroupId: l.requirement?.telnyx_requirement_group_id
+    reqStatus: l.regulatory_status,
+    telnyxGroupId: l.telnyx_requirement_group_id
   })));
 
   if (!locations?.length) return <p>No locations found.</p>
@@ -129,16 +121,13 @@ import {
 } from '@/app/actions/admin-simulation'
 
 function AutomationCard({ location }: { location: any }) {
-  const reqStatus = location.requirement?.status || 'none';
-  const telnyxReqGroupId = location.requirement?.telnyx_requirement_group_id;
+  const reqStatus = location.regulatory_status || 'none';
+  const telnyxReqGroupId = location.telnyx_requirement_group_id;
 
   const hasTelnyx = !!location.telnyx_phone_number;
   const hasMeta = !!location.meta_phone_id;
   const isActive = location.activation_status === 'active';
   const isVerified = location.activation_status === 'verified';
-
-  // Checking environment or just enabling for all admins? 
-  // Let's enable for all admins as requested "management".
 
   return (
     <Card key={location.id} className="text-sm">
@@ -166,9 +155,9 @@ function AutomationCard({ location }: { location: any }) {
           </Badge>
         </div>
 
-        {location.requirement?.rejection_reason && (
+        {location.regulatory_rejection_reason && (
           <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-700">
-            <strong>Rifiuto:</strong> {location.requirement.rejection_reason}
+            <strong>Rifiuto:</strong> {location.regulatory_rejection_reason}
           </div>
         )}
 
@@ -177,9 +166,7 @@ function AutomationCard({ location }: { location: any }) {
         {reqStatus === 'pending' && !telnyxReqGroupId && (
           <form action={async () => {
             "use server"
-            if (location.requirement?.id) {
-              await resetComplianceStatusAction(location.requirement.id)
-            }
+            await resetComplianceStatusAction(location.id)
           }}>
             <Button size="sm" variant="ghost" className="w-full h-6 mt-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50">
               ⚠️ Stuck? Reset to Pending Review
@@ -207,9 +194,7 @@ function AutomationCard({ location }: { location: any }) {
         {reqStatus === 'approved' && (
           <form action={async () => {
             "use server"
-            // manualPurchaseNumber requires locationId and requirementId
-            // The original code used location.requirement?.id
-            await manualPurchaseNumber(location.id, location.requirement?.id)
+            await manualPurchaseNumber(location.id, location.telnyx_requirement_group_id)
           }}>
             <Button size="sm" variant="outline" className="w-full h-7 mt-1 text-xs">
               <RefreshCw className="w-3 h-3 mr-1" /> Force Purchase
@@ -281,8 +266,7 @@ function AutomationCard({ location }: { location: any }) {
             Status: {location.activation_status}
             Number: {location.telnyx_phone_number || 'NULL'}
             MetaID: {location.meta_phone_id || 'NULL'}
-            ReqID: {location.regulatory_requirement_id || 'NULL'}
-            ReqStatus: {location.requirement?.status || 'NULL'}
+            ReqStatus: {location.regulatory_status || 'NULL'}
           </div>
 
           <form action={async () => {
@@ -376,22 +360,22 @@ async function RequestCard({ request }: { request: any }) {
             <FileText className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-semibold w-16">Identity:</span>
             {request.identityUrl ? (
-              <a href={request.identityUrl} target="_blank" rel="noopener noreferrer" className="text-xs truncate max-w-[150px] hover:underline hover:text-blue-600">
+              <a href={request.identityUrl} target="_blank" rel="noopener noreferrer" className="text-xs truncate max-w-37.5 hover:underline hover:text-blue-600">
                 {request.documents_data?.identity_filename || "View File"}
               </a>
             ) : (
-              <span className="text-xs truncate max-w-[150px] text-muted-foreground">Missing</span>
+              <span className="text-xs truncate max-w-37.5 text-muted-foreground">Missing</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-semibold w-16">Address:</span>
             {request.addressUrl ? (
-              <a href={request.addressUrl} target="_blank" rel="noopener noreferrer" className="text-xs truncate max-w-[150px] hover:underline hover:text-blue-600">
+              <a href={request.addressUrl} target="_blank" rel="noopener noreferrer" className="text-xs truncate max-w-37.5 hover:underline hover:text-blue-600">
                 {request.documents_data?.address_filename || "View File"}
               </a>
             ) : (
-              <span className="text-xs truncate max-w-[150px] text-muted-foreground">Missing</span>
+              <span className="text-xs truncate max-w-37.5 text-muted-foreground">Missing</span>
             )}
           </div>
         </div>

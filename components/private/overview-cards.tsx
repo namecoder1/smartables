@@ -28,7 +28,7 @@ const OverviewCards = ({
               </span>
             </div>
           </div>
-          <div className='bg-primary/10 border border-primary/20 p-1.5 rounded-lg hidden md:flex'>
+          <div className='bg-primary/10 border-2 border-primary/20 p-1.5 rounded-lg hidden md:flex'>
             {item.icon}
           </div>
         </div>

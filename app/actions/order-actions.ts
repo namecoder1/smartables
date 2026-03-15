@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { OrderStatus, OrderItemStatus } from "@/types/general";
+import { isMenuActive, isMenuAvailableAtTime } from "@/lib/menu-helpers";
+import { PATHS, dynamicPath } from "@/lib/revalidation-paths";
+import { createNotification } from "@/lib/notifications";
+import { sendPushToOrganization } from "@/lib/push-notifications";
 
 export async function getOrderData(locationSlug: string, tableId: string) {
   const supabase = createAdminClient();
@@ -47,6 +51,8 @@ export async function getOrderData(locationSlug: string, tableId: string) {
       .select(
         `
             menu_id,
+            daily_from,
+            daily_until,
             menus (
                 *
             )
@@ -63,24 +69,10 @@ export async function getOrderData(locationSlug: string, tableId: string) {
       );
     } else if (linkedMenus) {
       const now = new Date();
-      // Extract menus and filter for is_active and date validity
+      // Extract menus and filter for is_active, date validity, and daily time window
       menus = linkedMenus
-        .map((item: any) => item.menus)
-        .filter((m: any) => {
-          if (!m || m.is_active === false) return false;
-
-          if (m.starts_at && m.ends_at) {
-            const startDate = new Date(m.starts_at);
-            const endDate = new Date(m.ends_at);
-            if (now < startDate || now > endDate) return false;
-          } else if (m.starts_at) {
-            if (now < new Date(m.starts_at)) return false;
-          } else if (m.ends_at) {
-            if (now > new Date(m.ends_at)) return false;
-          }
-
-          return true;
-        });
+        .filter((item: any) => isMenuAvailableAtTime(item.menus, item, now))
+        .map((item: any) => item.menus);
 
       console.log("[getOrderData] Found active menus:", menus.length);
     }
@@ -103,22 +95,8 @@ export async function getOrderData(locationSlug: string, tableId: string) {
           .eq("id", location.active_menu_id)
           .single();
 
-        if (legacyMenu && legacyMenu.is_active !== false) {
-          let isValid = true;
-          const now = new Date();
-          if (legacyMenu.starts_at && legacyMenu.ends_at) {
-            const startDate = new Date(legacyMenu.starts_at);
-            const endDate = new Date(legacyMenu.ends_at);
-            if (now < startDate || now > endDate) isValid = false;
-          } else if (legacyMenu.starts_at) {
-            if (now < new Date(legacyMenu.starts_at)) isValid = false;
-          } else if (legacyMenu.ends_at) {
-            if (now > new Date(legacyMenu.ends_at)) isValid = false;
-          }
-
-          if (isValid) {
-            menus.push(legacyMenu);
-          }
+        if (isMenuActive(legacyMenu)) {
+          menus.push(legacyMenu);
         }
       }
     }
@@ -227,7 +205,23 @@ export async function createOrder(data: CreateOrderInput) {
     }
   }
 
-  revalidatePath(`/m/${data.location_id}`);
+  // Notify staff about new order (fire-and-forget)
+  createNotification(supabase, {
+    organizationId: data.organization_id,
+    locationId: data.location_id,
+    type: "new_order",
+    title: "Nuovo ordine",
+    body: `Ordine da tavolo${data.guest_name ? ` (${data.guest_name})` : ""} — €${(totalAmount / 100).toFixed(2)}`,
+    link: "/orders",
+    metadata: { orderId, tableId: data.table_id, totalAmount },
+  });
+  sendPushToOrganization(data.organization_id, {
+    title: "Nuovo ordine",
+    body: `Ordine da tavolo${data.guest_name ? ` (${data.guest_name})` : ""} — €${(totalAmount / 100).toFixed(2)}`,
+    data: { orderId, type: "new_order" },
+  });
+
+  revalidatePath(dynamicPath.publicMenu(data.location_id));
   return { success: true, orderId };
 }
 
@@ -251,21 +245,7 @@ export async function getActiveMenus(locationId: string) {
       const now = new Date();
       activeMenus = linkedMenus
         .map((item: any) => item.menus)
-        .filter((m: any) => {
-          if (!m || m.is_active === false) return false;
-
-          if (m.starts_at && m.ends_at) {
-            const startDate = new Date(m.starts_at);
-            const endDate = new Date(m.ends_at);
-            if (now < startDate || now > endDate) return false;
-          } else if (m.starts_at) {
-            if (now < new Date(m.starts_at)) return false;
-          } else if (m.ends_at) {
-            if (now > new Date(m.ends_at)) return false;
-          }
-
-          return true;
-        });
+        .filter((m: any) => isMenuActive(m, now));
     }
 
     if (activeMenus.length === 0) {
@@ -283,20 +263,8 @@ export async function getActiveMenus(locationId: string) {
           .eq("is_active", true)
           .single();
 
-        if (legacyMenu) {
-          let isValid = true;
-          const now = new Date();
-          if (legacyMenu.starts_at && legacyMenu.ends_at) {
-            const startDate = new Date(legacyMenu.starts_at);
-            const endDate = new Date(legacyMenu.ends_at);
-            if (now < startDate || now > endDate) isValid = false;
-          } else if (legacyMenu.starts_at) {
-            if (now < new Date(legacyMenu.starts_at)) isValid = false;
-          } else if (legacyMenu.ends_at) {
-            if (now > new Date(legacyMenu.ends_at)) isValid = false;
-          }
-
-          if (isValid) activeMenus.push(legacyMenu);
+        if (isMenuActive(legacyMenu)) {
+          activeMenus.push(legacyMenu);
         }
       }
     }
@@ -352,7 +320,7 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
     return { error: "Failed to update order status" };
   }
 
-  revalidatePath("/reservations"); // Assuming floor plan is here
+  revalidatePath(PATHS.RESERVATIONS);
   return { success: true };
 }
 

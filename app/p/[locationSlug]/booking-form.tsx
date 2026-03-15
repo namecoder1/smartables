@@ -53,6 +53,7 @@ export function BookingForm({
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
 
   // Helper to map JS Date day index to our Italian day keys
   const getDayKey = (d: Date) => {
@@ -147,6 +148,7 @@ export function BookingForm({
       formData.append("time", time);
 
       if (notes) formData.append("notes", notes);
+      formData.append("honeypot", honeypot);
 
       const result = await createPublicBooking({ success: false, error: null }, formData, "whatsapp_auto");
 
@@ -227,7 +229,7 @@ export function BookingForm({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full justify-start text-left font-normal py-6 px-4 rounded-xl border-slate-200",
+                    "w-full justify-start text-left font-normal py-6 px-4 rounded-xl border-2 border-slate-200",
                     !date && "text-muted-foreground"
                   )}
                 >
@@ -271,7 +273,7 @@ export function BookingForm({
           <div className="space-y-2">
             <Label>Orario</Label>
             <Select value={time} onValueChange={setTime} disabled={!date || timeSlots.length === 0}>
-              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
                   <SelectValue placeholder={!date ? "Seleziona data" : (timeSlots.length === 0 ? "Chiuso" : "--")} />
@@ -288,7 +290,7 @@ export function BookingForm({
           <div className="space-y-2">
             <Label>Ospiti</Label>
             <Select value={guests} onValueChange={setGuests}>
-              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-400" />
                   <SelectValue placeholder="2" />
@@ -306,7 +308,7 @@ export function BookingForm({
         <div className="space-y-2">
           <Label htmlFor="name">Nome e Cognome</Label>
           <div className="relative">
-            <User className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+            <User className="absolute left-4 top-4.5 h-4 w-4 text-slate-400" />
             <Input
               id="name"
               placeholder="Mario Rossi"
@@ -324,9 +326,10 @@ export function BookingForm({
             <PhoneInput
               placeholder="333 123 4567"
               value={phone}
+              context="default"
               onChange={setPhone}
               defaultCountry="IT"
-              className="py-1 rounded-xl border-slate-200 [&_input]:h-12 [&_input]:rounded-xl [&_button]:h-12 [&_button]:rounded-l-xl [&_button:focus-within]:ring-2 [&_button:focus-within]:ring-ring [&_input:focus-within]:ring-2 [&_input:focus-within]:ring-ring"
+              className="rounded-xl border-2 border-slate-200 h-13"
             />
           </div>
         </div>
@@ -339,6 +342,18 @@ export function BookingForm({
             className="resize-none rounded-xl border-slate-200 min-h-[80px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+
+        {/* Honeypot field - visually hidden */}
+        <div className="sr-only" aria-hidden="true">
+          <Input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            autoComplete="off"
           />
         </div>
       </div>

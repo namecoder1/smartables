@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut, Undo2, Redo2, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut, Undo2, Redo2, ChevronDown, MoreHorizontal, Loader } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TABLE_PRESETS, PresetCategory } from './table-presets';
@@ -14,6 +14,7 @@ import { EditorHelpDialog } from './zone-editor/editor-help-dialog';
 import { useZoneColors } from './zone-editor/use-zone-colors';
 import { NumberInput } from '@/components/ui/number-input';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { FaSpinner } from 'react-icons/fa6';
 
 interface ZoneEditorProps {
   initialZoneId?: string;
@@ -111,8 +112,9 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
             <Button variant="outline" className="rounded-xl h-9" onClick={onBack}>
               Annulla
             </Button>
-            <Button onClick={handleSave} disabled={loading} className="gap-2 rounded-xl h-9 bg-orange-600 hover:bg-orange-700 text-white border-orange-700 shadow-sm">
-              <Save className="w-4 h-4" /> {loading ? 'Salvat...' : 'Salva'}
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? <Loader className='animate-spin' /> : <Save className="w-4 h-4" />}
+              Salva
             </Button>
           </div>
         </div>
@@ -133,7 +135,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
               autoFocus value={currentZone.name || ''}
               onChange={(e) => setCurrentZone(prev => prev ? { ...prev, name: e.target.value } : null)}
               onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingName(false); }}
-              className="max-w-[200px] h-8 text-sm"
+              className="max-w-50 h-8 text-sm"
             />
             <span className="text-gray-400 text-xs font-medium ml-2">DIMENSIONI:</span>
             <NumberInput
@@ -166,7 +168,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
 
         {/* SIDEBAR - Static Left */}
         {isSidebarOpen && (
-          <div className="w-[300px] bg-card border-r flex flex-col z-10 shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
+          <div className="w-75 bg-card border-r flex flex-col z-10 shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               <Accordion type="multiple" defaultValue={['Tavoli', 'Muri']} className="w-full space-y-3">
                 {(['Tavoli', 'Sedute', 'Decorazioni', 'Muri', 'Pavimenti', 'Segnalini'] as PresetCategory[]).map((category) => {

@@ -15,7 +15,7 @@ describe("lib/plans", () => {
 
     it("has correct plan IDs", () => {
       const ids = PLANS.map((p) => p.id);
-      expect(ids).toEqual(["starter", "pro", "business"]);
+      expect(ids).toEqual(["starter", "growth", "business"]);
     });
 
     it("each plan has required fields", () => {
@@ -33,7 +33,7 @@ describe("lib/plans", () => {
     it("only one plan is marked as popular", () => {
       const popularPlans = PLANS.filter((p) => p.popular);
       expect(popularPlans).toHaveLength(1);
-      expect(popularPlans[0].id).toBe("pro");
+      expect(popularPlans[0].id).toBe("growth");
     });
   });
 
@@ -47,7 +47,7 @@ describe("lib/plans", () => {
     it("finds a plan by yearly price ID", () => {
       const plan = findPlanByPriceId(PLANS[1].priceIdYear!);
       expect(plan).toBeDefined();
-      expect(plan?.id).toBe("pro");
+      expect(plan?.id).toBe("growth");
     });
 
     it("returns undefined for an unknown price ID", () => {

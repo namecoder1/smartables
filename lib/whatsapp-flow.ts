@@ -126,7 +126,24 @@ export async function getAvailableTimes(
   // Default to 120 minutes if not set
   const durationMinutes = location.standard_reservation_duration || 120;
 
-  // 2. Fetch all tables in the specified zone to get total zone capacity
+  // 2. Check if zone is blocked for the requested date
+  const { data: zone } = await supabase
+    .from("restaurant_zones")
+    .select("blocked_from, blocked_until")
+    .eq("id", zoneId)
+    .single();
+
+  if (zone?.blocked_from && zone?.blocked_until) {
+    const dateStart = new Date(`${dateIsoStr}T00:00:00`);
+    const dateEnd = new Date(`${dateIsoStr}T23:59:59`);
+    const blockFrom = new Date(zone.blocked_from);
+    const blockUntil = new Date(zone.blocked_until);
+    if (blockFrom <= dateEnd && blockUntil >= dateStart) {
+      return []; // Zone is blocked for the requested date
+    }
+  }
+
+  // 3. Fetch all active tables in the specified zone
   const { data: tables } = await supabase
     .from("restaurant_tables")
     .select("id, seats")
@@ -134,7 +151,7 @@ export async function getAvailableTimes(
     .eq("is_active", true);
 
   if (!tables || tables.length === 0) {
-    return []; // Zone is closed or has no tables
+    return []; // Zone has no active tables
   }
   const totalZoneCapacity = tables.reduce((acc, t) => acc + t.seats, 0);
 
@@ -147,7 +164,7 @@ export async function getAvailableTimes(
     .lte("booking_time", `${dateIsoStr}T23:59:59Z`)
     .in("status", ["pending", "confirmed", "arrived"]); // Active bookings only
 
-  // 4. Generate candidate 30-minute slots based on opening hours
+  // 4. Generate candidate 30-minute slots based on opening hours (only enabled ones)
   const candidateSlots: { id: string; title: string; enabled: boolean }[] = [];
   const now = new Date(); // To filter out past times today
 
@@ -194,12 +211,12 @@ export async function getAvailableTimes(
 
       const timeStr = format(currentSlotTime, "HH:mm");
 
-      // We only insert if we are reasonably far from closing time (at least 1h before close)
-      if (addMinutes(currentSlotTime, 60) <= closeTime && !isPastTime) {
+      // Only add available slots: must be ≥1h before close, not in the past, and with capacity
+      if (addMinutes(currentSlotTime, 60) <= closeTime && !isPastTime && canFit) {
         candidateSlots.push({
           id: timeStr,
           title: timeStr,
-          enabled: canFit,
+          enabled: true,
         });
       }
 

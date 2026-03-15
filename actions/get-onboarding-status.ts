@@ -1,11 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import {
-  Location,
-  TelnyxRegulatoryRequirement,
-  Organization,
-} from "@/types/general";
+import { Location, Organization } from "@/types/general";
 
 export type OnboardingData = {
   documents: boolean;
@@ -47,28 +43,18 @@ export async function getOnboardingStatus(
     };
   }
 
-  // 2. Fetch Regulatory Requirement status (if ID exists)
+  // 2. Regulatory Requirement status
   let documentsStatus = false;
-  // For now: documents = approved.
-
   let rejectionReason = null;
 
-  if (location.regulatory_requirement_id) {
-    const { data: requirement } = await supabase
-      .from("telnyx_regulatory_requirements")
-      .select("status, rejection_reason")
-      .eq("id", location.regulatory_requirement_id)
-      .single();
-
-    if (requirement) {
-      rejectionReason = requirement.rejection_reason;
-      if (
-        requirement.status === "approved" ||
-        requirement.status === "pending" ||
-        requirement.status === "unapproved"
-      ) {
-        documentsStatus = true;
-      }
+  if (location.regulatory_status) {
+    rejectionReason = location.regulatory_rejection_reason;
+    if (
+      location.regulatory_status === "approved" ||
+      location.regulatory_status === "pending" ||
+      location.regulatory_status === "unapproved"
+    ) {
+      documentsStatus = true;
     }
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
-import { addNumberToWaba } from "../lib/meta-registration";
+import { addNumberToWaba } from "../lib/whatsapp-registration";
 
 dotenv.config({ path: ".env.local" });
 
@@ -44,7 +44,6 @@ async function resetNumber() {
       .update({
         meta_phone_id: newPhoneId,
         activation_status: "pending",
-        voice_forwarding_number: null,
       })
       .eq("id", location.id);
 

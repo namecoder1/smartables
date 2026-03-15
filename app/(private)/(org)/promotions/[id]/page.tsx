@@ -43,12 +43,7 @@ export default async function PromotionPage({
   if (!isNew) {
     const { data, error } = await supabase
       .from('promotions')
-      .select(`
-        *,
-        promotion_locations(*),
-        promotion_menus(*),
-        promotion_items(*)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
 

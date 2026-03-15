@@ -1,282 +1,72 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardDescription, CardHeader, CardTitle, CardFooter, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Trash, ChevronRight, FileText, MapPin, Globe, Settings, Edit, Link as LinkIcon, LayersPlus, Map, MapIcon, PlusCircle, CalendarDays } from 'lucide-react'
-import { createMenu, deleteMenu, assignMenuToLocations, updateMenu } from '@/app/actions/settings'
+import { Plus, MapIcon, CalendarDays, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { MenusViewProps } from '@/types/components'
+import { Menu } from '@/types/general'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Checkbox } from '../../../../components/ui/checkbox'
-import { createClient } from '@/utils/supabase/client'
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 import { PdfUpload } from '../../../../components/private/pdf-upload'
-import { Badge } from '@/components/ui/badge'
-import { useRouter } from 'next/navigation'
-import GroupedActions from '../../../../components/utility/grouped-actions'
-import { Menu } from '@/types/general'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import NoItems from '@/components/utility/no-items'
 import { useOrganization } from '@/components/providers/organization-provider'
 import { PLANS } from '@/lib/plans'
-import Link from 'next/link'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
-import { Lock } from 'lucide-react'
 import PageWrapper from '@/components/private/page-wrapper'
 import OverviewCards from '@/components/private/overview-cards'
 import { GiBookshelf } from 'react-icons/gi'
 import { MdOutlineCollectionsBookmark } from 'react-icons/md'
 import { LuBookPlus } from 'react-icons/lu'
 import DataContainer from '@/components/utility/data-container'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { FaqContent } from '@/components/private/faq-section'
+import { MenuCard } from './_components/menu-card'
+import { useMenuDialogs } from './_components/use-menu-dialogs'
 
-const MENU_LIMITS = {
-  starter: 5,
-  pro: 15,     // Growth
-  business: 25 // Business
-}
-
-type MenuDialogMode = 'create' | 'edit' | null
-
-interface MenuDialogState {
-  mode: MenuDialogMode
-  menuId: string | null
-  name: string
-  description: string
-  isActive: boolean
-  isPdf: boolean
-  pdfFile: File | null
-  pdfUrl: string
-  startsAt: string
-  endsAt: string
-  isSpecial: boolean
-}
-
-const initialDialogState: MenuDialogState = {
-  mode: null,
-  menuId: null,
-  name: '',
-  description: '',
-  isActive: true,
-  isPdf: false,
-  pdfFile: null,
-  pdfUrl: '',
-  startsAt: '',
-  endsAt: '',
-  isSpecial: false
-}
-
-const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
-  const router = useRouter()
+const MenuView = ({ menus, limits, organizationId, locations, faqs }: MenusViewProps) => {
   const { organization } = useOrganization()
 
-  // Determine current limit based on plan
   const currentPlan = PLANS.find(p => p.priceIdMonth === organization?.stripe_price_id || p.priceIdYear === organization?.stripe_price_id);
-  const planId = currentPlan?.id || 'starter'; // Default to starter if no plan found
-  const maxMenus = MENU_LIMITS[planId as keyof typeof MENU_LIMITS] || 5;
+  const maxMenus = limits.max_menus
   const isLimitReached = menus.length >= maxMenus;
-  // Navigation / Context State
+
   const [workingLocationId, setWorkingLocationId] = useState<string>(
     locations && locations.length > 0 ? locations[0].id : ''
   )
 
-  // Unified Menu Dialog State
-  const [menuDialog, setMenuDialog] = useState<MenuDialogState>(initialDialogState)
-  const [isSavingMenu, setIsSavingMenu] = useState(false)
+  const currentWorkingLocation = locations.find(l => l.id === workingLocationId)
 
-  // Realtime Refresh
+  const {
+    menuDialog, setMenuDialog,
+    isSavingMenu,
+    openCreateDialog, openEditDialog, closeMenuDialog, handleSaveMenu,
+    handleDeleteMenu,
+    managingMenuId, setManagingMenuId,
+    tempSelectedLocations, setTempSelectedLocations,
+    tempDailySettings, setTempDailySettings,
+    isSavingLocations,
+    openManageLocations, handleSaveLocations,
+  } = useMenuDialogs({
+    menus,
+    organizationId,
+    workingLocationId,
+    currentWorkingLocationName: currentWorkingLocation?.name,
+  })
+
   useRealtimeRefresh('menus', {
     filter: organizationId ? `organization_id=eq.${organizationId}` : undefined
   })
 
-  // Manage Locations State
-  const [managingMenuId, setManagingMenuId] = useState<string | null>(null)
-  const [tempSelectedLocations, setTempSelectedLocations] = useState<string[]>([])
-
-  // --- Helpers ---
-  const currentWorkingLocation = locations.find(l => l.id === workingLocationId)
-
-  // Helper to check if a menu belongs to a location
-  const isMenuInLocation = (menu: any, locationId: string) => {
-    return menu.menu_locations?.some((ml: any) => ml.location_id === locationId)
-  }
-
-  // Filter Menus based on Working Location
   const visibleMenus = menus.filter(menu => {
     if (!workingLocationId) return true
-    return isMenuInLocation(menu, workingLocationId)
+    return (menu as Menu & { menu_locations?: Array<{ location_id: string }> }).menu_locations?.some(ml => ml.location_id === workingLocationId)
   })
-
-  // --- Helpers for Dialog ---
-  const openCreateDialog = () => {
-    setMenuDialog({
-      mode: 'create',
-      menuId: null,
-      name: '',
-      description: '',
-      isActive: true,
-      isPdf: false,
-      pdfFile: null,
-      pdfUrl: '',
-      startsAt: '',
-      endsAt: '',
-      isSpecial: false
-    })
-  }
-
-  const openEditDialog = (menu: Menu) => {
-    setMenuDialog({
-      mode: 'edit',
-      menuId: menu.id,
-      name: menu.name,
-      description: menu.description || '',
-      isActive: menu.is_active ?? true,
-      isPdf: !!menu.pdf_url,
-      pdfFile: null,
-      pdfUrl: menu.pdf_url || '',
-      startsAt: menu.starts_at ? new Date(menu.starts_at).toISOString().slice(0, 16) : '',
-      endsAt: menu.ends_at ? new Date(menu.ends_at).toISOString().slice(0, 16) : '',
-      isSpecial: !!(menu.starts_at || menu.ends_at)
-    })
-  }
-
-  const closeMenuDialog = () => {
-    setMenuDialog(initialDialogState)
-  }
-
-  // --- Handlers ---
-
-  const handleSaveMenu = async () => {
-    if (!menuDialog.name.trim()) {
-      toast.error('Il nome è obbligatorio')
-      return
-    }
-
-    if (menuDialog.mode === 'create' && !workingLocationId) {
-      toast.error('Seleziona una sede di lavoro prima di creare un menu')
-      return
-    }
-
-    setIsSavingMenu(true)
-    try {
-      let finalPdfUrl: string | null = null
-      const supabase = createClient()
-
-      // Handle PDF upload/URL
-      if (menuDialog.isPdf) {
-        if (menuDialog.pdfFile) {
-          const timestamp = Date.now()
-          const cleanName = menuDialog.pdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_')
-          const filePath = `${organizationId}/${timestamp}-${cleanName}`
-
-          const { error: uploadError } = await supabase.storage
-            .from('menu-files')
-            .upload(filePath, menuDialog.pdfFile)
-
-          if (uploadError) {
-            console.error(uploadError)
-            toast.error('Errore durante il caricamento del file')
-            return
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('menu-files')
-            .getPublicUrl(filePath)
-
-          finalPdfUrl = publicUrl
-        } else if (menuDialog.pdfUrl) {
-          finalPdfUrl = menuDialog.pdfUrl
-        } else if (menuDialog.mode === 'create') {
-          toast.error('Carica un file PDF o inserisci un link')
-          return
-        } else {
-          // Edit mode: keep existing URL
-          finalPdfUrl = menuDialog.pdfUrl || null
-        }
-      }
-
-      if (menuDialog.mode === 'create') {
-        // Create new menu
-        await createMenu(organizationId, {
-          name: menuDialog.name,
-          description: menuDialog.description,
-          pdf_url: finalPdfUrl || undefined,
-          location_ids: [workingLocationId],
-          is_active: menuDialog.isActive,
-          starts_at: menuDialog.startsAt ? new Date(menuDialog.startsAt).toISOString() : null,
-          ends_at: menuDialog.endsAt ? new Date(menuDialog.endsAt).toISOString() : null
-        })
-        toast.success(`Menu creato per ${currentWorkingLocation?.name}`)
-      } else if (menuDialog.mode === 'edit' && menuDialog.menuId) {
-        // Edit existing menu
-        const currentMenu = menus.find(m => m.id === menuDialog.menuId)
-
-        // Delete old PDF if switching to manual or uploading new file
-        if ((!menuDialog.isPdf || (menuDialog.isPdf && menuDialog.pdfFile)) && currentMenu?.pdf_url) {
-          try {
-            const url = new URL(currentMenu.pdf_url)
-            const pathParts = url.pathname.split('menu-files/')
-            if (pathParts.length > 1) {
-              const filePath = pathParts[1]
-              if (filePath.includes(organizationId)) {
-                await supabase.storage
-                  .from('menu-files')
-                  .remove([decodeURIComponent(filePath)])
-              }
-            }
-          } catch (err) {
-            console.error("Error deleting old PDF:", err)
-          }
-        }
-
-        await updateMenu(menuDialog.menuId, {
-          name: menuDialog.name,
-          description: menuDialog.description,
-          pdf_url: finalPdfUrl,
-          is_active: menuDialog.isActive,
-          starts_at: menuDialog.startsAt ? new Date(menuDialog.startsAt).toISOString() : null,
-          ends_at: menuDialog.endsAt ? new Date(menuDialog.endsAt).toISOString() : null
-        })
-        toast.success('Menu aggiornato')
-        router.refresh()
-      }
-
-      closeMenuDialog()
-    } catch (error) {
-      console.error(error)
-      toast.error(menuDialog.mode === 'create' ? 'Errore durante la creazione del menu' : 'Errore aggiornamento menu')
-    } finally {
-      setIsSavingMenu(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteMenu(id)
-      toast.success('Menu eliminato')
-    } catch (error) {
-      toast.error('Errore durante l\'eliminazione')
-    }
-  }
-
-  const openManageLocations = (menu: any) => {
-    const currentIds = menu.menu_locations?.map((ml: any) => ml.location_id) || []
-    setTempSelectedLocations(currentIds)
-    setManagingMenuId(menu.id)
-  }
-
-  const handleSaveLocations = async () => {
-    if (!managingMenuId) return
-    try {
-      await assignMenuToLocations(managingMenuId, tempSelectedLocations)
-      toast.success('Disponibilità sedi aggiornata')
-      setManagingMenuId(null)
-    } catch (e) {
-      toast.error('Errore aggiornamento sedi')
-    }
-  }
 
 
   if (!locations || locations.length === 0) {
@@ -289,15 +79,18 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
 
   return (
     <PageWrapper className="relative">
-      <div className='flex items-center justify-between gap-10'>
-        <div>
+      <div className='flex flex-col items-start justify-center md:flex-row md:items-center md:justify-between gap-6'>
+        <div className='flex flex-col gap-1'>
           <h2 className="text-3xl font-bold tracking-tight">I tuoi Menù</h2>
           <p className="text-muted-foreground max-w-3xl">Crea e gestisci i menù per le tue sedi.</p>
         </div>
-        <Button size="sm" className="w-full sm:w-fit hidden xl:flex" onClick={openCreateDialog} disabled={isLimitReached}>
-          {isLimitReached ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          Crea Menu
-        </Button>
+        <ButtonGroup>
+          <FaqContent title='Aiuto' faqs={faqs} variant='minimized' />
+          <Button onClick={openCreateDialog} disabled={isLimitReached}>
+            {isLimitReached ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            Aggiungi
+          </Button>
+        </ButtonGroup>
       </div>
 
       <OverviewCards
@@ -306,19 +99,19 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
             title: 'Totale menù',
             value: menus.length,
             description: 'menù',
-            icon: <GiBookshelf size={24} className='text-primary' />
+            icon: <GiBookshelf className='text-primary size-6 2xl:size-8' />
           },
           {
             title: 'Menù attivi',
             value: menus.filter(m => m.is_active).length,
             description: 'attivi',
-            icon: <MdOutlineCollectionsBookmark size={24} className='text-primary' />
+            icon: <MdOutlineCollectionsBookmark className='text-primary size-6 2xl:size-8' />
           },
           {
             title: 'Menù creati',
             value: menus.length,
             description: 'menù',
-            icon: <LuBookPlus size={24} className='text-primary' />
+            icon: <LuBookPlus className='text-primary size-6 2xl:size-8' />
           }
         ]}
       />
@@ -343,7 +136,7 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
               menu={menu}
               openManageLocations={openManageLocations}
               openEditMenu={openEditDialog}
-              handleDelete={handleDelete}
+              handleDelete={handleDeleteMenu}
             />
           ))}
         </DataContainer>
@@ -352,36 +145,104 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
 
       {/* Manage Locations Dialog */}
       <Dialog open={!!managingMenuId} onOpenChange={(open) => !open && setManagingMenuId(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Disponibilità Menu</DialogTitle>
             <DialogDescription>
-              Seleziona le sedi dove rendere disponibile questo menu.
+              Seleziona le sedi e, opzionalmente, gli orari giornalieri in cui il menu è visibile.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 border p-3 rounded-md max-h-60 overflow-y-auto my-4">
-            {locations.map(location => (
-              <div key={location.id} className="flex items-center space-x-2 py-1">
-                <Checkbox
-                  id={`manage-loc-${location.id}`}
-                  checked={tempSelectedLocations.includes(location.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setTempSelectedLocations([...tempSelectedLocations, location.id])
-                    } else {
-                      setTempSelectedLocations(tempSelectedLocations.filter(id => id !== location.id))
+          <div className="flex flex-col gap-3 border p-3 bg-white rounded-xl max-h-80 overflow-y-auto my-4">
+            {locations.map(location => {
+              const isSelected = tempSelectedLocations.includes(location.id)
+              const daily = tempDailySettings[location.id] || { daily_from: '', daily_until: '' }
+              return (
+                <div key={location.id} className="flex flex-col gap-2 border-b pb-3 last:border-b-0 last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`manage-loc-${location.id}`} className="cursor-pointer text-sm font-medium">
+                      {location.name}
+                    </Label>
+                    <Checkbox
+                      id={`manage-loc-${location.id}`}
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setTempSelectedLocations([...tempSelectedLocations, location.id])
+                        } else {
+                          setTempSelectedLocations(tempSelectedLocations.filter(id => id !== location.id))
+                          setTempDailySettings(prev => { const next = { ...prev }; delete next[location.id]; return next })
+                        }
+                      }}
+                    />
+                  </div>
+                  {isSelected && (() => {
+                    const shifts: { label: string; open: string; close: string }[] = []
+                    const hours = location.opening_hours
+                    if (hours) {
+                      Object.values(hours).forEach((slots) => {
+                        (slots as any[]).forEach((slot) => {
+                          const key = `${slot.open}-${slot.close}`
+                          if (!shifts.some(s => `${s.open}-${s.close}` === key)) {
+                            shifts.push({ label: `${slot.open} – ${slot.close}`, open: slot.open, close: slot.close })
+                          }
+                        })
+                      })
                     }
-                  }}
-                />
-                <Label htmlFor={`manage-loc-${location.id}`} className="cursor-pointer text-sm font-normal">
-                  {location.name}
-                </Label>
-              </div>
-            ))}
+                    const shiftValue = daily.daily_from && daily.daily_until ? `${daily.daily_from}-${daily.daily_until}` : ''
+                    return (
+                      <div className="flex items-center border-t pt-2 gap-2 pl-1">
+                        <div className="flex flex-col gap-1.5 flex-1">
+                          <Select
+                            value={shiftValue}
+                            onValueChange={(val) => {
+                              if (!val) {
+                                setTempDailySettings(prev => { const next = { ...prev }; delete next[location.id]; return next })
+                                return
+                              }
+                              const shift = shifts.find(s => `${s.open}-${s.close}` === val)
+                              if (shift) {
+                                setTempDailySettings(prev => ({
+                                  ...prev,
+                                  [location.id]: { daily_from: shift.open, daily_until: shift.close }
+                                }))
+                              }
+                            }}
+                          >
+                            <SelectTrigger >
+                              <SelectValue placeholder="Tutti gli orari" />
+                            </SelectTrigger>
+                            <SelectContent position='popper'>
+                              {shifts.map(s => (
+                                <SelectItem key={`${s.open}-${s.close}`} value={`${s.open}-${s.close}`}>
+                                  {s.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {shiftValue && (
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="destructive"
+                            className="h-7 w-7 self-end"
+                            onClick={() => setTempDailySettings(prev => { const next = { ...prev }; delete next[location.id]; return next })}
+                          >
+                            ✕
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )
+            })}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setManagingMenuId(null)}>Annulla</Button>
-            <Button onClick={handleSaveLocations}>Salva Modifiche</Button>
+            <Button variant="outline" onClick={() => setManagingMenuId(null)} disabled={isSavingLocations}>Annulla</Button>
+            <Button onClick={handleSaveLocations} disabled={isSavingLocations}>
+              {isSavingLocations ? 'Salvataggio...' : 'Salva Modifiche'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -527,133 +388,7 @@ const MenuView = ({ menus, organizationId, locations }: MenusViewProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {menus.length > 0 && (
-        <Button onClick={openCreateDialog} disabled={isLimitReached} className='absolute right-6 bottom-6 z-50 xl:hidden flex'>
-          {isLimitReached ? <Lock className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-          Nuovo Menù
-        </Button>
-      )}
     </PageWrapper>
-  )
-}
-
-const MenuCard = ({
-  menu,
-  openManageLocations,
-  openEditMenu,
-  handleDelete
-}: {
-  menu: Menu
-  openManageLocations: (menu: Menu) => void
-  openEditMenu: (menu: Menu) => void
-  handleDelete: (menuId: string) => void
-}) => {
-  const categories = Array.isArray(menu.content) ? menu.content : []
-  const totalItems = categories.reduce((acc: number, cat: any) => acc + (cat.items?.length || 0), 0)
-  const isSpecial = !!(menu.starts_at || menu.ends_at)
-
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
-
-  return (
-    <Card key={menu.id} className="flex flex-col relative group">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <CardTitle className="flex items-center gap-2 text-base font-bold truncate">
-                {menu.pdf_url ? (
-                  <FileText className="w-4 h-4 text-primary" />
-                ) : (
-                  <LayersPlus className="w-4 h-4 text-primary" />
-                )}
-                {menu.name}
-              </CardTitle>
-              {isSpecial && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px] px-1.5 py-0 h-4">
-                  Speciale
-                </Badge>
-              )}
-            </div>
-            <CardDescription className="line-clamp-2 text-sm">
-              {menu.description || 'Nessuna descrizione'}
-            </CardDescription>
-          </div>
-          <Badge
-            variant="outline"
-            className={`text-white px-2 py-0.5 rounded-xl border-none ${menu.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`}
-          >
-            {menu.is_active ? 'Attivo' : 'Inattivo'}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pb-3 pt-0 flex-1">
-        <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-          <div className="flex flex-col gap-1.5">
-            <span className="flex items-center gap-1.5">
-              <Map className="text-primary" size={20} />
-              {categories.length} {categories.length === 1 ? 'Categoria' : 'Categorie'}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <PlusCircle className="text-primary" size={20} />
-              {totalItems} {totalItems === 1 ? 'Piatto' : 'Piatti'}
-            </span>
-          </div>
-
-          {isSpecial && (
-            <div className="flex flex-col gap-1.5 border-l pl-4">
-              <span className="flex items-center gap-1.5 text-amber-700 font-medium uppercase tracking-wider">
-                <CalendarDays size={20} />
-                Periodo
-              </span>
-              <span className="leading-none">
-                {menu.starts_at && formatDate(menu.starts_at)}
-                {menu.starts_at && menu.ends_at && ' — '}
-                {menu.ends_at && formatDate(menu.ends_at)}
-              </span>
-            </div>
-          )}
-        </div>
-      </CardContent>
-
-      <CardFooter className="px-6 pt-0 flex items-center justify-between mt-auto">
-        <Button variant="outline"  asChild>
-          <Link href={`/menus-management/${menu.id}`}>
-            Apri
-            <ChevronRight className="w-3 h-3" />
-          </Link>
-        </Button>
-
-        <div className="flex items-center gap-2">
-          <Button
-            size='icon'
-            variant="outline"
-            onClick={() => openEditMenu(menu)}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-
-          <GroupedActions
-            side="top"
-            items={[
-              {
-                label: 'Disponibilità',
-                icon: <MapPin className="w-4 h-4" />,
-                action: () => openManageLocations(menu)
-              },
-              {
-                label: 'Elimina',
-                icon: <Trash className="w-4 h-4 group-hover:text-red-500! dark:group-hover:text-white/80" />,
-                variant: 'destructive',
-                action: () => handleDelete(menu.id)
-              }
-            ]}
-          />
-        </div>
-      </CardFooter>
-    </Card>
   )
 }
 

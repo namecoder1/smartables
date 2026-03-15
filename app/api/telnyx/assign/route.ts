@@ -39,16 +39,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify organization access (assuming you have an organization_members table or similar check)
-    // For now, relying on RLS policies of Supabase if configured, or simple check:
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("role")
-      .eq("organization_id", location.organization_id)
-      .eq("user_id", user.id)
+    // Verify user belongs to the same organization via profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
       .single();
 
-    if (!membership) {
+    if (!profile || profile.organization_id !== location.organization_id) {
       return NextResponse.json(
         { error: "Unauthorized access to location" },
         { status: 403 },

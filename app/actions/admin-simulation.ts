@@ -68,6 +68,39 @@ export async function simulateIncomingCall(phoneNumber: string) {
   return { success: true };
 }
 
+export async function simulateNumberOrderCompleted(phoneNumber: string) {
+  return await sendTelnyxMockWebhook("number_order.completed", {
+    status: "success",
+    phone_numbers: [
+      {
+        phone_number: phoneNumber,
+        status: "active",
+        requirements_met: true,
+      },
+    ],
+  });
+}
+
+export async function simulateNumberOrderFailed(phoneNumber: string) {
+  return await sendTelnyxMockWebhook("number_order.completed", {
+    status: "failure",
+    phone_numbers: [
+      {
+        phone_number: phoneNumber,
+        status: "requirement-info-exception",
+        requirements_met: false,
+      },
+    ],
+    errors: [
+      {
+        title: "Requirement Info Exception",
+        detail:
+          "Il documento caricato non è stato accettato. Ricarica un documento di identità valido.",
+      },
+    ],
+  });
+}
+
 export async function simulateRecordingSaved(phoneNumber: string) {
   const callControlId = "mock_cc_" + Date.now();
 

@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { Package, Trash2, Loader2 } from "lucide-react";
+import ConfirmDialog from "@/components/utility/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import {
   getTaggedContacts,
   removeContactTag,
 } from "@/app/actions/call-management";
+import NoItems from "@/components/utility/no-items";
 
 interface ContactAttribute {
   id: string;
   phone_number: string;
-  tag: string;
-  updated_at: string;
+  tags: string[];
 }
 
 export function TaggedSuppliersPanel({ locationId }: { locationId: string }) {
@@ -37,7 +38,7 @@ export function TaggedSuppliersPanel({ locationId }: { locationId: string }) {
 
   const handleRemove = (id: string) => {
     startTransition(async () => {
-      await removeContactTag(id);
+      await removeContactTag(id, "supplier");
       fetchData();
     });
   };
@@ -53,26 +54,18 @@ export function TaggedSuppliersPanel({ locationId }: { locationId: string }) {
   return (
     <div className="space-y-4">
       {contacts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-xl">
-          <Package className="h-8 w-8 text-muted-foreground/50 mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Nessun fornitore taggato.
-          </p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            Quando un chiamante clicca &quot;Sono un fornitore&quot; sul
-            messaggio WhatsApp, apparirà qui.
-          </p>
-        </div>
+        <NoItems 
+          variant="children"
+          icon={<Package className="h-8 w-8 text-primary" />}
+          title="Nessun fornitore salvato"
+          description="Quando un chiamante clicca 'Sono un fornitore' sul messaggio WhatsApp, apparirà qui."
+        />
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
             Fornitori auto-taggati ({contacts.length})
           </p>
           {contacts.map((contact) => {
-            const isActive =
-              new Date(contact.updated_at).getTime() >
-              Date.now() - 7 * 24 * 60 * 60 * 1000;
-
             return (
               <div
                 key={contact.id}
@@ -87,41 +80,36 @@ export function TaggedSuppliersPanel({ locationId }: { locationId: string }) {
                       {contact.phone_number}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {isActive ? (
-                        <span className="text-blue-500">
-                          Silenziato (
-                          {Math.ceil(
-                            (new Date(contact.updated_at).getTime() +
-                              7 * 24 * 60 * 60 * 1000 -
-                              Date.now()) /
-                            (24 * 60 * 60 * 1000),
-                          )}
-                          g rimasti)
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          Soppressione scaduta
-                        </span>
-                      )}
+                      <span className="text-blue-500">
+                        Silenziato in automatico
+                      </span>
                     </p>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                  disabled={isPending}
-                  onClick={() => handleRemove(contact.id)}
+                <ConfirmDialog
                   title="Rimuovi tag fornitore"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                  description="Sei sicuro di voler rimuovere il tag fornitore da questo contatto? Inizierà a ricevere nuovamente i messaggi automatici."
+                  confirmLabel="Rimuovi"
+                  variant="destructive"
+                  onConfirm={() => handleRemove(contact.id)}
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                      disabled={isPending}
+                      title="Rimuovi tag fornitore"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  }
+                />
               </div>
             );
           })}
           <p className="text-xs text-muted-foreground/70 px-1 italic">
-            I fornitori non ricevono il messaggio automatico per 7 giorni dopo
-            il tag. Puoi rimuovere il tag manualmente.
+            I fornitori non ricevono il messaggio automatico. Puoi rimuovere
+            il tag manualmente se vuoi che tornino a riceverlo.
           </p>
         </div>
       )}

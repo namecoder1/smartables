@@ -2,22 +2,28 @@
 
 import { updateBusinessProfile, updateProfilePicture } from "@/lib/whatsapp";
 import { revalidatePath } from "next/cache";
-import { getAuthContext } from "@/lib/auth";
+import { ok, fail } from "@/lib/action-response";
+import { PATHS } from "@/lib/revalidation-paths";
+import { getStr, getFile } from "@/lib/form-parsers";
+import { requireAuth } from "@/lib/supabase-helpers";
+import { adjustOrgStorage } from "@/app/actions/storage";
 
 export async function updateWhatsappProfile(formData: FormData) {
-  const { supabase } = await getAuthContext();
+  const auth = await requireAuth();
+  if (!auth.success) return auth;
+  const { supabase, organizationId } = auth;
 
-  const locationId = formData.get("locationId") as string;
-  const description = formData.get("description") as string;
-  const about = formData.get("about") as string;
-  const email = formData.get("email") as string;
-  const website = formData.get("website") as string;
-  const address = formData.get("address") as string;
-  const vertical = formData.get("vertical") as string;
-  const profileImage = formData.get("profileImage") as File;
+  const locationId = getStr(formData, "locationId");
+  const description = getStr(formData, "description");
+  const about = getStr(formData, "about");
+  const email = getStr(formData, "email");
+  const website = getStr(formData, "website");
+  const address = getStr(formData, "address");
+  const vertical = getStr(formData, "vertical");
+  const profileImage = getFile(formData, "profileImage");
 
   if (!locationId) {
-    return { success: false, error: "Location ID is required" };
+    return fail("Location ID is required");
   }
 
   try {
@@ -78,6 +84,7 @@ export async function updateWhatsappProfile(formData: FormData) {
         throw new Error("Failed to get signed URL for image");
 
       await updateProfilePicture(phoneId, urlData.signedUrl);
+      await adjustOrgStorage(supabase, organizationId, profileImage.size);
 
       const { data: publicUrlData } = supabase.storage
         .from("compliance-docs")
@@ -103,11 +110,11 @@ export async function updateWhatsappProfile(formData: FormData) {
       })
       .eq("id", locationId);
 
-    revalidatePath("/compliance");
-    revalidatePath("/home");
-    return { success: true };
+    revalidatePath(PATHS.COMPLIANCE);
+    revalidatePath(PATHS.HOME);
+    return ok();
   } catch (error: any) {
     console.error("Update Branding Error:", error);
-    return { success: false, error: error.message };
+    return fail(error.message);
   }
 }

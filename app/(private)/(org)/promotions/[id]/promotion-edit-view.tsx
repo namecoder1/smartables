@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,9 +24,6 @@ import {
   Plus,
   X,
   Percent,
-  DollarSign,
-  Package,
-  UtensilsCrossed,
   Repeat,
   Bell,
   Layers,
@@ -38,24 +34,18 @@ import {
   Calendar,
 } from 'lucide-react'
 import { TbRosetteDiscount } from 'react-icons/tb'
-import {
-  Promotion,
-  PromotionType,
-  PromotionItemTargetType,
-  PromotionItemRole,
-  Location,
-  Menu,
-  MenuCategory,
-  MenuItem,
-} from '@/types/general'
-import { createPromotion, updatePromotion, deletePromotion } from '../actions'
-import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { MenuCategory } from '@/types/general'
 import PageWrapper from '@/components/private/page-wrapper'
 import { NumberInput } from '@/components/ui/number-input'
+import {
+  PROMO_TYPES,
+  VALUE_LABELS,
+  TARGET_TYPES,
+  type PromotionEditViewProps,
+} from './_components/promotion-types'
+import { usePromotionForm } from './_components/use-promotion-form'
 import { ImageUpload } from '@/components/private/image-upload'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
-import { createClient } from '@/utils/supabase/client'
 
 // ----- Helpers -----
 
@@ -70,289 +60,39 @@ const SectionHeader = ({ icon, title, subtitle }: { icon: React.ReactNode; title
   </CardHeader>
 )
 
-// ----- Constants -----
-
-interface PromotionEditViewProps {
-  promotion: Promotion | null
-  locations: Location[]
-  menus: Menu[]
-  organizationId: string
-  isNew: boolean
-}
-
-type EditableItem = {
-  _key: string
-  target_type: PromotionItemTargetType
-  target_ref: string | null
-  role: PromotionItemRole
-  override_value: number | null
-  override_type: string | null
-}
-
-const PROMO_TYPES: { value: PromotionType; label: string; icon: React.ReactNode; example: string }[] = [
-  {
-    value: 'percentage',
-    label: 'Percentuale',
-    icon: <Percent className="w-5 h-5" />,
-    example: 'Es: -20% su tutti i primi piatti',
-  },
-  {
-    value: 'fixed_amount',
-    label: 'Importo fisso',
-    icon: <DollarSign className="w-5 h-5" />,
-    example: 'Es: -5€ sulla pizza',
-  },
-  {
-    value: 'bundle',
-    label: 'Bundle / Combo',
-    icon: <Package className="w-5 h-5" />,
-    example: 'Es: Primo + secondo + dolce a 25€',
-  },
-  {
-    value: 'cover_override',
-    label: 'Coperto',
-    icon: <UtensilsCrossed className="w-5 h-5" />,
-    example: 'Es: Coperto gratuito o a prezzo ridotto',
-  },
-]
-
-const VALUE_LABELS: Record<PromotionType, { label: string; placeholder: string; hint: string }> = {
-  percentage: {
-    label: 'Percentuale di sconto',
-    placeholder: '10',
-    hint: 'Inserisci solo il numero. Es: 10 = sconto del 10%.',
-  },
-  fixed_amount: {
-    label: 'Importo sconto (€)',
-    placeholder: '5',
-    hint: 'Importo in euro che verrà sottratto dal prezzo. Es: 5 = -5€.',
-  },
-  bundle: {
-    label: 'Prezzo fisso del bundle (€)',
-    placeholder: '25',
-    hint: 'Il prezzo totale del pacchetto promozionale. I clienti pagheranno questa cifra per tutti gli elementi inclusi.',
-  },
-  cover_override: {
-    label: 'Nuovo prezzo coperto (€)',
-    placeholder: '0',
-    hint: 'Imposta a 0 per coperto gratuito, oppure il nuovo prezzo del coperto durante la promozione.',
-  },
-}
-
-const TARGET_TYPES: { value: PromotionItemTargetType; label: string; hint: string }[] = [
-  { value: 'menu_item', label: 'Piatto singolo', hint: 'Un piatto specifico dal menù' },
-  { value: 'category', label: 'Categoria', hint: 'Tutti i piatti di una categoria (es: Primi, Dolci)' },
-  { value: 'full_menu', label: 'Menu intero', hint: 'Lo sconto si applica a tutto il menù' },
-  { value: 'cover', label: 'Coperto', hint: 'Modifica il prezzo del coperto' },
-]
-
 // ----- Component -----
 
 const PromotionEditView = ({ promotion, locations, menus, organizationId, isNew }: PromotionEditViewProps) => {
-  const router = useRouter()
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-
-  // Form state
-  const [name, setName] = useState(promotion?.name || '')
-  const [description, setDescription] = useState(promotion?.description || '')
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(promotion?.image_url || null)
-  const [type, setType] = useState<PromotionType>(promotion?.type || 'percentage')
-  const [value, setValue] = useState<number | undefined>(promotion?.value ?? undefined)
-  const [allLocations, setAllLocations] = useState(promotion?.all_locations ?? true)
-  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>(
-    promotion?.promotion_locations?.map((pl) => pl.location_id) || []
-  )
-  const [allMenus, setAllMenus] = useState(promotion?.all_menus ?? true)
-  const [selectedMenuIds, setSelectedMenuIds] = useState<string[]>(
-    promotion?.promotion_menus?.map((pm) => pm.menu_id) || []
-  )
-  const [startsAt, setStartsAt] = useState<Date | undefined>(
-    promotion?.starts_at ? new Date(promotion.starts_at) : undefined
-  )
-  const [endsAt, setEndsAt] = useState<Date | undefined>(
-    promotion?.ends_at ? new Date(promotion.ends_at) : undefined
-  )
-  const [visitThreshold, setVisitThreshold] = useState<number | undefined>(promotion?.visit_threshold ?? undefined)
-  const [isActive, setIsActive] = useState(promotion?.is_active ?? true)
-  const [priority, setPriority] = useState<number | undefined>(promotion?.priority ?? 0)
-  const [stackable, setStackable] = useState(promotion?.stackable ?? false)
-  const [notifyWhatsapp, setNotifyWhatsapp] = useState(promotion?.notify_via_whatsapp ?? false)
-
-  // Computed: extract all categories and items from menus for selectors
-  const allCategories = useMemo(() => {
-    const cats: { id: string; name: string; menuName: string }[] = []
-    menus.forEach((menu) => {
-      const content = (menu.content || []) as MenuCategory[]
-      content.forEach((cat) => {
-        cats.push({ id: cat.id, name: cat.name, menuName: menu.name })
-      })
-    })
-    return cats
-  }, [menus])
-
-  const allMenuItems = useMemo(() => {
-    const items: { id: string; name: string; price: number; categoryName: string; menuName: string }[] = []
-    menus.forEach((menu) => {
-      const content = (menu.content || []) as MenuCategory[]
-      content.forEach((cat) => {
-        (cat.items || []).forEach((item) => {
-          items.push({ id: item.id, name: item.name, price: item.price, categoryName: cat.name, menuName: menu.name })
-        })
-      })
-    })
-    return items
-  }, [menus])
-
-  // Items
-  const [items, setItems] = useState<EditableItem[]>(
-    promotion?.promotion_items?.map((item) => ({
-      _key: item.id,
-      target_type: item.target_type,
-      target_ref: item.target_ref,
-      role: item.role,
-      override_value: item.override_value,
-      override_type: item.override_type,
-    })) || []
-  )
-
-  const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        _key: crypto.randomUUID(),
-        target_type: 'menu_item',
-        target_ref: '',
-        role: 'target',
-        override_value: null,
-        override_type: null,
-      },
-    ])
-  }
-
-  const removeItem = (key: string) => {
-    setItems((prev) => prev.filter((i) => i._key !== key))
-  }
-
-  const updateItem = (key: string, field: string, val: any) => {
-    setItems((prev) =>
-      prev.map((i) => (i._key === key ? { ...i, [field]: val } : i))
-    )
-  }
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      toast.error('Il nome della promozione è obbligatorio')
-      return
-    }
-
-    setSaving(true)
-    try {
-      // Handle image upload to storage bucket
-      let finalImageUrl: string | null = promotion?.image_url || null
-      const supabase = createClient()
-
-      if (imageFile) {
-        const timestamp = Date.now()
-        const cleanName = imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_')
-        const filePath = `${organizationId}/${timestamp}-${cleanName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('promotion-images')
-          .upload(filePath, imageFile)
-
-        if (uploadError) {
-          console.error(uploadError)
-          toast.error("Errore durante il caricamento dell'immagine")
-          setSaving(false)
-          return
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('promotion-images')
-          .getPublicUrl(filePath)
-
-        finalImageUrl = publicUrl
-      } else if (!imagePreview && promotion?.image_url) {
-        // Image was removed
-        try {
-          const url = new URL(promotion.image_url)
-          const pathParts = url.pathname.split('promotion-images/')
-          if (pathParts.length > 1) {
-            const filePath = pathParts[1]
-            if (filePath.includes(organizationId)) {
-              await supabase.storage.from('promotion-images').remove([decodeURIComponent(filePath)])
-            }
-          }
-        } catch (err) {
-          console.error('Error deleting old image:', err)
-        }
-        finalImageUrl = null
-      }
-
-      const payload = {
-        name,
-        description: description || undefined,
-        image_url: finalImageUrl || undefined,
-        type,
-        value: value ?? null,
-        all_locations: allLocations,
-        all_menus: allMenus,
-        starts_at: startsAt ? startsAt.toISOString() : null,
-        ends_at: endsAt ? endsAt.toISOString() : null,
-        visit_threshold: visitThreshold ?? null,
-        is_active: isActive,
-        priority: priority ?? 0,
-        stackable,
-        notify_via_whatsapp: notifyWhatsapp,
-        location_ids: allLocations ? [] : selectedLocationIds,
-        menu_ids: allMenus ? [] : selectedMenuIds,
-        items: items.map(({ _key, ...rest }) => ({
-          ...rest,
-          target_ref: rest.target_ref || null,
-        })),
-      }
-
-      let result
-      if (isNew) {
-        result = await createPromotion(organizationId, payload)
-      } else {
-        result = await updatePromotion(promotion!.id, payload)
-      }
-
-      if (result.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(isNew ? 'Promozione creata con successo!' : 'Promozione aggiornata')
-        router.push('/promotions')
-        router.refresh()
-      }
-    } catch {
-      toast.error('Errore durante il salvataggio')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!promotion) return
-    setDeleting(true)
-    try {
-      const result = await deletePromotion(promotion.id)
-      if (result.error) {
-        toast.error("Errore nell'eliminazione")
-      } else {
-        toast.success('Promozione eliminata')
-        router.push('/promotions')
-        router.refresh()
-      }
-    } catch {
-      toast.error("Errore nell'eliminazione")
-    } finally {
-      setDeleting(false)
-    }
-  }
+  const {
+    name, setName,
+    description, setDescription,
+    imageFile, setImageFile,
+    imagePreview, setImagePreview,
+    type, setType,
+    value, setValue,
+    allLocations, setAllLocations,
+    selectedLocationIds, setSelectedLocationIds,
+    allMenus, setAllMenus,
+    selectedMenuIds, setSelectedMenuIds,
+    startsAt, setStartsAt,
+    endsAt, setEndsAt,
+    visitThreshold, setVisitThreshold,
+    isActive, setIsActive,
+    priority, setPriority,
+    stackable, setStackable,
+    notifyWhatsapp, setNotifyWhatsapp,
+    items,
+    addItem,
+    removeItem,
+    updateItem,
+    allCategories,
+    allMenuItems,
+    saving,
+    deleting,
+    handleSave,
+    handleDelete,
+    router,
+  } = usePromotionForm({ promotion, menus, organizationId, isNew })
 
   const currentValueConfig = VALUE_LABELS[type]
   const selectedPromoType = PROMO_TYPES.find((pt) => pt.value === type)

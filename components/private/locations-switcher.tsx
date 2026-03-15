@@ -37,8 +37,6 @@ export const LocationsSwitcher = () => {
   // Safety check
   if (!activeLocation) return null
 
-  console.log(activeLocation.branding?.logo_url)
-
   return (
     <SidebarMenuItem>
       <Popover>

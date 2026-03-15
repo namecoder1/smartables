@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Plus, Trash, Edit, Globe, MoreVertical, GripVertical, UtensilsCrossed } from 'lucide-react'
 import { toast } from 'sonner'
-import { deleteMenu, deleteCategory } from '@/app/actions/settings'
+import { deleteMenu } from '@/app/actions/menus'
+import { deleteCategory } from '@/app/actions/menu-editor'
 import { Badge } from '@/components/ui/badge'
 import Image from 'next/image'
 import { Separator } from '@/components/ui/separator'
@@ -23,6 +24,7 @@ import GroupedActions from '@/components/utility/grouped-actions'
 import NoItems from '@/components/utility/no-items'
 import ConfirmDialog from '@/components/utility/confirm-dialog'
 import SetPageTitle from '@/components/private/set-page-title'
+import { ButtonGroup } from '@/components/ui/button-group'
 
 interface MenuEditorProps {
   menu: any
@@ -158,17 +160,12 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                 },
                 {
                   label: 'Elimina Menu',
-                  icon: <Trash className='group-hover:text-red-500 dark:group-hover:text-white/80' />,
+                  icon: <Trash className='group-hover:text-red-500!' />,
                   action: handleDeleteMenu,
                   variant: 'destructive'
                 }
               ]}
             />
-
-            <Button size="sm" onClick={openNewCategory}>
-              <Plus className="w-4 h-4" />
-              Categoria
-            </Button>
           </div>
         </div>
       </div>
@@ -212,13 +209,15 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                         )}
                       </div>
 
-                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => openEditCategory(category)} className="h-8 w-8 p-0">
-                          <Edit className="w-4 h-4 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteCategory(category.id)} className="h-8 w-8 p-0 hover:text-red-600">
-                          <Trash className="w-4 h-4" />
-                        </Button>
+                      <div className="flex items-center transition-opacity">
+                        <ButtonGroup>
+                          <Button variant="outline" size="sm" onClick={() => openEditCategory(category)} className="h-8 w-8 p-0">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteCategory(category.id)} className="h-8 w-8 p-0 hover:text-red-600">
+                            <Trash className="w-4 h-4" />
+                          </Button>
+                        </ButtonGroup>
                       </div>
                     </div>
 
@@ -227,7 +226,7 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                       {category.items?.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((item: any) => (
                         <div
                           key={item.id}
-                          className="group relative flex flex-col bg-card rounded-xl border-2 shadow-sm hover:shadow-md hover:border-input transition-all cursor-pointer overflow-hidden"
+                          className="group relative flex flex-col bg-card rounded-3xl border-2 shadow-sm hover:shadow-md hover:border-input transition-all cursor-pointer overflow-hidden"
                           onClick={() => openEditItem(item.id, category.id)}
                         >
                           {/* Image Aspect Ratio Container 16:9 or 4:3 */}
@@ -273,12 +272,12 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
                       {/* Add Item Button (Card Style) */}
                       <button
                         onClick={() => openNewItem(category.id)}
-                        className="flex flex-col items-center justify-center min-h-[250px] bg-card border-2 border-dashed border-border rounded-xl hover:bg-input/30 hover:border-border transition-all gap-3 group"
+                        className="flex flex-col items-center justify-center min-h-62.5 bg-card border-2 border-dashed border-border rounded-3xl cursor-pointer hover:border-border transition-all gap-3 group"
                       >
                         <div className="w-12 h-12 bg-background/20 rounded-full flex items-center justify-center shadow-sm border border-border group-hover:scale-110 transition-transform">
                           <Plus className="w-6 h-6 text-primary" />
                         </div>
-                        <span className="text-sm font-medium text-foreground">Aggiungi Piatto</span>
+                        <span className="text-sm font-medium text-foreground">Aggiungi prodotto</span>
                       </button>
                     </div>
                     {/* <Separator className="my-8 opacity-50" /> */}
@@ -295,7 +294,7 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
           <div className="sticky bottom-6 left-0 right-0 flex justify-center pointer-events-none z-20">
             <Button size='lg' onClick={openNewCategory} className="pointer-events-auto shadow-lg shadow-blue-900/10 rounded-full px-6">
               <Plus className="w-5 h-5 mr-2" />
-              Nuova Categoria
+              Nuova categoria
             </Button>
           </div>
         )

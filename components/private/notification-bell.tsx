@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bell, Phone, ExternalLink } from "lucide-react";
+import { Bell, Phone, ExternalLink, ShoppingBag, Calendar, Users, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,13 +9,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import type { Notification } from "@/types/general";
 
 interface NotificationBellProps {
+  notifications: Notification[];
   pendingCallbacks: number;
 }
 
-export function NotificationBell({ pendingCallbacks }: NotificationBellProps) {
-  const totalCount = pendingCallbacks;
+const NOTIFICATION_ICONS = {
+  new_booking: { Icon: Calendar, color: "text-blue-500", bg: "bg-blue-500/10" },
+  new_customer: { Icon: Users, color: "text-green-500", bg: "bg-green-500/10" },
+  new_order: { Icon: ShoppingBag, color: "text-purple-500", bg: "bg-purple-500/10" },
+  whatsapp_limit_warning: { Icon: AlertTriangle, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+} as const;
+
+export function NotificationBell({ notifications, pendingCallbacks }: NotificationBellProps) {
+  const totalCount = notifications.length + pendingCallbacks;
 
   return (
     <DropdownMenu>
@@ -31,7 +39,7 @@ export function NotificationBell({ pendingCallbacks }: NotificationBellProps) {
           </span>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
+      <DropdownMenuContent align="end" className="w-80">
         <div className="px-3 py-2">
           <p className="text-sm font-semibold">Notifiche</p>
         </div>
@@ -40,9 +48,7 @@ export function NotificationBell({ pendingCallbacks }: NotificationBellProps) {
         {totalCount === 0 ? (
           <div className="px-3 py-6 text-center">
             <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Nessuna notifica
-            </p>
+            <p className="text-sm text-muted-foreground">Nessuna notifica</p>
           </div>
         ) : (
           <>
@@ -59,9 +65,7 @@ export function NotificationBell({ pendingCallbacks }: NotificationBellProps) {
                     <p className="text-sm font-medium">Da richiamare</p>
                     <p className="text-xs text-muted-foreground">
                       {pendingCallbacks}{" "}
-                      {pendingCallbacks === 1
-                        ? "richiesta"
-                        : "richieste"}{" "}
+                      {pendingCallbacks === 1 ? "richiesta" : "richieste"}{" "}
                       in attesa
                     </p>
                   </div>
@@ -69,6 +73,32 @@ export function NotificationBell({ pendingCallbacks }: NotificationBellProps) {
                 </Link>
               </DropdownMenuItem>
             )}
+
+            {notifications.map((notif) => {
+              const config = NOTIFICATION_ICONS[notif.type] ?? NOTIFICATION_ICONS.new_booking;
+              const { Icon, color, bg } = config;
+              return (
+                <DropdownMenuItem key={notif.id} asChild>
+                  <Link
+                    href={notif.link ?? "#"}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    <div className={`p-1.5 ${bg} rounded-lg shrink-0`}>
+                      <Icon className={`h-4 w-4 ${color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{notif.title}</p>
+                      {notif.body && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {notif.body}
+                        </p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })}
           </>
         )}
       </DropdownMenuContent>

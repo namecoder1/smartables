@@ -72,7 +72,7 @@ export function DateNavigator({ date, setDate, variant }: DateNavigatorProps) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 bg-card p-2 pr-3 rounded-t-3xl border-2 border-b-0">
+    <div className="flex items-center bg-[#ffffff] justify-between gap-2  p-2 pr-3 rounded-t-3xl border-2 border-b-0">
       <div className="border-2 p-1 rounded-xl bg-muted/50 gap-1 flex items-center">
         <Button
           variant="outline"

@@ -8,13 +8,14 @@ import { Separator } from "@/components/ui/separator"
 
 import PasswordStrength, { isPasswordValid } from "@/components/utility/password-strength"
 import { createClient } from "@/utils/supabase/client"
+import type { User } from "@supabase/supabase-js"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 export default function AcceptInvitePage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
@@ -153,8 +154,8 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#e9e9e9] dark:bg-[#262626]">
-      <Card className="w-full max-w-md rounded-xl shadow-sm border-2">
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#e9e9e9]">
+      <Card className="w-full max-w-md rounded-xl shadow-sm border-2 gap-2">
         <CardHeader>
           <img
             className="mx-auto h-12 w-auto"
@@ -164,7 +165,7 @@ export default function AcceptInvitePage() {
           <h2 className="mt-2 text-center text-3xl tracking-tighter font-extrabold text-gray-900">
             Benvenuto in Smartables
           </h2>
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-muted-foreground">
             Completa il tuo profilo per iniziare
           </p>
         </CardHeader>

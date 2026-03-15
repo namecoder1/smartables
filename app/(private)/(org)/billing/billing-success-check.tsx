@@ -8,9 +8,11 @@ import { toast } from 'sonner' // Assuming sonner is used for toasts based on ot
 
 interface Props {
   initialPriceId?: string
+  title?: string
+  description?: string
 }
 
-export function BillingSuccessCheck({ initialPriceId }: Props) {
+export function BillingSuccessCheck({ initialPriceId, title, description }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isChecking, setIsChecking] = useState(false)
@@ -23,7 +25,9 @@ export function BillingSuccessCheck({ initialPriceId }: Props) {
 
       const interval = setInterval(async () => {
         try {
-          const { priceId, status } = await checkSubscriptionStatus()
+          const result = await checkSubscriptionStatus()
+          const priceId = result.success ? result.data.priceId : null
+          const status = result.success ? result.data.status : null
 
           // If the price ID has changed or if we initiated a checkout but had no plan before
           // We consider it a success if the status is active or trialing
@@ -66,9 +70,9 @@ export function BillingSuccessCheck({ initialPriceId }: Props) {
           <Loader2 className="h-6 w-6 text-primary animate-spin" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Attivazione in corso...</h3>
+          <h3 className="text-lg font-semibold text-black">{title || "Attivazione in corso..."}</h3>
           <p className="text-muted-foreground text-sm">
-            Stiamo confermando il tuo abbonamento. Potrebbe richiedere qualche secondo.
+            {description || "Stiamo confermando il tuo abbonamento. Potrebbe richiedere qualche secondo."}
           </p>
         </div>
       </div>

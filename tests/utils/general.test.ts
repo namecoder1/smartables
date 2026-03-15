@@ -59,8 +59,9 @@ describe("lib/utils", () => {
       expect(formatPhoneNumber("391234567890")).toBe("+39 123 456 7890");
     });
 
-    it("formats a number longer than 10 digits not starting with 3", () => {
-      expect(formatPhoneNumber("441234567890")).toBe("+44 1234567890");
+    it("returns unchanged for a number not starting with 3", () => {
+      // formatPhoneNumber only handles Italian (3xx) numbers; other formats are returned as-is
+      expect(formatPhoneNumber("441234567890")).toBe("441234567890");
     });
 
     it("returns original for unknown short format", () => {

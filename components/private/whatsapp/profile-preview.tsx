@@ -36,15 +36,15 @@ export function WhatsAppProfilePreview({
 
   return (
     <Tabs defaultValue="ios" className="w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-2 px-4 shrink-0">
+      <div className="flex items-center border-b-2 pb-3 justify-between mb-2 px-4 shrink-0">
         <h3 className="font-semibold text-lg tracking-tight">Anteprima</h3>
-        <TabsList className="p-0.5 h-10">
+        <TabsList className="p-0.5 h-10 bg-white">
           <TabsTrigger value="ios" className="text-xs">iOS</TabsTrigger>
           <TabsTrigger value="android" className="text-xs">Android</TabsTrigger>
         </TabsList>
       </div>
 
-      <TabsContent value="ios" className="m-0 mb-4 mx-4 focus-visible:outline-none flex-1 min-h-0 data-[state=active]:flex flex-col">
+      <TabsContent value="ios" className="m-0 mb-6 mx-6 focus-visible:outline-none flex-1 min-h-0 data-[state=active]:flex flex-col">
         <div className="w-full max-w-sm mx-auto h-full bg-gray-100 rounded-[2.5rem] border-8 border-zinc-200 shadow-xl relative font-sans text-gray-900 overflow-y-auto">
           <div className="bg-white pt-6 pb-6 px-4 flex flex-col items-center">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 mb-4 shadow-sm relative">
@@ -110,7 +110,7 @@ export function WhatsAppProfilePreview({
         </div>
       </TabsContent>
 
-      <TabsContent value="android" className="m-0 mb-4 mx-4 focus-visible:outline-none flex-1 min-h-0 data-[state=active]:flex flex-col">
+      <TabsContent value="android" className="m-0 mb-6 mx-6 focus-visible:outline-none flex-1 min-h-0 data-[state=active]:flex flex-col">
         <div className="w-full max-w-sm mx-auto bg-[#0b141a] text-white rounded-[2.5rem] border-8 border-zinc-800 shadow-xl relative font-sans overflow-x-hidden overflow-y-auto h-full">
 
           <div className="bg-[#202c33] pt-6 pb-6 px-4 flex flex-col items-center relative shadow-sm">

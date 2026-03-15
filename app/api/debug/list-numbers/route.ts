@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.META_SYSTEM_USER_TOKEN;
   const wabaId = process.env.WHATSAPP_BUSINESS_ACCOUNT_ID;
 
   if (!token || !wabaId) {

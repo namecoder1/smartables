@@ -1,219 +1,123 @@
-"use server";
+'use server'
 
-import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from '@/lib/supabase-helpers'
+import { subDays, subMonths } from 'date-fns'
+import { findPlanByPriceId } from '@/lib/plans'
+import { getAnalyticsFeatures } from '@/lib/analytics/config'
 import {
-  subMonths,
-  format,
-  subDays,
-  startOfDay,
-  endOfDay,
-  parseISO,
-} from "date-fns";
+  calcBookingSources,
+  calcHottestDays,
+  calcHottestHours,
+  calcWeeklyTrend,
+  calcLongTermTrend,
+  calcFullPeriodStats,
+  calcCustomerMetrics,
+  calcWhatsAppStats,
+  calcAverageCovers,
+  calcGroupSizeDistribution,
+} from '@/lib/analytics/calculations'
+import {
+  queryBookings,
+  queryOrders,
+  queryCustomers,
+  queryWhatsAppMessages,
+  queryOrganizationUsage,
+} from '@/lib/analytics/queries'
 
-export async function getAnalyticsData() {
-  const supabase = await createClient();
+export async function getAnalyticsData(from?: string, to?: string) {
+  const auth = await requireAuth()
+  if (!auth.success) return null
+  const { supabase, organizationId } = auth
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Org usage & plan info — single fetch, used for plan detection + WA stats
+  const orgUsage = await queryOrganizationUsage(organizationId)
+  const currentPlan = findPlanByPriceId(orgUsage?.stripe_price_id || '')
+  const planId = currentPlan?.id || 'starter'
+  const hasAnalyticsAddon = ((orgUsage as any)?.addons_config?.extra_analytics ?? 0) > 0
+  const features = getAnalyticsFeatures(planId, hasAnalyticsAddon)
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
+  const now = new Date()
+  const toDate = to ? new Date(to) : now
+  const fromDate = from ? new Date(from) : subDays(now, 30)
 
-  if (!profile?.organization_id) return null;
-  const organizationId = profile.organization_id;
+  // For period comparison we fetch an extended range (double period) to compute prev period
+  const diffDays = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)))
+  const extendedFrom = features.periodComparison ? subDays(fromDate, diffDays) : fromDate
 
-  // 1. Booking Sources (All Time)
-  const { data: sourcesData, error: sourcesError } = await supabase
-    .from("bookings")
-    .select("source")
-    .eq("organization_id", organizationId);
+  // Parallel fetches: all-time bookings + period bookings (with optional extended range)
+  const [allBookings, periodBookings] = await Promise.all([
+    queryBookings(organizationId),                    // all-time (no date filter)
+    queryBookings(organizationId, extendedFrom, toDate), // period (+ prev if needed)
+  ])
 
-  if (sourcesError) console.error("Error fetching sources:", sourcesError);
+  // Conditional fetches based on plan
+  const [orders, customers, waMessages] = await Promise.all([
+    features.periodComparison
+      ? queryOrders(organizationId, extendedFrom, toDate)
+      : Promise.resolve([]),
+    features.customerMetrics
+      ? queryCustomers(organizationId)
+      : Promise.resolve([]),
+    features.whatsappDetailedAnalytics
+      ? queryWhatsAppMessages(organizationId, fromDate, toDate)
+      : Promise.resolve([]),
+  ])
 
-  const sources = sourcesData ? transformToSourceCounts(sourcesData) : [];
+  // --- Calculations ---
+  const sources = calcBookingSources(allBookings)
+  const weeklyTrends = calcWeeklyTrend(periodBookings)
 
-  // 2. Hottest Days & Hours (Based on booking_time for accuracy of "when ppl come")
-  const { data: hottestData, error: hottestError } = await supabase
-    .from("bookings")
-    .select("booking_time")
-    .eq("organization_id", organizationId)
-    .eq("status", "arrived"); // Only count arrived or confirmed? Let's use all valid bookings for planning.
-  // actually, let's use all bookings that are not cancelled or no_show for planning purposes?
-  // User asked for "afflusso", "coperti medi". usually implies actual visits.
-  // Let's filter by status valid for analytics: arrived, confirmed.
-  // .in("status", ["confirmed", "arrived"])
+  const arrivedBookings = allBookings.filter(b => b.status === 'arrived')
+  const hottestDays = features.rushHours ? calcHottestDays(arrivedBookings) : []
+  const hottestHours = features.rushHours ? calcHottestHours(arrivedBookings) : []
+  const groupDistribution = features.groupDistribution ? calcGroupSizeDistribution(allBookings) : []
 
-  if (hottestError) console.error("Error fetching hottest data:", hottestError);
+  const threeMonthsAgo = subMonths(now, 3)
+  const longTermBookings = allBookings.filter(b => new Date(b.booking_time) >= threeMonthsAgo)
+  const longTermTrends = features.longTermTrends ? calcLongTermTrend(longTermBookings) : []
 
-  const { hottestDays, hottestHours } = hottestData
-    ? transformToHottest(hottestData)
-    : { hottestDays: [], hottestHours: [] };
+  const periodStats = features.periodComparison
+    ? calcFullPeriodStats({ bookings: periodBookings, orders, from: fromDate, to: toDate })
+    : null
 
-  // 3. Weekly Trends (Last 7 days creation trend - good for sales activity)
-  const today = new Date();
-  const sevenDaysAgo = subDays(today, 7);
-  const { data: weeklyData, error: weeklyError } = await supabase
-    .from("bookings")
-    .select("created_at")
-    .eq("organization_id", organizationId)
-    .gte("created_at", sevenDaysAgo.toISOString());
+  const customerMetrics = features.customerMetrics
+    ? calcCustomerMetrics(customers)
+    : null
 
-  if (weeklyError) console.error("Error fetching weekly trends:", weeklyError);
-  const weeklyTrends = weeklyData ? transformToWeeklyTrends(weeklyData) : [];
+  const whatsAppStats =
+    features.whatsappUsageMeter && orgUsage
+      ? calcWhatsAppStats(
+          orgUsage.whatsapp_usage_count || 0,
+          orgUsage.usage_cap_whatsapp || 0,
+          orgUsage.current_billing_cycle_start ?? null,
+          waMessages,
+        )
+      : null
 
-  // 4. Long Term Trends (Visits/Bookings trend over last 3 months)
-  const threeMonthsAgo = subMonths(today, 3);
-  const { data: longTermData, error: longTermError } = await supabase
-    .from("bookings")
-    .select("booking_time")
-    .eq("organization_id", organizationId)
-    .gte("booking_time", threeMonthsAgo.toISOString());
-  // .neq('status', 'cancelled'); // Exclude cancelled
-
-  if (longTermError)
-    console.error("Error fetching long term trends:", longTermError);
-  const longTermTrends = longTermData
-    ? transformToLongTermTrends(longTermData)
-    : [];
-
-  // 5. Total Bookings (All time)
-  const { count: totalBookings, error: totalError } = await supabase
-    .from("bookings")
-    .select("*", { count: "exact", head: true })
-    .eq("organization_id", organizationId);
-
-  // 6. Average Covers (Based on guests_count of arrived/confirmed bookings)
-  const { data: coversData, error: coversError } = await supabase
-    .from("bookings")
-    .select("guests_count")
-    .eq("organization_id", organizationId)
-    .neq("status", "cancelled")
-    .neq("status", "no_show");
-
-  let averageCovers = 0;
-  if (coversData && coversData.length > 0) {
-    const totalGuests = coversData.reduce(
-      (acc, curr) => acc + (curr.guests_count || 0),
-      0,
-    );
-    averageCovers = Math.round((totalGuests / coversData.length) * 10) / 10;
-  }
+  const totalBookings = allBookings.length
+  const averageCovers = features.averageCovers ? calcAverageCovers(allBookings) : null
+  const totalCustomers = features.customerMetrics ? customers.length : null
 
   return {
+    planId,
+    features,
+    hasAnalyticsAddon,
+    from: fromDate.toISOString(),
+    to: toDate.toISOString(),
+    // Core — all plans
     sources,
+    weeklyTrends,
+    totalBookings,
+    whatsAppStats,
+    // Growth+
+    periodStats,
     hottestDays,
     hottestHours,
-    weeklyTrends,
-    longTermTrends,
-    totalBookings: totalBookings || 0,
+    groupDistribution,
     averageCovers,
-  };
-}
-
-function transformToSourceCounts(data: any[]) {
-  const counts = data.reduce(
-    (acc: Record<string, number>, curr) => {
-      const source = curr.source || "Sconosciuto";
-      acc[source] = (acc[source] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-
-  return Object.entries(counts).map(([source, count]) => ({
-    source: formatSourceName(source),
-    value: count,
-  }));
-}
-
-function formatSourceName(source: string) {
-  const map: Record<string, string> = {
-    whatsapp_auto: "WhatsApp Auto",
-    manual: "Manuale",
-    web: "Sito Web",
-    phone: "Telefono",
-  };
-  return map[source] || source;
-}
-
-function transformToHottest(data: any[]) {
-  const days = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-  const dayCounts = new Array(7).fill(0);
-  const hourCounts = new Array(24).fill(0);
-
-  data.forEach((booking) => {
-    // using booking_time
-    const date = new Date(booking.booking_time);
-    dayCounts[date.getDay()]++;
-    hourCounts[date.getHours()]++;
-  });
-
-  const hottestDays = days.map((day, index) => ({
-    day,
-    bookings: dayCounts[index],
-  }));
-
-  const hottestHours = hourCounts.map((count, hour) => ({
-    hour: `${hour}:00`,
-    bookings: count,
-  }));
-
-  // Filter out hours with 0 bookings to keep chart clean?
-  // Maybe just keep range 10-24 usually restaurants aren't open at 3AM.
-  // But let's keep it generic.
-
-  return { hottestDays, hottestHours };
-}
-
-function transformToWeeklyTrends(data: any[]) {
-  // Group by date (DD-MM)
-  const trends: Record<string, number> = {};
-
-  // Initialize last 7 days
-  for (let i = 6; i >= 0; i--) {
-    const d = subDays(new Date(), i);
-    // Format as Short Day Name (e.g., Mon, Tue)
-    const key = format(d, "EEE");
-    trends[key] = 0;
+    totalCustomers,
+    // Business
+    longTermTrends,
+    customerMetrics,
   }
-
-  data.forEach((booking) => {
-    const date = new Date(booking.created_at);
-    const key = format(date, "EEE");
-    if (trends[key] !== undefined) {
-      trends[key]++;
-    }
-  });
-
-  return Object.entries(trends).map(([date, count]) => ({
-    date,
-    visitors: count,
-  }));
-}
-
-function transformToLongTermTrends(data: any[]) {
-  // Daily aggregation for the area chart
-  const daily: Record<string, number> = {};
-
-  // Sort data by date first to ensure order
-  data.sort(
-    (a, b) =>
-      new Date(a.booking_time).getTime() - new Date(b.booking_time).getTime(),
-  );
-
-  data.forEach((booking) => {
-    const date = new Date(booking.booking_time);
-    const key = format(date, "MMM dd");
-    daily[key] = (daily[key] || 0) + 1;
-  });
-
-  return Object.entries(daily).map(([date, count]) => ({
-    date,
-    visitors: count,
-  }));
 }

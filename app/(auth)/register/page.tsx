@@ -42,7 +42,7 @@ function RegisterContent() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
-            className="w-full max-w-7xl mx-auto bg-white/50 dark:bg-black/50 p-6 rounded-3xl shadow-2xl border border-white/20 my-auto"
+            className="w-full max-w-7xl mx-auto bg-white/50 p-6 rounded-3xl shadow-2xl border-2 my-auto"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -70,7 +70,7 @@ function RegisterContent() {
               <Switch
                 checked={isAnnual}
                 onCheckedChange={setIsAnnual}
-                className='dark:data-[state=unchecked]:bg-neutral-800! data-[state=unchecked]:bg-neutral-200!'
+                className='data-[state=unchecked]:bg-neutral-200!'
               />
               <Label
                 onClick={() => setIsAnnual(true)}
@@ -83,7 +83,7 @@ function RegisterContent() {
               </Label>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {PLANS.map((planItem, index) => (
                 <motion.div
                   key={planItem.id}

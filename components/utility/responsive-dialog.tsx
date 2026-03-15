@@ -44,7 +44,7 @@ export function ResponsiveDialog({
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className={cn("sm:max-w-[425px]", className)}>
+        <DialogContent className={cn("sm:max-w-106.25", className)}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             {description && (
@@ -61,8 +61,8 @@ export function ResponsiveDialog({
 
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent className="pb-4 max-h-[96vh]">
-        <DrawerHeader className="text-left">
+      <DrawerContent className="max-h-[96vh]">
+        <DrawerHeader className="text-left items-start border-b-2 ">
           <DrawerTitle>{title}</DrawerTitle>
           {description && (
             <DrawerDescription>
@@ -70,7 +70,7 @@ export function ResponsiveDialog({
             </DrawerDescription>
           )}
         </DrawerHeader>
-        <ScrollArea className="px-4 overflow-y-auto">
+        <ScrollArea className="px-4 overflow-y-auto pt-6 pb-4">
           {children}
         </ScrollArea>
       </DrawerContent>

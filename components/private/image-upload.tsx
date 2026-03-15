@@ -66,14 +66,13 @@ export function ImageUpload({
   return (
     <div className={`w-full ${className}`}>
       <div className='flex items-center justify-between'>
-        <Label htmlFor='image-upload' className="mb-1 flex items-center gap-2">
-          <ImageIcon className="w-4 h-4" />
+        <Label htmlFor='image-upload' className="mb-1 font-semibold">
           {title}
         </Label>
       </div>
       <div className="flex flex-col-reverse items-end gap-1">
         {previewUrl ? (
-          <div className={`relative aspect-${aspect} w-full h-40 overflow-hidden rounded-xl border bg-muted/60`}>
+          <div className={`relative aspect-${aspect} w-full h-40 overflow-hidden rounded-xl border-2 bg-muted/60`}>
             <Image
               src={previewUrl}
               alt="Upload"
@@ -99,7 +98,7 @@ export function ImageUpload({
         ) : (
           <div
             onClick={() => !disabled && fileInputRef.current?.click()}
-            className={`flex flex-col rounded-xl items-center justify-center aspect-video w-full py-4 h-40 border border-dashed bg-background dark:bg-input/30 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+            className={`flex flex-col rounded-xl items-center justify-center aspect-video w-full py-4 h-40 border-2 border-dashed bg-background dark:bg-input/30 transition-colors ${!disabled ? 'hover:bg-muted cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
           >
             <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
             <span className="text-xs text-muted-foreground">Clicca e carica</span>

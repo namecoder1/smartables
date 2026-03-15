@@ -4,6 +4,12 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { CreateBookingState } from "@/types/general";
 import { upsertCustomerForBooking, createBookingRecord } from "./bookings";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/ratelimit";
+import { subHours } from "date-fns";
+import { getStr, getNullableStr, getInt } from "@/lib/form-parsers";
+import { dynamicPath } from "@/lib/revalidation-paths";
+import { validatePublicBookingFields } from "@/lib/validators/booking";
 
 export async function createPublicBooking(
   prevState: CreateBookingState,
@@ -12,26 +18,75 @@ export async function createPublicBooking(
 ): Promise<CreateBookingState> {
   const supabase = await createClient();
 
-  const locationId = formData.get("locationId") as string;
-  const organizationId = formData.get("organizationId") as string;
-  const guestName = formData.get("guestName") as string;
-  const guestPhone = formData.get("guestPhone") as string;
-  const guestsCount = parseInt(formData.get("guestsCount") as string);
-  const date = formData.get("date") as string; // YYYY-MM-DD
-  const time = formData.get("time") as string; // HH:mm
+  const locationId = getStr(formData, "locationId");
+  const organizationId = getStr(formData, "organizationId");
+  const guestName = getStr(formData, "guestName");
+  const guestPhone = getStr(formData, "guestPhone");
+  const guestsCount = getInt(formData, "guestsCount");
+  const date = getStr(formData, "date"); // YYYY-MM-DD
+  const time = getStr(formData, "time"); // HH:mm
+  const childrenCount = getInt(formData, "childrenCount", 0);
+  const allergies = getNullableStr(formData, "allergies");
 
-  const childrenCount = formData.get("childrenCount") as string | null;
-  const allergies = formData.get("allergies") as string | null;
+  const validationError = validatePublicBookingFields({ locationId, organizationId, guestName, guestPhone, date, time });
+  if (validationError) return { error: validationError, success: false };
 
-  if (
-    !locationId ||
-    !organizationId ||
-    !guestName ||
-    !guestPhone ||
-    !date ||
-    !time
-  ) {
-    return { error: "Compila tutti i campi obbligatori.", success: false };
+  // 1. Honeypot check
+  const honeypot = getStr(formData, "honeypot");
+  if (honeypot) {
+    console.warn("Spam detected via honeypot field");
+    return { error: "Spam rilevato. Riprova.", success: false };
+  }
+
+  // 2. Rate limiting check
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
+  const { success: limitSuccess } = await checkRateLimit(ip);
+
+  if (!limitSuccess) {
+    return {
+      error: "Troppe richieste. Riprova tra qualche minuto.",
+      success: false,
+    };
+  }
+
+  // 3. Duplicate check (prevent multiple pending/confirmed bookings for same phone at same location in last 24h)
+  const twentyFourHoursAgo = subHours(new Date(), 24).toISOString();
+  const { data: existingBookings, error: duplicateError } = await supabase
+    .from("bookings")
+    .select("id, booking_time")
+    .eq("location_id", locationId)
+    .eq("guest_phone", guestPhone)
+    .gt("created_at", twentyFourHoursAgo)
+    .in("status", ["pending", "confirmed"])
+    .limit(3);
+
+  if (duplicateError) {
+    console.error("Duplicate check error:", duplicateError);
+  }
+
+  if (existingBookings && existingBookings.length > 0) {
+    // Check if any existing booking is for the same date
+    const sameDayBooking = existingBookings.find((b: any) => {
+      return b.booking_time.startsWith(date);
+    });
+
+    if (sameDayBooking) {
+      return {
+        error:
+          "Hai già una prenotazione per questa data. Contatta il locale per modifiche.",
+        success: false,
+      };
+    }
+
+    // If they already have 2 bookings in 24 hours (for different dates), block only if length >= 2
+    if (existingBookings.length >= 2) {
+      return {
+        error:
+          "Hai raggiunto il limite massimo di prenotazioni per oggi. Contatta il locale se hai bisogno di assistenza.",
+        success: false,
+      };
+    }
   }
 
   // Combine date and time to represent the local time at the restaurant in Italy
@@ -80,6 +135,6 @@ export async function createPublicBooking(
     };
   }
 
-  revalidatePath(`/p/${formData.get("locationSlug")}`);
+  revalidatePath(dynamicPath.publicLocation(getStr(formData, "locationSlug")));
   return { success: true, bookingId: booking.id, error: null };
 }

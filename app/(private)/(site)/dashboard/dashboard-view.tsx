@@ -13,6 +13,7 @@ import { DateRange } from 'react-day-picker'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts'
 import { Reservations } from './reservations'
 import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const DashboardView = ({
   organization,
@@ -78,7 +79,12 @@ const DashboardView = ({
     })
   }
 
-  const [selectedDay, setSelectedDay] = React.useState<number>(new Date().getDay() === 0 ? 7 : new Date().getDay())
+  const [selectedDay, setSelectedDay] = React.useState<number>(1)
+
+  React.useEffect(() => {
+    const day = new Date().getDay() === 0 ? 7 : new Date().getDay()
+    setSelectedDay(day)
+  }, [])
 
   // Calculate stats directly to avoid memoization/sync issues
   const calculateStats = () => {
@@ -300,6 +306,9 @@ const DashboardView = ({
             date={date}
             onChange={handleDateChange}
             onReset={handleReset}
+            disabled={{ after: new Date() }}
+            showDays={false}
+            variant="button"
           />
           <Button variant="outline" size="icon">
             <Settings className="h-4 w-4" />
@@ -359,23 +368,25 @@ const DashboardView = ({
         </div>
         <div className='bg-card text-card-foreground rounded-xl flex flex-col items-center gap-2 border-2 py-6 px-4 shadow-sm'>
           <h2 className='text-lg text-muted-foreground text-left mr-auto font-semibold tracking-tight px-2'>Canale</h2>
-          <div className='w-full max-w-[280px] mx-auto'>
+          <div className='w-full max-w-70 mx-auto'>
             <DonutPie data={analysisBookings} />
           </div>
         </div>
       </div>
 
       <div className='mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        <div className='bg-card text-card-foreground rounded-3xl flex flex-col items-center gap-6 border-2 py-6 px-5 shadow-sm'>
-          <div className="flex flex-col items-start xl:flex-row xl:items-center justify-between w-full gap-4">
-            <h2 className='text-2xl text-foreground font-bold tracking-tight'>Orari di punta</h2>
-            <div className="flex items-center gap-1 bg-zinc-100 p-1.5 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <Card className='pt-0 justify-between gap-0'>
+          <CardHeader className="border-b-2 py-5 flex flex-wrap flex-row items-center justify-between w-full gap-4">
+            <CardTitle className="text-lg font-bold tracking-tight">
+              Orari di punta
+            </CardTitle>
+            <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar">
               {daysOfWeek.map((day) => (
                 <button
                   key={`${day.label}-${day.value}`}
                   onClick={() => setSelectedDay(day.value)}
                   className={`
-                    flex items-center justify-center min-w-[32px] w-8 h-8 sm:w-6 sm:h-6 rounded-md text-xs font-bold transition-all duration-200
+                    flex items-center justify-center w-6 h-5 rounded-md text-xs font-bold transition-all duration-200
                     ${selectedDay === day.value
                       ? 'bg-white text-foreground shadow-sm scale-110'
                       : 'text-zinc-500 hover:text-foreground hover:bg-white/50'}
@@ -385,69 +396,81 @@ const DashboardView = ({
                 </button>
               ))}
             </div>
-          </div>
+          </CardHeader>
+          <CardContent className='w-full'>
+            <RushHoursChart
+              data={rushHoursData.formatted}
+              showComparison={rushHoursData.hasPreviousData}
+            />
+          </CardContent>
+        </Card>
 
-          <RushHoursChart
-            data={rushHoursData.formatted}
-            showComparison={rushHoursData.hasPreviousData}
-          />
-        </div>
-        <div className='bg-card text-card-foreground rounded-3xl flex flex-col gap-6 border-2 py-6 px-5 shadow-sm'>
-          <h2 className='text-2xl text-foreground font-bold tracking-tight'>Distribuzione Gruppi</h2>
-          <div className="w-full h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={groupSizeData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-              >
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
-                  width={40}
-                />
-                <Bar
-                  dataKey="count"
-                  radius={[0, 4, 4, 0]}
-                  barSize={32}
+        <Card className='pt-0 justify-between gap-0'>
+          <CardHeader className="border-b-2 py-5 flex items-center gap-3">
+            <CardTitle className="text-lg font-bold tracking-tight">
+              Distribuzione Gruppi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full h-62.5">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={groupSizeData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                 >
-                  {groupSizeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-auto border-t pt-4">
-            {groupSizeData.slice(0, 4).map((item) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm font-medium text-muted-foreground">{item.name} pers.</span>
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
+                    width={40}
+                  />
+                  <Bar
+                    dataKey="count"
+                    radius={[0, 4, 4, 0]}
+                    barSize={32}
+                  >
+                    {groupSizeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-auto border-t pt-4">
+              {groupSizeData.slice(0, 4).map((item) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm font-medium text-muted-foreground">{item.name} pers.</span>
+                  </div>
+                  <span className="text-sm font-bold">{item.count}</span>
                 </div>
-                <span className="text-sm font-bold">{item.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className='bg-card mt-6 text-card-foreground rounded-3xl flex flex-col gap-0 border-2 py-6 pb-0 px-0 shadow-sm overflow-hidden'>
-        <div className='flex flex-col items-start lg:flex-row lg:items-center justify-between w-full px-5 border-b-2 pb-6'>
-          <h2 className='text-2xl text-foreground font-bold tracking-tight'>Prenotazioni di oggi</h2>
+      <Card className='py-0 mt-6 gap-0'>
+        <CardHeader className="flex flex-col items-start lg:flex-row lg:items-center justify-between w-full py-5 border-b-2">
+          <CardTitle className="text-lg font-bold tracking-tight">
+            Prenotazioni di oggi
+          </CardTitle>
           <Link href={`/${organization?.slug}/${activeLocationId}/prenotazioni`} className='flex items-center gap-2 text-sm'>
             Guarda tutte
             <SquareArrowOutUpRight size={16} />
           </Link>
-        </div>
-        <div className="w-full">
-          <Reservations data={todaysBookings} context="dashboard" />
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <div className="w-full">
+            <Reservations data={todaysBookings} context="dashboard" />
+          </div>
+        </CardContent>
+      </Card>
 
       {profile && (
         <DashboardRealtimeUpdater
@@ -486,7 +509,7 @@ const StatCard = ({
   }
 
   return (
-    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-4 shadow-sm min-h-[140px]'>
+    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-4 shadow-sm min-h-35'>
       <div className='flex flex-col justify-between h-full flex-1'>
         <h2 className='text-md sm:text-lg text-muted-foreground font-semibold tracking-tight'>{title}</h2>
         <div>
@@ -501,7 +524,7 @@ const StatCard = ({
         </div>
       </div>
       <div className='flex items-center justify-end'>
-        <LineChart width={80} height={50} data={chartData} className="sm:w-[100px] sm:h-[60px]">
+        <LineChart width={80} height={50} data={chartData} className="sm:w-25 sm:h-15">
           <Line
             type="monotone"
             dataKey="y"

@@ -22,6 +22,11 @@ vi.mock("uuid", () => ({
   v4: () => "mock-uuid",
 }));
 
+// Mock push notifications to prevent unhandled rejections from createAdminClient
+vi.mock("@/lib/push-notifications", () => ({
+  sendPushToOrganization: vi.fn(),
+}));
+
 describe("order-actions", () => {
   let mockSupabase: any;
 

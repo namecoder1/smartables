@@ -1,36 +1,36 @@
 'use client'
 
-import React from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import React, { useTransition } from 'react'
+import { useParams } from 'next/navigation'
 import { useLocationStore } from '@/store/location-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import {
-  ChevronLeft,
   Phone,
-  Mail,
-  MoreHorizontal,
-  Calendar,
-  CreditCard,
   User,
-  ExternalLink,
-  Target,
   UtensilsCrossed,
-  Cake,
-  TrendingUp,
   ArrowUp,
   ArrowDown,
   Minus,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react'
-import { format, subDays, isWithinInterval } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import { it } from 'date-fns/locale'
 import PageWrapper from '@/components/private/page-wrapper'
 import { Booking, Order } from '@/types/general'
+import { BookingWithCustomer } from '@/types/components'
 import { mapBookingStatus } from '@/lib/maps'
 import SetPageTitle from '@/components/private/set-page-title'
 import { LineChart, Line } from 'recharts'
+import DetailsSheet from '@/components/private/details-sheet'
+import ReservationSheet from '@/components/utility/reservation-sheet'
+import ActionSheet from '@/components/utility/action-sheet'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
+import { NumberInput } from '@/components/ui/number-input'
+import { updateCustomer } from '@/app/actions/customers'
 
 interface CustomerDetail {
   id: string
@@ -45,12 +45,40 @@ interface CustomerDetail {
 }
 
 const ClientPage = () => {
-  const router = useRouter()
   const params = useParams()
   const id = params.id as string
   const { selectedLocationId } = useLocationStore()
   const [data, setData] = React.useState<CustomerDetail | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const [selectedBooking, setSelectedBooking] = React.useState<BookingWithCustomer | null>(null)
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false)
+  const [isReservationSheetOpen, setIsReservationSheetOpen] = React.useState(false)
+  const [editingBooking, setEditingBooking] = React.useState<BookingWithCustomer | null>(null)
+  const [isEditSheetOpen, setIsEditSheetOpen] = React.useState(false)
+  const [editPhone, setEditPhone] = React.useState('')
+  const [editTotalVisits, setEditTotalVisits] = React.useState<number | undefined>(undefined)
+  const [isPending, startTransition] = useTransition()
+
+  const handleOpenEdit = () => {
+    if (!data) return
+    setEditPhone(data.phone_number)
+    setEditTotalVisits(data.total_visits)
+    setIsEditSheetOpen(true)
+  }
+
+  const handleEditSubmit = async (formData: FormData) => {
+    if (!data) return
+    formData.set('phone_number', editPhone)
+    startTransition(async () => {
+      const result = await updateCustomer(data.id, formData)
+      if (result.success) {
+        setData(prev => prev ? { ...prev, name: result.data.name, phone_number: result.data.phone_number, total_visits: result.data.total_visits } : prev)
+        setIsEditSheetOpen(false)
+      } else {
+        alert('Aggiornamento cliente fallito')
+      }
+    })
+  }
 
   React.useEffect(() => {
     const fetchDetail = async () => {
@@ -154,7 +182,7 @@ const ClientPage = () => {
         value: data.orders.length > 0 ? data.orders.reduce((acc, o) => acc + o.total_amount, 0) / data.orders.length : 0,
         trend: avgTrend,
         type: getTrendType(avgTrend),
-        series: generateSeries(data.orders, 'created_at', 'total_amount').map((s, i, arr) => {
+        series: generateSeries(data.orders, 'created_at', 'total_amount').map((s, i) => {
           const ords = generateSeries(data.orders, 'created_at')[i].y
           return { x: s.x, y: ords > 0 ? s.y / ords : 0 }
         })
@@ -188,16 +216,19 @@ const ClientPage = () => {
             <h2 className="text-3xl font-bold tracking-tight">Dettaglio Cliente</h2>
             <p className="text-muted-foreground">Panoramica completa di {data.name}</p>
           </div>
+          <Button onClick={handleOpenEdit}>
+            Modifica dati
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Sidebar - Personal Info */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-card rounded-3xl border-2 p-8 shadow-sm">
               <div className="flex flex-col items-center justify-start text-center">
                 <div className="flex items-center justify-start mr-auto gap-4">
-                  <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center mb-6 border-4 border-white shadow-xl">
-                    <User className="w-10 h-10 text-primary/30" />
+                  <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mb-6 shadow-md">
+                    <User className="w-10 h-10" color='white' />
                   </div>
                   <div className="flex flex-col items-start">
                     <h3 className="text-2xl font-bold mb-1">{data.name}</h3>
@@ -206,9 +237,9 @@ const ClientPage = () => {
                 </div>
 
                 <div className="w-full space-y-3 pt-6 border-t font-medium">
-                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border-2 border-transparent hover:border-primary/20 transition-all cursor-pointer group">
-                    <div className="p-2.5 bg-white rounded-xl shadow-sm text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all">
-                      <Phone className="w-4 h-4" />
+                  <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-muted/30 border-2 hover:border-primary/20 transition-all group">
+                    <div className="p-2.5 bg-primary rounded-xl shadow-sm">
+                      <Phone className="w-4 h-4" color='white' />
                     </div>
                     <div className="text-left">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Telefono</p>
@@ -221,7 +252,7 @@ const ClientPage = () => {
           </div>
 
           {/* Main Content Area */}
-          <div className="lg:col-span-8 flex flex-col gap-8">
+          <div className="lg:col-span-8 flex flex-col gap-6">
             {/* Stats Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <StatCard
@@ -257,7 +288,7 @@ const ClientPage = () => {
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {data.bookings.length > 0 ? data.bookings.map(booking => (
-                    <div key={booking.id} className="p-5 rounded-2xl border-2 bg-muted/5 hover:border-primary/20 transition-all flex flex-col gap-4">
+                    <div key={booking.id} className="p-5 rounded-2xl border-2 bg-muted/5 hover:border-primary/20 transition-all flex flex-col gap-4 cursor-pointer" onClick={() => { setSelectedBooking({ ...booking, customer: data as any }); setIsSheetOpen(true) }}>
                       <div className="flex justify-between items-center">
                         <div className="p-2.5 bg-white rounded-xl shadow-sm shrink-0">
                           <UtensilsCrossed className="w-5 h-5 text-primary" />
@@ -328,6 +359,99 @@ const ClientPage = () => {
           </div>
         </div>
       </div>
+      <DetailsSheet
+        isSheetOpen={isSheetOpen}
+        setIsSheetOpen={setIsSheetOpen}
+        selectedBooking={selectedBooking}
+        onBookingDeleted={() => {
+          setIsSheetOpen(false)
+          // refetch customer detail to update booking list
+          if (id && selectedLocationId) {
+            fetch(`/api/supabase/customers/${id}?location_id=${selectedLocationId}`)
+              .then(r => r.json())
+              .then(setData)
+          }
+        }}
+        onEdit={(booking) => {
+          setEditingBooking(booking)
+          setIsReservationSheetOpen(true)
+          setIsSheetOpen(false)
+        }}
+      />
+      <ReservationSheet
+        open={isReservationSheetOpen}
+        onOpenChange={setIsReservationSheetOpen}
+        booking={editingBooking}
+        onSuccess={() => {
+          setIsReservationSheetOpen(false)
+          setEditingBooking(null)
+          // refetch customer detail to update booking list
+          if (id && selectedLocationId) {
+            fetch(`/api/supabase/customers/${id}?location_id=${selectedLocationId}`)
+              .then(r => r.json())
+              .then(setData)
+          }
+        }}
+      />
+      <ActionSheet
+        open={isEditSheetOpen}
+        onOpenChange={setIsEditSheetOpen}
+        title="Modifica Cliente"
+        description="Aggiorna i dati del cliente."
+        formAction={handleEditSubmit}
+        actionButtons={
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salva modifiche
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">Nome</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-2.5 h-4 w-4 text-foreground" />
+              <Input
+                id="edit-name"
+                name="name"
+                placeholder="es: Mario Rossi"
+                className="pl-9 w-full"
+                defaultValue={data?.name}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-phone">Numero di telefono</Label>
+            <PhoneInput
+              id="edit-phone"
+              defaultCountry="IT"
+              className="h-9 border-2 rounded-xl shadow-xs"
+              value={editPhone}
+              onChange={(value) => setEditPhone(value || '')}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-total-visits">Visite totali <span className="text-muted-foreground">(opzionale)</span></Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-2.5 h-4 w-4 text-foreground" />
+              <NumberInput
+                id="edit-total-visits"
+                name="total_visits"
+                placeholder="es: 5"
+                className="pl-9 w-full h-8.5"
+                buttonHeight='3!'
+                value={editTotalVisits}
+                context="default"
+                onValueChange={setEditTotalVisits}
+              />
+            </div>
+          </div>
+        </div>
+      </ActionSheet>
     </PageWrapper>
   )
 }
@@ -359,7 +483,7 @@ const StatCard = ({
   }
 
   return (
-    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-5 shadow-sm min-h-[140px]'>
+    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-5 shadow-sm min-h-35'>
       <div className='flex flex-col justify-between h-full flex-1'>
         <h2 className='text-md text-muted-foreground font-semibold tracking-tight'>{title}</h2>
         <div>

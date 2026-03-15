@@ -42,7 +42,7 @@ const PLANS = [
     },
   },
   {
-    id: "pro",
+    id: "growth",
     name: "Growth",
     priceIdMonth:
       process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTH ||

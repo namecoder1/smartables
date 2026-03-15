@@ -3,7 +3,39 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/utils/stripe/client";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { findPlanByPriceId } from "@/lib/plans";
+import { computeAddonConfig, getAddonPriceMap } from "@/lib/addons";
 import Stripe from "stripe";
+import { Resend } from "resend";
+import { render } from "@react-email/components";
+import PaymentFailedEmail from "@/emails/payment-failed";
+import AccountSuspendedEmail from "@/emails/account-suspended";
+import SubscriptionExpiringEmail from "@/emails/subscription-expiring";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function getBillingEmailForSubscription(
+  supabase: ReturnType<typeof createAdminClient>,
+  subscriptionId: string,
+) {
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("name, billing_email")
+    .eq("stripe_subscription_id", subscriptionId)
+    .single();
+  return org ?? null;
+}
+
+async function getBillingEmailForCustomer(
+  supabase: ReturnType<typeof createAdminClient>,
+  customerId: string,
+) {
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("name, billing_email")
+    .eq("stripe_customer_id", customerId)
+    .single();
+  return org ?? null;
+}
 
 // ── Helpers ──
 
@@ -28,7 +60,11 @@ async function createTransactionRecord(
     status: "succeeded",
     type: "subscription",
     stripe_invoice_id: invoice.id,
-    stripe_payment_intent_id: (invoice as any).payment_intent as string,
+    stripe_payment_intent_id: (() => {
+      const pi = (invoice as unknown as { payment_intent?: string | Stripe.PaymentIntent | null }).payment_intent;
+      if (!pi) return null;
+      return typeof pi === "string" ? pi : pi.id;
+    })(),
     invoice_pdf: invoice.invoice_pdf,
     period_start: new Date(
       invoice.lines.data[0].period.start * 1000,
@@ -90,11 +126,11 @@ export async function POST(req: Request) {
         console.log("Subscription status:", subscription.status);
         console.log(
           "current_period_start (raw):",
-          (subscription as any).current_period_start,
+          (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
         );
         console.log(
           "current_period_end (raw):",
-          (subscription as any).current_period_end,
+          (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
         );
         console.log("Items data[0].plan:", subscription.items?.data?.[0]?.plan);
         console.log("Full subscription keys:", Object.keys(subscription));
@@ -170,7 +206,13 @@ export async function POST(req: Request) {
     );
 
     // Detect plan change (proration) via previous_attributes
-    const previousAttributes = (event.data as any).previous_attributes;
+    type SubscriptionEventData = Stripe.Event.Data & {
+      previous_attributes?: {
+        status?: string;
+        items?: { data?: Array<{ price?: { id?: string } }> };
+      };
+    };
+    const previousAttributes = (event.data as SubscriptionEventData).previous_attributes;
     if (previousAttributes?.items) {
       const oldPriceId = previousAttributes.items?.data?.[0]?.price?.id;
       const newPriceId = subscription.items.data[0].price.id;
@@ -193,25 +235,78 @@ export async function POST(req: Request) {
       "current_period_start",
     );
 
+    // Separate base plan item from addon items
+    const addonPriceMap = getAddonPriceMap();
+    const basePlanItem =
+      subscription.items.data.find((item) => !addonPriceMap[item.price.id]) ??
+      subscription.items.data[0];
+    const basePriceId = basePlanItem.price.id;
+
+    // Compute addon capacities from subscription items
+    const addonConfig = computeAddonConfig(subscription.items.data);
+
+    // Effective WA cap = base plan cap + addon extra
+    const basePlanUpdates = getPlanUpdates(basePriceId);
+    const effectiveWaCap =
+      (basePlanUpdates.usage_cap_whatsapp ?? 400) + addonConfig.extra_contacts_wa;
+
     // Find organization with this subscription
     const { error: updateError } = await supabase
       .from("organizations")
       .update({
         stripe_status: subscription.status,
-        stripe_price_id: subscription.items.data[0].price.id,
-        billing_tier:
-          findPlanByPriceId(subscription.items.data[0].price.id)?.id ||
-          "starter",
+        stripe_price_id: basePriceId,
+        billing_tier: findPlanByPriceId(basePriceId)?.id || "starter",
         stripe_current_period_end: periodEnd,
         current_billing_cycle_start: periodStart,
         stripe_cancel_at_period_end: subscription.cancel_at_period_end,
-        ...getPlanUpdates(subscription.items.data[0].price.id),
+        addons_config: addonConfig,
+        usage_cap_whatsapp: effectiveWaCap,
       })
       .eq("stripe_subscription_id", subscription.id);
 
     if (updateError) {
       console.error("Error syncing subscription status:", updateError);
       return new NextResponse("Error syncing subscription", { status: 500 });
+    }
+
+    // ── Account sospeso: send email when subscription becomes past_due ──
+    if (subscription.status === "past_due" && previousAttributes?.status && previousAttributes.status !== "past_due") {
+      try {
+        const org = await getBillingEmailForSubscription(supabase, subscription.id);
+        if (org?.billing_email) {
+          const html = await render(AccountSuspendedEmail({ teamName: org.name ?? "Smartables" }));
+          await resend.emails.send({
+            from: "Smartables <noreply@smartables.it>",
+            to: org.billing_email,
+            subject: "Il tuo account è stato sospeso",
+            html,
+          });
+        }
+      } catch (emailErr) {
+        console.error("[stripe webhook] Failed to send account-suspended email:", emailErr);
+      }
+    }
+
+    // ── Scadenza abbonamento: send email when subscription is deleted ──
+    if (event.type === "customer.subscription.deleted") {
+      try {
+        const org = await getBillingEmailForSubscription(supabase, subscription.id);
+        if (org?.billing_email) {
+          const expiry = periodEnd
+            ? new Date(periodEnd).toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" })
+            : undefined;
+          const html = await render(SubscriptionExpiringEmail({ teamName: org.name ?? "Smartables", expiryDate: expiry }));
+          await resend.emails.send({
+            from: "Smartables <noreply@smartables.it>",
+            to: org.billing_email,
+            subject: "Il tuo abbonamento Smartables è scaduto",
+            html,
+          });
+        }
+      } catch (emailErr) {
+        console.error("[stripe webhook] Failed to send subscription-expiring email:", emailErr);
+      }
     }
   }
 
@@ -291,6 +386,37 @@ export async function POST(req: Request) {
           await createTransactionRecord(supabase, orgData.id, invoice);
         }
       }
+    }
+  }
+
+  // ── Pagamento fallito ──────────────────────────────────────────────────────
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const rawSub = (invoice as unknown as { subscription?: string | Stripe.Subscription | null }).subscription;
+    const subscriptionId = typeof rawSub === "string" ? rawSub : rawSub?.id ?? null;
+    const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+
+    try {
+      const org = subscriptionId
+        ? await getBillingEmailForSubscription(supabase, subscriptionId)
+        : customerId
+          ? await getBillingEmailForCustomer(supabase, customerId)
+          : null;
+
+      if (org?.billing_email) {
+        const amount = invoice.amount_due
+          ? `€${(invoice.amount_due / 100).toFixed(2).replace(".", ",")}`
+          : undefined;
+        const html = await render(PaymentFailedEmail({ teamName: org.name ?? "Smartables", amount }));
+        await resend.emails.send({
+          from: "Smartables <noreply@smartables.it>",
+          to: org.billing_email,
+          subject: "Pagamento fallito — aggiorna il metodo di pagamento",
+          html,
+        });
+      }
+    } catch (emailErr) {
+      console.error("[stripe webhook] Failed to send payment-failed email:", emailErr);
     }
   }
 
@@ -381,23 +507,25 @@ export async function POST(req: Request) {
   return new NextResponse(null, { status: 200 });
 }
 
-function getPlanUpdates(priceId: string) {
+function getPlanUpdates(priceId: string): { usage_cap_whatsapp: number } {
   const plan = findPlanByPriceId(priceId);
+  if (!plan) return { usage_cap_whatsapp: 400 };
 
-  if (!plan) return {};
-
-  let limit = 150;
-  if (plan.id === "pro") limit = 400; // Growth
-  if (plan.id === "business") limit = 1000;
-
-  return {
-    usage_cap_whatsapp: limit,
-  };
+  // Base plan WA contact limits (matching subscription_plans.limits.wa_contacts)
+  if (plan.id === "growth") return { usage_cap_whatsapp: 1200 };
+  if (plan.id === "business") return { usage_cap_whatsapp: 3500 };
+  return { usage_cap_whatsapp: 400 }; // starter
 }
 
+type SubscriptionWithPeriod = Stripe.Subscription & {
+  current_period_start?: number;
+  current_period_end?: number;
+  latest_invoice?: string | Stripe.Invoice | null;
+};
+
 async function getDateFromSubscription(
-  subscription: any,
-  key: string,
+  subscription: SubscriptionWithPeriod,
+  key: "current_period_start" | "current_period_end",
 ): Promise<string> {
   // 1. Try direct access on subscription object (older API versions)
   let val = subscription[key];
@@ -405,11 +533,12 @@ async function getDateFromSubscription(
   // 2. If not found, try from subscription.items.data[0].period (some API versions)
   if (val === undefined || val === null) {
     const item = subscription.items?.data?.[0];
-    if (item?.period) {
+    const itemPeriod = (item as unknown as { period?: { start: number; end: number } } | undefined)?.period;
+    if (itemPeriod) {
       if (key === "current_period_end") {
-        val = item.period.end;
+        val = itemPeriod.end;
       } else if (key === "current_period_start") {
-        val = item.period.start;
+        val = itemPeriod.start;
       }
     }
   }
@@ -444,7 +573,7 @@ async function getDateFromSubscription(
       `Date value missing for key "${key}". Subscription keys:`,
       Object.keys(subscription),
       `Items period:`,
-      subscription.items?.data?.[0]?.period,
+      (subscription.items?.data?.[0] as unknown as { period?: unknown })?.period,
     );
     return new Date().toISOString(); // Fallback
   }

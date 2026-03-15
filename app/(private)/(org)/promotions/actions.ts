@@ -1,21 +1,17 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
+import { ok, okWith, fail, type ActionResult } from "@/lib/action-response";
+import { PATHS } from "@/lib/revalidation-paths";
 
 export async function getPromotions(organizationId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("promotions")
-    .select(
-      `
-      *,
-      promotion_locations(*),
-      promotion_menus(*),
-      promotion_items(*)
-    `,
-    )
+    .select("*")
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
@@ -32,14 +28,7 @@ export async function getPromotion(id: string) {
 
   const { data, error } = await supabase
     .from("promotions")
-    .select(
-      `
-      *,
-      promotion_locations(*),
-      promotion_menus(*),
-      promotion_items(*)
-    `,
-    )
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -80,61 +69,31 @@ export async function createPromotion(
     }[];
   },
 ) {
-  const supabase = await createClient();
+  const authCheck = await requireAuth();
+  if (!authCheck.success) return fail("Non autorizzato");
+  const { supabase } = authCheck;
 
   const { location_ids, menu_ids, items, ...promotionData } = data;
 
-  // Insert promotion
+  // Insert promotion with arrays
   const { data: promotion, error } = await supabase
     .from("promotions")
     .insert({
       organization_id: organizationId,
       ...promotionData,
+      target_location_ids: location_ids || [],
+      target_menu_ids: menu_ids || [],
     })
     .select()
     .single();
 
   if (error || !promotion) {
     console.error("Error creating promotion:", error);
-    return { error: "Failed to create promotion" };
+    return fail("Failed to create promotion");
   }
 
-  // Insert junction rows
-  if (location_ids && location_ids.length > 0) {
-    const { error: locError } = await supabase
-      .from("promotion_locations")
-      .insert(
-        location_ids.map((lid) => ({
-          promotion_id: promotion.id,
-          location_id: lid,
-        })),
-      );
-    if (locError)
-      console.error("Error inserting promotion_locations:", locError);
-  }
-
-  if (menu_ids && menu_ids.length > 0) {
-    const { error: menuError } = await supabase.from("promotion_menus").insert(
-      menu_ids.map((mid) => ({
-        promotion_id: promotion.id,
-        menu_id: mid,
-      })),
-    );
-    if (menuError) console.error("Error inserting promotion_menus:", menuError);
-  }
-
-  if (items && items.length > 0) {
-    const { error: itemError } = await supabase.from("promotion_items").insert(
-      items.map((item) => ({
-        promotion_id: promotion.id,
-        ...item,
-      })),
-    );
-    if (itemError) console.error("Error inserting promotion_items:", itemError);
-  }
-
-  revalidatePath("/(private)/(org)/promotions", "page");
-  return { success: true, id: promotion.id };
+  revalidatePath(PATHS.PROMOTIONS, "page");
+  return okWith({ id: promotion.id as string });
 }
 
 export async function updatePromotion(
@@ -166,72 +125,44 @@ export async function updatePromotion(
     }[];
   },
 ) {
-  const supabase = await createClient();
+  const authCheck = await requireAuth();
+  if (!authCheck.success) return fail("Non autorizzato");
+  const { supabase } = authCheck;
 
   const { location_ids, menu_ids, items, ...promotionData } = data;
 
-  // Update promotion row
+  // Update promotion row with arrays
   const { error } = await supabase
     .from("promotions")
     .update({
       ...promotionData,
+      target_location_ids: location_ids || [],
+      target_menu_ids: menu_ids || [],
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) {
     console.error("Error updating promotion:", error);
-    return { error: "Failed to update promotion" };
+    return fail("Failed to update promotion");
   }
 
-  // Replace junction rows: delete old, insert new
-  // Locations
-  await supabase.from("promotion_locations").delete().eq("promotion_id", id);
-  if (location_ids && location_ids.length > 0) {
-    await supabase.from("promotion_locations").insert(
-      location_ids.map((lid) => ({
-        promotion_id: id,
-        location_id: lid,
-      })),
-    );
-  }
-
-  // Menus
-  await supabase.from("promotion_menus").delete().eq("promotion_id", id);
-  if (menu_ids && menu_ids.length > 0) {
-    await supabase.from("promotion_menus").insert(
-      menu_ids.map((mid) => ({
-        promotion_id: id,
-        menu_id: mid,
-      })),
-    );
-  }
-
-  // Items
-  await supabase.from("promotion_items").delete().eq("promotion_id", id);
-  if (items && items.length > 0) {
-    await supabase.from("promotion_items").insert(
-      items.map((item) => ({
-        promotion_id: id,
-        ...item,
-      })),
-    );
-  }
-
-  revalidatePath("/(private)/(org)/promotions", "page");
-  return { success: true };
+  revalidatePath(PATHS.PROMOTIONS, "page");
+  return ok();
 }
 
-export async function deletePromotion(id: string) {
-  const supabase = await createClient();
+export async function deletePromotion(id: string): Promise<ActionResult> {
+  const authCheck = await requireAuth();
+  if (!authCheck.success) return fail("Non autorizzato");
+  const { supabase } = authCheck;
 
   const { error } = await supabase.from("promotions").delete().eq("id", id);
 
   if (error) {
     console.error("Error deleting promotion:", error);
-    return { error: "Failed to delete promotion" };
+    return fail("Failed to delete promotion");
   }
 
-  revalidatePath("/(private)/(org)/promotions", "page");
-  return { success: true };
+  revalidatePath(PATHS.PROMOTIONS, "page");
+  return ok();
 }

@@ -114,12 +114,12 @@ const PricingCard = ({
             : "bg-neutral-50 border-border hover:shadow-lg rounded-3xl"
           : context === 'onboarding'
             ? popular
-              ? "border-primary shadow-lg shadow-primary/30 bg-linear-to-b from-primary/30 via-primary/10 dark:to-black to-white rounded-3xl"
-              : "dark:bg-neutral-950 bg-neutral-50 border-border hover:shadow-lg rounded-3xl"
+              ? "border-primary shadow-lg shadow-primary/30 bg-linear-to-b from-primary/30 via-primary/10 to-white rounded-3xl"
+              : "bg-neutral-50 border-border hover:shadow-lg rounded-3xl"
             : popular
-              ? "border-primary/50 shadow-lg shadow-primary/10 bg-linear-to-b from-primary/5 to-transparent"
-              : "hover:border-primary/20 hover:shadow-lg",
-        changeType === 'current' && "ring-2 ring-green-500/50 bg-green-500/5 border-green-500/50 hover:ring-green-500/50 hover:border-green-500/50"
+              ? "border-primary/40 shadow-md"
+              : "hover:border-muted-foreground/20",
+        changeType === 'current' && "ring-2 ring-emerald-500/40 border-emerald-500/40 hover:ring-emerald-500/40 hover:border-emerald-500/40"
       )}>
         {popular && (
           <div className="absolute top-0 right-0">
@@ -150,18 +150,19 @@ const PricingCard = ({
             </h3>
             <p className={cn("text-sm", context === 'public' && popular ? "text-primary-foreground/80" : "text-muted-foreground")}>
               {id === 'starter' && 'Per piccoli ristoranti o bar.'}
-              {id === 'pro' && 'Per ristoranti in crescita.'}
+              {id === 'growth' && 'Per ristoranti in crescita.'}
               {id === 'business' && 'Per gruppi e catene.'}
             </p>
           </div>
           <div className="mt-4 flex items-baseline gap-1">
             <span className={cn(
-              "text-4xl font-extrabold tracking-tight",
+              "font-extrabold tracking-tight",
+              context === 'private' ? "text-3xl" : "text-4xl",
               context === 'public' && popular ? 'text-white' : 'text-foreground'
             )}>
               €{price}
             </span>
-            <span className={cn("font-medium", context === 'public' ? "text-muted-foreground" : "text-muted-foreground")}>{period}</span>
+            <span className="font-medium text-muted-foreground">{period}</span>
           </div>
           {isAnnual && (
             <p className="text-xs font-semibold text-emerald-600 mt-1">

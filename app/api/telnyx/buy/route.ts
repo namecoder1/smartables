@@ -31,28 +31,14 @@ export async function POST(request: Request) {
     }
 
     // 2. Buy from Telnyx
-    // Fetch regulatory requirement for this location/area code if needed
-    // Assuming location has an associated regulatory requirement or we fail
+    // Fetch location with regulatory data
     const { data: regulatory } = await supabase
       .from("locations")
-      .select(
-        `
-        regulatory_requirement_id,
-        regulatory_requirements:telnyx_regulatory_requirements (
-          telnyx_requirement_group_id,
-          status
-        )
-      `,
-      )
+      .select(`telnyx_requirement_group_id, regulatory_status`)
       .eq("id", locationId)
       .single();
 
-    // Supabase join might return an array or object depending on relationship definition
-    // Safely cast or access
-    const regulatoryData = regulatory?.regulatory_requirements as any;
-    const requirementGroupId = Array.isArray(regulatoryData)
-      ? regulatoryData[0]?.telnyx_requirement_group_id
-      : regulatoryData?.telnyx_requirement_group_id;
+    const requirementGroupId = regulatory?.telnyx_requirement_group_id;
 
     if (!requirementGroupId) {
       return NextResponse.json(

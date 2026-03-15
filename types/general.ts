@@ -1,10 +1,35 @@
 // -- Main DB Types --
 
+export type NotificationType = 'new_booking' | 'new_customer' | 'new_order' | 'whatsapp_limit_warning';
+
+export type Notification = {
+  id: string;
+  organization_id: string;
+  location_id: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type PushToken = {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  token: string;
+  platform: 'ios' | 'android' | 'web';
+  created_at: string;
+  updated_at: string;
+};
+
 export type Booking = {
   id: string;
   organization_id: string;
   location_id: string;
-  customer_id: string;
+  customer_id: string | null;
   table_id?: string | null;
   guest_name: string;
   guest_phone: string;
@@ -14,7 +39,7 @@ export type Booking = {
   booking_time: string;
   status: "pending" | "confirmed" | "cancelled" | "no_show" | "arrived";
   source: "whatsapp_auto" | "manual" | "web" | "phone";
-  notes: string;
+  notes: string | null;
   created_at: string;
 };
 
@@ -22,20 +47,10 @@ export type CallbackRequest = {
   id: string;
   location_id: string;
   phone_number: string;
-  status: "pending";
-  notes: string;
+  status: "pending" | "completed" | "archived";
+  notes: string | null;
   created_at: string;
-  completed_at: string;
-};
-
-export type ContactAttribute = {
-  id: string;
-  location_id: string;
-  phone_number: string;
-  tag: string;
-  metadata: any;
-  created_at: string;
-  updated_at: string;
+  completed_at: string | null;
 };
 
 export type Customer = {
@@ -46,6 +61,8 @@ export type Customer = {
   name: string;
   total_visits: number;
   last_visit: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
   created_at: string;
 };
 
@@ -56,7 +73,7 @@ export type Feedback = {
   type: string;
   reason: string;
   message: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   created_at: string;
 };
 
@@ -72,26 +89,33 @@ export type Location = {
   telnyx_phone_number?: string | null;
   telnyx_connection_id?: string | null;
   telnyx_voice_app_id?: string | null;
-  regulatory_requirement_id: string | null;
+  telnyx_requirement_group_id?: string | null;
+  telnyx_bundle_request_id?: string | null;
+  regulatory_status?: string | null;
+  regulatory_rejection_reason?: string | null;
+  regulatory_documents_data?: Record<string, unknown> | null;
   activation_status: string;
   created_at: string;
   branding: LocationBranding | null;
   active_menu_id: string | null;
   meta_phone_id: string;
   display_name_status: string;
-  voice_forwarding_number: string;
+  voice_forwarding_number?: string | null;
   max_covers_per_shift: number | null;
   standard_reservation_duration: number | null;
   cover_price: number | null;
-  meta_verification_otp: string;
+  meta_verification_otp: string | null;
   is_branding_completed: boolean;
   is_test_completed: boolean;
+  business_connectors?: string | null; // Encrypted BusinessConnectors JSON (AES-256-GCM)
 };
 
 export type MenuLocation = {
   menu_id: string;
   location_id: string;
   is_active: boolean;
+  daily_from: string | null;  // HH:mm — show only from this time
+  daily_until: string | null; // HH:mm — show only until this time
 };
 
 export type MenuItem = {
@@ -129,17 +153,45 @@ export type Menu = {
   ends_at?: string | null;
 };
 
-export type MessageLog = {
-  id: string;
-  organization_id: string;
-  location_id: string;
-  customer_id: string;
-  cost_implication: boolean;
-  sent_at: string;
-  payload: any;
-  phone_number: string;
-  template_name: string;
+export type AddonConfig = {
+  extra_staff: number;
+  extra_contacts_wa: number;
+  extra_storage_mb: number;
+  extra_locations: number;
+  extra_kb_chars: number;
+  extra_analytics: number;
 };
+
+export type PlanLimits = {
+  max_locations: number;
+  max_staff: number;
+  max_bookings: number;
+  wa_contacts: number;
+  max_menus: number;
+  max_zones: number;
+  storage_mb: number;
+  ai_tier: "basic" | "medium" | "pro";
+  analytics: "basic" | "advanced";
+};
+
+export type UxSettings = {
+  localization: {
+    currency: "EUR" | "USD" | "GBP" | "CHF";
+    language: "it" | "en" | "sp" | "de" | "fr";
+    timezone: "Europe/Rome" | "Europe/London" | "Europe/Berlin" | "Europe/Andorra";
+  };
+  notifications: {
+    preferences: {
+      push_new_order: boolean;
+      push_new_booking: boolean;
+      email_plan_ending: boolean;
+      email_limit_reached: boolean;
+      email_monthly_recap: boolean;
+    },
+    personal_email: string;
+    personal_phone: string;
+  }
+}
 
 export type Organization = {
   id: string;
@@ -157,15 +209,22 @@ export type Organization = {
   stripe_cancel_at_period_end: boolean;
 
   whatsapp_usage_count: number;
+  
   telnyx_managed_account_id: string;
   created_at: string;
-
+  
   billing_tier: string;
-  plan_msg_limit: number;
-
   current_billing_cycle_start: string;
+  /** Effective WA cap = base plan wa_contacts + addons_config.extra_contacts_wa */
   usage_cap_whatsapp: number;
+  /** Extra capacities purchased via add-on subscription items */
+  addons_config: AddonConfig;
+  /** Total storage used across all buckets, in bytes */
+  total_storage_used: number;
+  ux_settings: UxSettings
 };
+
+export type SubscriptionPlanLimits = PlanLimits;
 
 export type Profile = {
   id: string;
@@ -189,6 +248,8 @@ export type RestaurantTable = {
   width: number;
   height: number;
   is_active: boolean;
+  min_capacity: number | null;
+  max_capacity: number | null;
   created_at: string;
 };
 
@@ -198,6 +259,26 @@ export type RestaurantZone = {
   name: string;
   width: number;
   height: number;
+  blocked_from: string | null;
+  blocked_until: string | null;
+  blocked_reason: string | null;
+  created_at: string;
+};
+
+export type SpecialClosure = {
+  id: string;
+  location_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+  created_at: string;
+};
+
+export type StarredPage = {
+  id: string;
+  profile_id: string;
+  url: string;
+  title: string;
   created_at: string;
 };
 
@@ -206,27 +287,8 @@ export type SubscriptionPlan = {
   stripe_price_id: string;
   name: string;
   key: string;
-  limits: any;
+  limits: PlanLimits;
   created_at: string;
-};
-
-export type TelnyxRegulatoryRequirement = {
-  id: string;
-  organization_id: string;
-  area_code: string;
-  country_code: string;
-  telnyx_requirement_group_id: string;
-  telnyx_bundle_request_id: string;
-  status:
-    | "pending"
-    | "approved"
-    | "rejected"
-    | "more_info_required"
-    | "unapproved";
-  rejection_reason: string;
-  documents_data: any;
-  created_at: string;
-  updated_at: string;
 };
 
 export type Transaction = {
@@ -236,7 +298,7 @@ export type Transaction = {
   type: "subscription" | "usage" | "topup" | "bonus" | "refund" | "adjustment";
   description: string;
   reference_id?: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   stripe_invoice_id?: string;
   stripe_payment_intent_id?: string;
   currency: string;
@@ -306,16 +368,6 @@ export type PromotionItem = {
   override_type: string | null;
 };
 
-export type PromotionLocation = {
-  promotion_id: string;
-  location_id: string;
-};
-
-export type PromotionMenu = {
-  promotion_id: string;
-  menu_id: string;
-};
-
 export type Promotion = {
   id: string;
   organization_id: string;
@@ -328,7 +380,7 @@ export type Promotion = {
   all_menus: boolean;
   starts_at: string | null;
   ends_at: string | null;
-  recurring_schedule: any | null;
+  recurring_schedule: Record<string, unknown> | null;
   visit_threshold: number | null;
   is_active: boolean;
   priority: number;
@@ -336,10 +388,9 @@ export type Promotion = {
   notify_via_whatsapp: boolean;
   created_at: string;
   updated_at: string;
-  // Joined relations
-  promotion_locations?: PromotionLocation[];
-  promotion_menus?: PromotionMenu[];
-  promotion_items?: PromotionItem[];
+  // Direct array fields
+  target_location_ids: string[];
+  target_menu_ids: string[];
 };
 
 // -- Utility Types --

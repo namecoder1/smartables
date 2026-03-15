@@ -1,4 +1,4 @@
-import { WHATSAPP_API_URL } from "./constants";
+import { WHATSAPP_API_URL } from "./constants/api";
 
 type WhatsAppMessageTemplate = {
   name: string;
@@ -34,6 +34,13 @@ export type WhatsAppWebhookPayload = {
           };
           type: string;
         }[];
+        statuses?: {
+          id: string; // The message ID
+          status: "sent" | "delivered" | "read" | "failed";
+          timestamp: string;
+          recipient_id: string;
+          errors?: any[];
+        }[];
       };
       field: string;
     }[];
@@ -45,9 +52,7 @@ export type WhatsAppWebhookPayload = {
 function getWhatsAppToken(customToken?: string) {
   const token =
     customToken ||
-    process.env.META_SYSTEM_USER_TOKEN ||
-    process.env.META_WHATSAPP_TOKEN ||
-    process.env.WHATSAPP_ACCESS_TOKEN;
+    process.env.META_SYSTEM_USER_TOKEN;
 
   if (!token) throw new Error("Missing WhatsApp configuration");
   return token;
@@ -132,7 +137,7 @@ export async function updateBusinessProfile(
     vertical?: string;
   },
 ) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.META_SYSTEM_USER_TOKEN;
   if (!token) throw new Error("Missing WhatsApp configuration");
 
   const payload: any = {
@@ -166,7 +171,7 @@ export async function updateProfilePicture(
   phoneNumberId: string,
   imageUrl: string,
 ) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.META_SYSTEM_USER_TOKEN;
   if (!token) throw new Error("Missing WhatsApp configuration");
 
   // 1. Download the image from the URL
@@ -235,7 +240,7 @@ export async function updateProfilePicture(
 }
 
 export async function getBusinessProfile(phoneNumberId: string) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.META_SYSTEM_USER_TOKEN;
   if (!token) throw new Error("Missing WhatsApp configuration");
 
   try {
@@ -263,7 +268,7 @@ export async function getBusinessProfile(phoneNumberId: string) {
 }
 
 export async function getPhoneNumberDetails(phoneNumberId: string) {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.META_SYSTEM_USER_TOKEN;
   if (!token) throw new Error("Missing WhatsApp configuration");
 
   try {

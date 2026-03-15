@@ -13,20 +13,20 @@ const ColorPicker = ({ color, onChange, label, shape = 'square' }: ColorPickerPr
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "padding-0 border flex items-center justify-between rounded-xl flex-1 w-full min-w-28 text-right font-normal",
+              "padding-0 border-r-2 h-12 flex items-center justify-between rounded-xl rounded-r-none flex-1 w-full min-w-28 text-right font-normal",
               !color && "text-muted-foreground"
             )}
             style={shape === 'circle' ? { backgroundColor: color, borderColor: color } : {}}
           >
             <div
-              className="w-5 h-5 mr-2 border-r p-4 rounded-l-xl"
+              className="w-5 rounded-l-[20px] mr-2 border-r p-4 h-full"
               style={{ backgroundColor: color }}
             />
             <span className="truncate flex-1 pr-2">{color}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-none" align="start">
-          <div className="rounded-xl overflow-hidden shadow-2xl bg-white dark:bg-zinc-950 p-2 border">
+          <div className="rounded-xl overflow-hidden shadow-2xl bg-card p-2 border-2">
             <Sketch
               color={color}
               onChange={(color) => onChange(color.hex)}

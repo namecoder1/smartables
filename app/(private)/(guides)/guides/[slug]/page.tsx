@@ -8,6 +8,7 @@ import { getGuideIcon } from "@/utils/sanity/icons"
 import { notFound } from "next/navigation"
 import GuideTOC from "@/components/private/guide-toc"
 import SetPageTitle from "@/components/private/set-page-title"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export const revalidate = 60
 
@@ -166,9 +167,9 @@ export default async function GuidePage({ params }: Props) {
   }))
 
   return (
-    <PageWrapper className="p-0! gap-0">
+    <PageWrapper className="p-0! gap-0 h-full overflow-hidden">
       <SetPageTitle title={guide.title} description={guide.excerpt || ""} />
-      <div className="px-6 pt-5 pb-6 flex flex-col gap-4 border-b border-border">
+      <div className="px-6 pt-5 pb-6 flex flex-col gap-4 border-b border-border bg-card shrink-0">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link href="/guides" className="flex items-center gap-1.5 hover:text-foreground transition-colors">
@@ -181,10 +182,10 @@ export default async function GuidePage({ params }: Props) {
       </div>
 
       {/* Main content + Sidebar */}
-      <div className="px-6 pb-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10">
+      <div className="flex-1 min-h-0 overflow-hidden pl-6 flex gap-4">
         {/* Article */}
-        <div className="flex-1 min-w-0 max-w-4xl flex flex-col gap-4 pt-6">
-          <div className="flex items-center gap-3">
+        <ScrollArea className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 py-6">
             <div className="flex items-center justify-center w-16 h-16 rounded-xl bg-primary/10">
               <Icon className="w-8 h-8 text-primary" />
             </div>
@@ -240,7 +241,7 @@ export default async function GuidePage({ params }: Props) {
           </article>
 
           {(prev || next) && (
-            <div className="flex items-stretch gap-4 pt-6 border-t border-border">
+            <div className="flex items-stretch gap-4 py-6 border-t border-border">
               {prev ? (
                 <Link
                   href={`/guides/${prev.slug}`}
@@ -276,11 +277,11 @@ export default async function GuidePage({ params }: Props) {
               )}
             </div>
           )}
-        </div>
+        </ScrollArea>
 
         {/* Sidebar — sticky with TOC + suggested guides */}
-        <aside className="hidden lg:flex flex-col gap-6 shrink-0 border-l pt-6 pl-6">
-          <div className="sticky top-6 flex flex-col gap-6">
+        <aside className="hidden bg-card lg:flex flex-col gap-6 w-sm shrink-0 border-l py-6 px-6 overflow-y-auto">
+          <div className="flex flex-col gap-6">
             {/* Table of Contents */}
             {toc.length > 0 && (
               <div className="flex flex-col gap-2">

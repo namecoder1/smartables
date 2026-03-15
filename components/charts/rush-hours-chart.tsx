@@ -12,9 +12,11 @@ interface RushHoursChartProps {
   showComparison: boolean
 }
 
+const actualMonth = new Date().toLocaleString("it-IT", { month: "long" }).charAt(0).toUpperCase() + new Date().toLocaleString("it-IT", { month: "long" }).slice(1)
+
 const chartConfig = {
   current: {
-    label: "Mese corrente",
+    label: actualMonth,
     color: "#FE950F",
   },
   previous: {
@@ -25,7 +27,7 @@ const chartConfig = {
 
 const RushHoursChart = ({ data, showComparison }: RushHoursChartProps) => {
   return (
-    <div className="h-[300px] pb-8 w-full">
+    <div className="h-75 pb-8 w-full">
       <ChartContainer config={chartConfig} className="aspect-auto h-full w-full">
         <BarChart
           data={data}
@@ -66,7 +68,7 @@ const RushHoursChart = ({ data, showComparison }: RushHoursChartProps) => {
       <div className="flex items-center gap-6 my-4 pb-6 justify-center">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-[#FE950F]" />
-          <span className="text-sm text-muted-foreground font-medium">Mese corrente</span>
+          <span className="text-sm text-muted-foreground font-medium">{actualMonth}</span>
         </div>
         {showComparison && (
           <div className="flex items-center gap-2">

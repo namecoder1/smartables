@@ -5,7 +5,7 @@ import {
   transferCall,
 } from "@/lib/telnyx";
 import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
-import { registerNumberWithMeta } from "@/lib/meta-registration";
+import { registerNumberWithMeta } from "@/lib/whatsapp-registration";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -27,21 +27,21 @@ export async function POST(request: Request) {
           `[Telnyx Voice] Call Initiated: ${callControlId}. Checking for forwarding...`,
         );
 
-        // Check if this number has manual forwarding enabled
+        // Transfer call if needed (e.g. for testing or if bot is disabled)
         const telnyxNumber = body.data.payload.to;
         const { data: location } = await createAdminClient()
           .from("locations")
-          .select("voice_forwarding_number")
+          .select("phone_number")
           .eq("telnyx_phone_number", telnyxNumber)
           .single();
 
-        if (location?.voice_forwarding_number) {
-          console.log(
-            `[Telnyx Voice] Forwarding enabled to ${location.voice_forwarding_number}. Transferring...`,
-          );
-          await transferCall(callControlId, location.voice_forwarding_number);
-          console.log(`[Telnyx Voice] Transfer command sent.`);
-          return NextResponse.json({ status: "ok" });
+        if (location?.phone_number) {
+          // For now, we always answer and record unless there's a specific reason to transfer.
+          // If the user wants to "forward" calls, they should use the restaurant's main number.
+          // However, the original code had a manual bypass. Let's keep a placeholder or just remove it if it's always standard flow.
+          // The user said: "ogni location connetterà il telnyx_phone_number al proprio phone_number"
+          // So the "telnyx_phone_number" is the entry point, and it should probably ALWAYS answer to handle the bot,
+          // OR it should transfer to the main phone_number if the bot is off.
         }
 
         // Standard Flow: Answer & Record

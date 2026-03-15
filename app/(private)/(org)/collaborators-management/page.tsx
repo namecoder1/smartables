@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import CollaboratorsView from './collaborators-view'
 import { redirect } from 'next/navigation'
+import { getFaqsByTopic } from '@/utils/sanity/queries'
 
 const ManageCollaborators = async () => {
   const supabase = await createClient()
@@ -38,11 +39,17 @@ const ManageCollaborators = async () => {
     .eq('organization_id', currentUserProfile.organization_id)
     .order('name')
 
+
+  const [collaboratorsFaqs] = await Promise.all([
+    getFaqsByTopic('collaborators')
+  ])
+
   return (
     <CollaboratorsView
       collaborators={collaborators || []}
       user={user}
       organizationLocations={locations || []}
+      faqs={collaboratorsFaqs}
     />
   )
 }

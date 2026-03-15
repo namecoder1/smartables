@@ -17,7 +17,7 @@ async function checkDb() {
   const { data: locations, error } = await supabase
     .from("locations")
     .select(
-      "id, name, telnyx_phone_number, meta_phone_id, activation_status, voice_forwarding_number",
+      "id, name, telnyx_phone_number, meta_phone_id, activation_status",
     );
 
   if (error) {
@@ -32,7 +32,6 @@ async function checkDb() {
     console.log(`- Telnyx Number: ${loc.telnyx_phone_number}`);
     console.log(`- Meta Phone ID: ${loc.meta_phone_id}`);
     console.log(`- Activation Status: ${loc.activation_status}`);
-    console.log(`- Forwarding Number: ${loc.voice_forwarding_number}`);
 
     // If verified, maybe we reset it to pending for testing
     if (loc.activation_status === "verified") {

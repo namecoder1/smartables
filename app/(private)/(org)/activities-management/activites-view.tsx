@@ -29,8 +29,16 @@ import GroupedActions from "@/components/utility/grouped-actions";
 import { NumberInput } from "@/components/ui/number-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import OverviewCards from "@/components/private/overview-cards";
+import { formatPhoneNumber } from "@/lib/utils";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { FaqContent } from "@/components/private/faq-section";
+import { SanityFaq } from "@/utils/sanity/queries";
 
-const ActivitiesView = () => {
+const ActivitiesView = ({
+  faqs
+} : {
+  faqs: SanityFaq[]
+}) => {
   const { organization } = useOrganization();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
@@ -140,9 +148,16 @@ const ActivitiesView = () => {
           <h1 className="text-3xl font-bold tracking-tight">Gestisci sedi</h1>
           <p className="text-muted-foreground">Gestisci le sedi della tua organizzazione.</p>
         </div>
-        <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"} className="shadow-sm hidden xl:flex">
-          <Plus className="h-4 w-4" /> Aggiungi
-        </Button>
+        <ButtonGroup>
+          <FaqContent
+            variant="minimized"
+            title="Aiuto"
+            faqs={faqs}
+          />
+          <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"}>
+            <Plus className="h-4 w-4" /> Aggiungi
+          </Button>
+        </ButtonGroup>
       </div>
 
       <OverviewCards
@@ -151,19 +166,19 @@ const ActivitiesView = () => {
             title: 'Totale sedi',
             value: locations.length,
             description: 'sedi',
-            icon: <Store size={24} className="text-primary" />
+            icon: <Store className="text-primary size-6 2xl:size-8" />
           },
           {
             title: 'Sedi massime',
             value: organization.billing_tier === "starter" ? 1 : organization.billing_tier === "growth" ? 3 : 5,
             description: 'sedi',
-            icon: <Store size={24} className="text-primary" />
+            icon: <Store className="text-primary size-6 2xl:size-8" />
           },
           {
             title: 'Il tuo abbonamento',
             value: organization.billing_tier.charAt(0).toUpperCase() + organization.billing_tier.slice(1),
             description: '',
-            icon: <Store size={24} className="text-primary" />
+            icon: <Store className="text-primary size-6 2xl:size-8" />
           }
         ]}
       />
@@ -184,10 +199,11 @@ const ActivitiesView = () => {
       </Tooltip>
 
       {/* Info Box */}
-      <div className="flex items-start gap-4 rounded-lg border bg-primary/20 p-4 dark:bg-primary/20 dark:text-primary border-primary dark:border-primary">
-        <div className="space-y-2">
-          <p className="font-semibold text-lg tracking-tight leading-none">Gestisci piu di una sede?</p>
-          <p className="text-sm opacity-90">
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="font-medium text-sm">Gestisci più di una sede?</p>
+          <p className="text-sm text-muted-foreground">
             Ogni sede ha il proprio indirizzo e orari di apertura specifici. Aggiungere una sede nuova permette di gestire le prenotazioni separatamente.
           </p>
         </div>
@@ -321,7 +337,7 @@ const LocationCard = ({
   onDeleteConfirm: (id: string) => void
 }) => {
   return (
-    <Card key={loc.id} className="group relative overflow-hidden transition-all hover:shadow-md">
+    <Card key={loc.id} className="group relative overflow-hidden">
       <CardHeader>
         <div className="flex items-start justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -337,7 +353,7 @@ const LocationCard = ({
               },
               {
                 label: "Elimina",
-                icon: <Trash2 className="group-hover:text-red-500 dark:group-hover:text-white/80" />,
+                icon: <Trash2 className="group-hover:text-red-500!" />,
                 variant: "destructive",
                 action: () => onDeleteConfirm(loc.id),
               },
@@ -352,7 +368,7 @@ const LocationCard = ({
         </div>
         <div className="flex items-center gap-3 text-foreground">
           <Phone className="h-4 w-4 shrink-0 text-primary" />
-          <span>{loc.phone_number || "Nessun telefono"}</span>
+          <span>{formatPhoneNumber(String(loc.phone_number)) || "Nessun telefono"}</span>
         </div>
         <div className="flex items-center gap-3 text-foreground">
           <Users className="h-4 w-4 shrink-0 text-primary" />

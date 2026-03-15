@@ -17,7 +17,7 @@ async function run() {
   console.log("Starting full replacement of number for 'Original Centro'...");
 
   const telnyx = await import("../lib/telnyx");
-  const metaReg = await import("../lib/meta-registration");
+  const metaReg = await import("../lib/whatsapp-registration");
 
   // 1. Get the current location and its associated requirement group
   const { data: location, error: locError } = await supabase
@@ -81,7 +81,6 @@ async function run() {
         telnyx_phone_number: newNumber,
         meta_phone_id: null,
         activation_status: "pending",
-        voice_forwarding_number: null,
       })
       .eq("id", location.id);
 

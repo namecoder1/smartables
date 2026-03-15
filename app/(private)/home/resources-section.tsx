@@ -14,10 +14,9 @@ export const ResourcesSection = async () => {
   }
 
   return (
-    <Card className="border-2 shadow-sm h-full py-0 gap-0">
-      <CardHeader className="border-b-2 bg-muted/20 py-6 flex items-center gap-3">
-        <BookOpen className="w-5 h-5 text-muted-foreground" />
-        <CardTitle className="text-lg font-semibold">
+    <Card className="border-2 shadow-sm h-fit py-0 gap-0">
+      <CardHeader className="border-b-2 py-5 flex items-center gap-3">
+        <CardTitle className="text-lg font-bold tracking-tight">
           Guide Consigliate
         </CardTitle>
       </CardHeader>
@@ -35,7 +34,7 @@ export const ResourcesSection = async () => {
         </div>
         <div className="p-3 bg-muted/10 border-t-2">
           <Link href="/guides" className="flex items-center justify-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
-            Vedi tutte le guide <ArrowRight className="w-3 h-3 ml-1" />
+            Vedi tutte <ArrowRight className="w-3 h-3 ml-1" />
           </Link>
         </div>
       </CardContent>
@@ -46,8 +45,8 @@ export const ResourcesSection = async () => {
 const ResourceItem = ({ title, description, iconName, href }: { title: string, description: string, iconName?: string, href: string }) => {
   const Icon = getGuideIcon(iconName)
   return (
-    <Link href={href} className="flex gap-4 p-4 hover:bg-muted/30 transition-colors group items-start">
-      <div className="mt-1 p-1.5 rounded-md bg-muted/40 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors shrink-0">
+    <Link href={href} className="flex gap-4 p-4 hover:bg-primary/2 transition-colors group items-start">
+      <div className="mt-1 p-1.5 rounded-md bg-primary/10 text-primary shrink-0">
         <Icon className="w-4 h-4" />
       </div>
       <div>

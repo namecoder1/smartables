@@ -29,11 +29,13 @@ import PageWrapper from '@/components/private/page-wrapper'
 import OverviewCards from '@/components/private/overview-cards'
 import DataContainer from '@/components/utility/data-container'
 import NoItems from '@/components/utility/no-items'
-import GroupedActions from '@/components/utility/grouped-actions'
 import { deletePromotion } from './actions'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/utility/confirm-dialog'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { FaqContent } from '@/components/private/faq-section'
+import { SanityFaq } from '@/utils/sanity/queries'
 
 const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   percentage: {
@@ -89,15 +91,16 @@ interface PromotionsViewProps {
   locations: Location[]
   menus: Menu[]
   organizationId: string
+  faqs: SanityFaq[]
 }
 
-const PromotionsView = ({ promotions, locations, menus, organizationId }: PromotionsViewProps) => {
+const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: PromotionsViewProps) => {
   const router = useRouter()
 
   const handleDelete = async (id: string) => {
     try {
       const result = await deletePromotion(id)
-      if (result.error) {
+      if (!result.success) {
         toast.error("Errore nell'eliminazione della promozione")
       } else {
         toast.success('Promozione eliminata')
@@ -121,13 +124,18 @@ const PromotionsView = ({ promotions, locations, menus, organizationId }: Promot
             Crea e gestisci le promozioni per i tuoi menu e le tue sedi.
           </p>
         </div>
-        <Button
-          size="sm"
-          className="w-full sm:w-fit hidden xl:flex"
-          onClick={() => router.push('/promotions/new')}
-        >
-          <Plus className="w-4 h-4" /> Crea Promozione
-        </Button>
+        <ButtonGroup>
+          <FaqContent
+            variant='minimized'
+            title='Aiuto'
+            faqs={faqs}          
+          />
+          <Button
+            onClick={() => router.push('/promotions/new')}
+          >
+            <Plus className="w-4 h-4" /> Aggiungi
+          </Button>
+        </ButtonGroup>
       </div>
 
       {/* Overview Cards */}
@@ -137,19 +145,19 @@ const PromotionsView = ({ promotions, locations, menus, organizationId }: Promot
             title: 'Totale promozioni',
             value: promotions.length,
             description: 'promozioni',
-            icon: <TbRosetteDiscount size={24} className="text-primary" />,
+            icon: <TbRosetteDiscount className="text-primary size-6 2xl:size-8" />,
           },
           {
             title: 'Promozioni attive',
             value: activeCount,
             description: 'attive',
-            icon: <MdDiscount size={24} className="text-primary" />,
+            icon: <MdDiscount className="text-primary size-6 2xl:size-8" />,
           },
           {
             title: 'Con soglia visite',
             value: withThreshold,
             description: 'fidelizzazione',
-            icon: <RiCoupon3Line size={24} className="text-primary" />,
+            icon: <RiCoupon3Line className="text-primary size-6 2xl:size-8" />,
           },
         ]}
       />
@@ -179,17 +187,6 @@ const PromotionsView = ({ promotions, locations, menus, organizationId }: Promot
           ))}
         </DataContainer>
       )}
-
-      {/* FAB for mobile */}
-      {promotions.length > 0 && (
-        <Button
-          onClick={() => router.push('/promotions/new')}
-          className="absolute right-6 bottom-6 z-50 xl:hidden flex"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuova Promozione
-        </Button>
-      )}
     </PageWrapper>
   )
 }
@@ -213,17 +210,15 @@ const PromotionCard = ({
   // Scope labels
   const locationScope = promotion.all_locations
     ? 'Tutte le sedi'
-    : promotion.promotion_locations && promotion.promotion_locations.length > 0
-      ? `${promotion.promotion_locations.length} ${promotion.promotion_locations.length === 1 ? 'sede' : 'sedi'}`
+    : promotion.target_location_ids && promotion.target_location_ids.length > 0
+      ? `${promotion.target_location_ids.length} ${promotion.target_location_ids.length === 1 ? 'sede' : 'sedi'}`
       : 'Nessuna sede'
 
   const menuScope = promotion.all_menus
     ? 'Tutti i menù'
-    : promotion.promotion_menus && promotion.promotion_menus.length > 0
-      ? `${promotion.promotion_menus.length} ${promotion.promotion_menus.length === 1 ? 'menù' : 'menù'}`
+    : promotion.target_menu_ids && promotion.target_menu_ids.length > 0
+      ? `${promotion.target_menu_ids.length} ${promotion.target_menu_ids.length === 1 ? 'menù' : 'menù'}`
       : 'Nessun menù'
-
-  const itemsCount = promotion.promotion_items?.length || 0
 
   return (
     <Card className="flex flex-col relative group transition-all hover:shadow-md">
@@ -299,13 +294,7 @@ const PromotionCard = ({
           </div>
         )}
 
-        {/* Items count */}
-        {itemsCount > 0 && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Zap className="w-3.5 h-3.5 text-primary" />
-            {itemsCount} {itemsCount === 1 ? 'elemento' : 'elementi'} promozionati
-          </div>
-        )}
+        {/* Items count - removed since promotion_items is deprecated */}
       </CardContent>
 
       {/* Actions */}

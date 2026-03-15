@@ -1,14 +1,14 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from "@/lib/supabase-helpers";
 import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx";
 import { revalidatePath } from "next/cache";
-
-import { getAuthContext } from "@/lib/auth";
+import { PATHS } from "@/lib/revalidation-paths";
 
 export async function searchNumbersAction(countryCode: string, region: string) {
-  // Validate session
-  await getAuthContext();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Unauthorized");
 
   try {
     const numbers = await searchAvailableNumbers(countryCode, region);
@@ -23,17 +23,18 @@ export async function buyNumberAction(
   locationId: string,
   requirementGroupId: string,
 ) {
-  const { supabase } = await getAuthContext();
+  const auth = await requireAuth();
+  if (!auth.success) throw new Error("Unauthorized");
+  const { supabase } = auth;
 
   try {
     // 1. Atomic Lock for Purchase (Double Spending Protection)
-    // We attempt to set status to 'purchasing'. If it fails (already purchasing or has number), we abort.
     const { data: location, error: lockError } = await supabase
       .from("locations")
       .update({ activation_status: "purchasing" })
       .eq("id", locationId)
       .is("telnyx_phone_number", null)
-      .neq("activation_status", "purchasing") // Prevent double-lock
+      .neq("activation_status", "purchasing")
       .select()
       .single();
 
@@ -44,13 +45,9 @@ export async function buyNumberAction(
     }
 
     // 2. Purchase on Telnyx
-    // We pass the requirementGroupId to satisfy regulatory compliance
-    // Telnyx allows linking 'pending'/'unapproved' bundles to the order.
-    const purchase = await purchasePhoneNumber(phoneNumber, requirementGroupId);
+    await purchasePhoneNumber(phoneNumber, requirementGroupId);
 
     // 3. Save to Locations table
-    // Set status to 'provisioning' because we are waiting for the Regulatory Bundle to match and be approved.
-    // The Webhook will flip this to 'active' and trigger Meta WABA.
     await supabase
       .from("locations")
       .update({
@@ -59,17 +56,17 @@ export async function buyNumberAction(
       })
       .eq("id", locationId);
 
-    revalidatePath("/compliance");
+    revalidatePath(PATHS.COMPLIANCE);
     return { success: true };
   } catch (error: any) {
     console.error("Buy Number Error:", error);
-    // Revert lock if purchased failed
-    const supabase = await createClient(); // Re-init if needed or reuse
-    await supabase
+    // Revert lock if purchase failed
+    const supabaseRollback = await createClient();
+    await supabaseRollback
       .from("locations")
-      .update({ activation_status: "pending" }) // Revert to pending so user can try again.
+      .update({ activation_status: "pending" })
       .eq("id", locationId)
-      .eq("activation_status", "purchasing"); // Only revert if still purchasing
+      .eq("activation_status", "purchasing");
 
     throw new Error(error.message);
   }

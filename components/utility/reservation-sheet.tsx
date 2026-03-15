@@ -62,6 +62,8 @@ const ReservationSheet = ({
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [guests, setGuests] = useState<number | undefined>(undefined)
+  const [children, setChildren] = useState<number | undefined>(undefined)
+  const [allergies, setAllergies] = useState<string>('')
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [time, setTime] = useState<string>("")
   const [notes, setNotes] = useState('')
@@ -134,6 +136,23 @@ const ReservationSheet = ({
       }
     });
 
+    // Filter out past time slots if the selected date is today
+    const now = new Date();
+    const isToday =
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate();
+
+    if (isToday) {
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      return generatedSlots
+        .filter((t) => {
+          const [h, m] = t.split(':').map(Number);
+          return h * 60 + m >= nowMinutes;
+        })
+        .sort();
+    }
+
     return generatedSlots.sort();
   }, [date, openingHours]);
 
@@ -165,6 +184,8 @@ const ReservationSheet = ({
         setName(booking.guest_name || '')
         setPhone(booking.guest_phone || '')
         setGuests(booking.guests_count || undefined)
+        setChildren(booking.children_count || 0)
+        setAllergies(booking.allergies || '')
 
         if (booking.booking_time) {
           const dateObj = new Date(booking.booking_time);
@@ -194,6 +215,8 @@ const ReservationSheet = ({
         setName('')
         setPhone('')
         setGuests(undefined)
+        setChildren(0)
+        setAllergies('')
         setDate(undefined)
         setTime("")
         setNotes('')
@@ -211,6 +234,8 @@ const ReservationSheet = ({
     formData.set('name', name)
     formData.set('phone', phone)
     formData.set('guests', String(guests || ''))
+    formData.set('children_count', String(children || 0))
+    formData.set('allergies', allergies)
 
     if (date && time) {
       const [hours, minutes] = time.split(':').map(Number);
@@ -225,7 +250,7 @@ const ReservationSheet = ({
     startTransition(async () => {
       let result;
       if (booking) {
-        result = await updateBooking(booking.id, {}, formData as any)
+        result = await updateBooking(booking.id, {}, {}, formData as any)
       } else {
         result = await createBooking({}, formData as any)
       }
@@ -294,12 +319,12 @@ const ReservationSheet = ({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align='start' className="w-[268px] p-0 bg-card!">
+                <PopoverContent align='start' className="w-67 p-0 bg-card!">
                   <Command className='bg-background dark:bg-card/30 rounded-xl'>
                     <CommandInput placeholder="Cerca cliente..." className="h-9" />
                     <CommandList>
                       <CommandEmpty>Nessun cliente trovato.</CommandEmpty>
-                      <CommandGroup className="max-h-[200px] overflow-auto">
+                      <CommandGroup className="max-h-50 overflow-auto">
                         {customers.map((customer) => (
                           <CommandItem
                             key={customer.id}
@@ -354,7 +379,7 @@ const ReservationSheet = ({
                 value={phone}
                 onChange={setPhone}
                 defaultCountry="IT"
-                className='rounded-l-none h-9 border rounded-xl'
+                className='rounded-l-none h-9 border-2 rounded-xl'
                 placeholder="+39 333 1234567"
                 required
               />
@@ -362,7 +387,7 @@ const ReservationSheet = ({
           </div>
         )}
 
-        <div className='grid grid-cols-3 gap-2'>
+        <div className='grid grid-cols-2 gap-2'>
           <div className='flex flex-col items-start gap-2 min-w-0'>
             <Label>Numero di coperti</Label>
             <NumberInput
@@ -378,6 +403,23 @@ const ReservationSheet = ({
             />
           </div>
 
+          <div className='flex flex-col items-start gap-2 min-w-0'>
+            <Label>Bambini</Label>
+            <NumberInput
+              id='children'
+              name='children'
+              placeholder="0"
+              required
+              buttonHeight='h-4.5'
+              value={children}
+              onValueChange={setChildren}
+              context="default"
+              min={0}
+            />
+          </div>
+        </div>
+
+        <div className='grid grid-cols-2 gap-2'>
           <div className="flex flex-col gap-2 min-w-0">
             <Label>Data</Label>
             <Popover>
@@ -385,7 +427,7 @@ const ReservationSheet = ({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full justify-start text-left font-normal px-3",
+                    "w-full justify-start border-2 bg-input/30 text-left font-normal px-3",
                     !date && "text-muted-foreground"
                   )}
                 >
@@ -415,7 +457,7 @@ const ReservationSheet = ({
           <div className="flex flex-col gap-2 min-w-0">
             <Label>Orario</Label>
             <Select value={time} onValueChange={setTime} disabled={!date || timeSlots.length === 0}>
-              <SelectTrigger className="w-full px-3 text-left">
+              <SelectTrigger className="w-full px-3 text-left border-2">
                 <div className="flex items-center min-w-0 overflow-hidden">
                   <Clock className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">
@@ -434,13 +476,22 @@ const ReservationSheet = ({
           </div>
         </div>
 
+        <div className='flex flex-col items-start gap-2'>
+          <Label>Allergie</Label>
+          <Textarea
+            value={allergies}
+            onChange={(e) => setAllergies(e.target.value)}
+            placeholder="Scrivi qui eventuali allergie o intolleranze..."
+            rows={3}
+          />
+        </div>
 
         <div className='flex flex-col items-start gap-2'>
           <Label>Note</Label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Allergie, preferenze, ecc..."
+            placeholder="Scrivi qui note aggiuntive..."
             rows={3}
           />
         </div>

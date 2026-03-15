@@ -1,19 +1,65 @@
 'use client'
 
-import React from 'react'
+import React, { useTransition } from 'react'
 import { useLocationStore } from '@/store/location-store'
 import { Customer } from '@/types/general'
-import { Users, UserPlus, Star, Search, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { Search, ArrowUp, ArrowDown, Minus, Plus, Loader2, User, Phone } from 'lucide-react'
 import ClientsTable from '@/components/private/clients-table'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 import { LineChart, Line } from 'recharts'
-import { subDays, isWithinInterval, startOfMonth, subMonths, format, addDays } from 'date-fns'
+import { subDays, startOfMonth, subMonths, format } from 'date-fns'
+import PageWrapper from '@/components/private/page-wrapper'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Button } from '@/components/ui/button'
+import ActionSheet from '@/components/utility/action-sheet'
+import { PhoneInput } from '@/components/ui/phone-input'
+import { NumberInput } from '@/components/ui/number-input'
+import { createCustomer } from '@/app/actions/customers'
+import { getUserRole } from '@/app/actions/profile'
+import { FaqContent } from '@/components/private/faq-section'
+import { SanityFaq } from '@/utils/sanity/queries'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-const ClientsView = () => {
+const ClientsView = ({
+  faqs
+} : {
+  faqs: SanityFaq[]
+}) => {
   const [data, setData] = React.useState<Customer[] | null>(null)
   const [search, setSearch] = React.useState('')
+  const [isAdmin, setIsAdmin] = React.useState(false)
+  const [sheetOpen, setSheetOpen] = React.useState(false)
+  const [phoneNumber, setPhoneNumber] = React.useState('')
+  const [totalVisits, setTotalVisits] = React.useState<number | undefined>(undefined)
+  const [isPending, startTransition] = useTransition()
   const { selectedLocationId } = useLocationStore()
+
+  const handleOpenAdd = () => {
+    setPhoneNumber('')
+    setTotalVisits(undefined)
+    setSheetOpen(true)
+  }
+
+  const handleSubmit = async (formData: FormData) => {
+    if (!selectedLocationId) return
+    formData.set('phone_number', phoneNumber)
+
+    startTransition(async () => {
+      const result = await createCustomer(selectedLocationId, formData)
+      if (result.success) {
+        setData(prev => prev ? [result.data, ...prev] : [result.data])
+        setSheetOpen(false)
+      } else {
+        alert('Creazione cliente fallita')
+      }
+    })
+  }
+
+  React.useEffect(() => {
+    getUserRole().then(role => setIsAdmin(role === 'admin' || role === 'owner'))
+  }, [])
 
   const fetchData = React.useCallback(async () => {
     if (!selectedLocationId) return
@@ -149,7 +195,24 @@ const ClientsView = () => {
   }
 
   return (
-    <div className='space-y-6'>
+    <PageWrapper>
+      <div className='flex items-center justify-between'>
+        <div className='items-start flex-col flex gap-1'>
+          <h3 className="text-3xl font-bold tracking-tight">Clienti</h3>
+          <p className="text-muted-foreground">Panoramica completa dei tuoi clienti</p>
+        </div>
+        <ButtonGroup>
+          <FaqContent
+            variant='minimized'
+            title='Aiuto'
+            faqs={faqs}
+          />
+          <Button onClick={handleOpenAdd}>
+            <Plus />
+            Aggiungi
+          </Button>
+        </ButtonGroup>
+      </div>
       <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
         <StatCard
           title="Totale Clienti"
@@ -174,33 +237,102 @@ const ClientsView = () => {
         <StatCard
           title="Top Clienti"
           value={stats.top.value}
-          subvalue="--"
+          subvalue={`${stats.top.trend > 0 ? '+' : ''}${stats.top.trend.toFixed(0)}%`}
           icon={<Minus size={16} />}
-          trend="Fideli (>5 visite)"
+          trend="Fedeltà: >5 visite"
           color="neutral"
           chartData={stats.top.series}
           lineColor={getLineColor('neutral')}
         />
       </div>
 
-      <div className='bg-card text-card-foreground rounded-3xl flex flex-col gap-0 border-2 py-6 pb-0 px-0 shadow-sm overflow-hidden'>
-        <div className='flex flex-col items-start lg:flex-row lg:items-center justify-between w-full px-5 border-b-2 pb-6'>
-          <h2 className='text-2xl text-foreground font-bold tracking-tight'>Lista Clienti</h2>
-          <div className="relative w-full max-w-sm mt-4 lg:mt-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Cerca per nome o telefono..."
-              className="pl-10 h-10 rounded-xl border-2 bg-card!"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+
+          <Card className='pt-0 gap-0'>
+            <CardHeader className="border-b-2 py-5 gap-x-10 gap-y-3 flex flex-wrap items-center justify-between">
+              <CardTitle className="text-lg font-bold tracking-tight">
+                Lista Clienti
+              </CardTitle>
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cerca per nome o telefono..."
+                  className="pl-10 h-10 rounded-xl border-2 bg-card!"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full">
+                <ClientsTable
+                  data={filteredData}
+                  isAdmin={isAdmin}
+                  onDelete={(ids) => setData(prev => prev?.filter(c => !ids.includes(c.id)) ?? null)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+
+      <ActionSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title="Aggiungi Cliente"
+        description="Inserisci i dati del nuovo cliente."
+        formAction={handleSubmit}
+        actionButtons={
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Crea Cliente
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-2.5 h-4 w-4 text-foreground" />
+              <Input
+                id="name"
+                name="name"
+                placeholder="es: Mario Rossi"
+                className="pl-9 w-full"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone_number">Numero di telefono</Label>
+            <PhoneInput
+              id="phone_number"
+              defaultCountry="IT"
+              className="h-9 border-2 rounded-xl shadow-xs"
+              value={phoneNumber}
+              onChange={(value) => setPhoneNumber(value || '')}
+              required
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="total_visits">Visite totali <span className="text-muted-foreground">(opzionale)</span></Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-2.5 h-4 w-4 text-foreground" />
+              <NumberInput
+                id="total_visits"
+                name="total_visits"
+                placeholder="es: 5"
+                className="pl-9 w-full h-8.5"
+                buttonHeight='3!'
+                value={totalVisits}
+                context="default"
+                onValueChange={setTotalVisits}
+              />
+            </div>
+          </div>
         </div>
-        <div className="w-full">
-          <ClientsTable data={filteredData} />
-        </div>
-      </div>
-    </div>
+      </ActionSheet>
+    </PageWrapper>
   )
 }
 
@@ -231,7 +363,7 @@ const StatCard = ({
   }
 
   return (
-    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-4 shadow-sm min-h-[140px]'>
+    <div className='bg-card text-card-foreground rounded-3xl flex items-start gap-2 border-2 py-5 px-4 shadow-sm min-h-35'>
       <div className='flex flex-col justify-between h-full flex-1'>
         <h2 className='text-md sm:text-lg text-muted-foreground font-semibold tracking-tight'>{title}</h2>
         <div>
@@ -246,7 +378,7 @@ const StatCard = ({
         </div>
       </div>
       <div className='flex items-center justify-end'>
-        <LineChart width={80} height={50} data={chartData} className="sm:w-[100px] sm:h-[60px]">
+        <LineChart width={80} height={50} data={chartData} className="sm:w-25 sm:h-15">
           <Line
             type="monotone"
             dataKey="y"

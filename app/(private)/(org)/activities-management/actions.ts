@@ -1,7 +1,11 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
+import { ok, fail, type ActionResult } from "@/lib/action-response";
+import { PATHS } from "@/lib/revalidation-paths";
+import { getStr, getJson } from "@/lib/form-parsers";
 
 export async function getLocations(organizationId: string) {
   const supabase = await createClient();
@@ -24,21 +28,14 @@ export async function createLocation(
   organizationId: string,
   formData: FormData
 ) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return fail(auth.error);
+  const { supabase } = auth;
 
-  const name = formData.get("name") as string;
-  const phone = formData.get("phone") as string;
-  const address = formData.get("address") as string;
-  const openingHoursRaw = formData.get("openingHours") as string;
-
-  let openingHours = {};
-  if (openingHoursRaw) {
-    try {
-      openingHours = JSON.parse(openingHoursRaw);
-    } catch (e) {
-      console.error("Failed to parse opening hours", e);
-    }
-  }
+  const name = getStr(formData, "name");
+  const phone = getStr(formData, "phone");
+  const address = getStr(formData, "address");
+  const openingHours = getJson(formData, "openingHours", {});
 
   const slug =
     name
@@ -57,29 +54,22 @@ export async function createLocation(
 
   if (error) {
     console.error("Error creating location:", error);
-    return { error: "Failed to create location" };
+    return fail("Failed to create location");
   }
 
-  revalidatePath("/(private)/(organization)/general-settings", "page");
-  return { success: true };
+  revalidatePath(PATHS.GENERAL_SETTINGS, "page");
+  return ok();
 }
 
 export async function updateLocation(locationId: string, formData: FormData) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return fail(auth.error);
+  const { supabase } = auth;
 
-  const name = formData.get("name") as string;
-  const address = formData.get("address") as string;
-  const phone = formData.get("phone") as string;
-  const openingHoursRaw = formData.get("openingHours") as string;
-
-  let openingHours = {};
-  if (openingHoursRaw) {
-    try {
-      openingHours = JSON.parse(openingHoursRaw);
-    } catch (e) {
-      console.error("Failed to parse opening hours", e);
-    }
-  }
+  const name = getStr(formData, "name");
+  const address = getStr(formData, "address");
+  const phone = getStr(formData, "phone");
+  const openingHours = getJson(formData, "openingHours", {});
 
   const { error } = await supabase
     .from("locations")
@@ -93,15 +83,17 @@ export async function updateLocation(locationId: string, formData: FormData) {
 
   if (error) {
     console.error("Error updating location:", error);
-    return { error: "Failed to update location" };
+    return fail("Failed to update location");
   }
 
-  revalidatePath("/(private)/(organization)/general-settings", "page");
-  return { success: true };
+  revalidatePath(PATHS.GENERAL_SETTINGS, "page");
+  return ok();
 }
 
-export async function deleteLocation(locationId: string) {
-  const supabase = await createClient();
+export async function deleteLocation(locationId: string): Promise<ActionResult> {
+  const auth = await requireAuth();
+  if (!auth.success) return fail(auth.error);
+  const { supabase } = auth;
 
   const { error } = await supabase
     .from("locations")
@@ -110,9 +102,9 @@ export async function deleteLocation(locationId: string) {
 
   if (error) {
     console.error("Error deleting location:", error);
-    return { error: "Failed to delete location" };
+    return fail("Failed to delete location");
   }
 
-  revalidatePath("/(private)/(organization)/general-settings", "page");
-  return { success: true };
+  revalidatePath(PATHS.GENERAL_SETTINGS, "page");
+  return ok();
 }

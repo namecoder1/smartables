@@ -13,6 +13,7 @@ function getSupabaseAdmin() {
 type VerifyBookingPayload = {
   bookingId: string;
   locationId: string;
+  customerId?: string;
   guestName: string;
   guestPhone: string;
   bookingTime: string; // ISO string
@@ -92,10 +93,10 @@ export const verifyBooking = task({
       }
     }
 
-    // Fetch the location meta phone ID
+    // Fetch the location meta phone ID AND name
     const { data: location } = await supabase
       .from("locations")
-      .select("meta_phone_id")
+      .select("meta_phone_id, name")
       .eq("id", locationId)
       .single();
 
@@ -135,6 +136,7 @@ export const verifyBooking = task({
               parameters: [
                 { type: "text", text: guestName }, // {{1}} Name
                 { type: "text", text: timeString }, // {{2}} Time
+                { type: "text", text: location.name || "il ristorante" }, // {{3}} Location Name
               ],
             },
           ],

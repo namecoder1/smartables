@@ -7,12 +7,8 @@ import {
   searchAvailableNumbers,
   purchasePhoneNumber,
   submitRequirementGroup,
+  TELNYX_REQ_IDS,
 } from "@/lib/telnyx";
-import { TELNYX_REQ_IDS } from "@/lib/telnyx-req-ids";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {
@@ -271,70 +267,41 @@ export async function POST(req: NextRequest) {
     //   console.error("Warning: Failed to auto-submit RG:", submitError);
     // }
 
-    // 8. Save to Database
+    // 8. Save to Database — Update directly on locations
+    const { data: locOrgData } = await supabase
+      .from("locations")
+      .select("organization_id")
+      .eq("id", locationId)
+      .single();
+
     const { error: dbError } = await supabase
-      .from("telnyx_regulatory_requirements")
-      .upsert(
-        // ... (upsert logic unchanged)
-        {
-          organization_id: (
-            await supabase
-              .from("locations")
-              .select("organization_id")
-              .eq("id", locationId)
-              .single()
-          ).data?.organization_id,
+      .from("locations")
+      .update({
+        telnyx_requirement_group_id: requirementGroup.id,
+        regulatory_status: requirementGroup.status,
+        regulatory_documents_data: {
           area_code: areaCode,
-          country_code: "IT",
-          telnyx_requirement_group_id: requirementGroup.id,
-          status: requirementGroup.status, // "unapproved" usually
-          location_id: locationId,
-          documents_data: {
-            identity_path: identityPath,
-            address_path: addressPath,
-            identity_filename: identityFilename,
-            address_filename: addressFilename,
-            telnyx_identity_id: telnyxIdentityDoc.id,
-            telnyx_address_id: telnyxAddressDoc.id,
-            ...otherData,
-          },
+          identity_path: identityPath,
+          address_path: addressPath,
+          identity_filename: identityFilename,
+          address_filename: addressFilename,
+          telnyx_identity_id: telnyxIdentityDoc.id,
+          telnyx_address_id: telnyxAddressDoc.id,
+          ...otherData,
         },
-        { onConflict: "location_id" },
-      );
+      })
+      .eq("id", locationId);
 
     if (dbError) {
       console.error("DB Save Error:", dbError);
       throw new Error("Failed to save requirement group to DB");
     }
 
-    // 9. Search & Purchase Number - REMOVED AUTO-PURCHASE
-    // User requested to decouple this step. Frontend will handle purchase separately.
-    let purchasedNumber = null;
-
-    // 10. Update Location with Requirement ID & Phone Number
-    // Need to fetch the ID of the inserted row first
-    const { data: insertedReq } = await supabase
-      .from("telnyx_regulatory_requirements")
-      .select("id")
-      .eq("telnyx_requirement_group_id", requirementGroup.id)
-      .single();
-
-    if (insertedReq) {
-      const updateData: any = {
-        regulatory_requirement_id: insertedReq.id,
-        // telnyx_phone_number: null, // Don't set yet
-        // activation_status: "pending", // Don't set yet
-      };
-      await supabase.from("locations").update(updateData).eq("id", locationId);
-    }
-
     return NextResponse.json({
       success: true,
-      message:
-        "Documents submitted, Requirement Group created, and Number purchased (if available).",
+      message: "Documents submitted and Requirement Group created.",
       requirementGroupId: requirementGroup.id,
       status: requirementGroup.status,
-      purchasedNumber,
     });
   } catch (error: any) {
     console.error("Compliance Submit Error:", error);

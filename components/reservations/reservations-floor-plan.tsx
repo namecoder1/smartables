@@ -403,14 +403,12 @@ export default function ReservationsFloorPlan({
     }
   };
 
-  console.log(currentZone)
-
 
   return (
     <div className={cn("flex  relative", variant === 'reservations' ? 'h-[calc(100vh-315px)]' : 'h-[calc(100vh-250px)]')}>
       {/* Sidebar: Unassigned Bookings */}
       {!onTableSelect && (
-        <Card className={cn(variant === 'reservations' ? 'rounded-t-none' : '', "w-80 gap-2 py-4 shrink-0 rounded-r-none flex-col", showAssignCard ? "flex absolute top-0 left-0 z-10 h-full" : "hidden xl:flex ")}>
+        <Card className={cn(variant === 'reservations' ? 'rounded-t-none bg-[#ffffff]' : '', "w-80 gap-2 py-4 shrink-0 rounded-r-none flex-col", showAssignCard ? "flex absolute top-0 left-0 z-10 h-full" : "hidden xl:flex ")}>
           <CardHeader className='border-b-2 pb-2! mb-2'>
             <CardTitle className="text-lg tracking-tight">Da Assegnare ({unassignedBookings.length})</CardTitle>
           </CardHeader>
@@ -435,7 +433,7 @@ export default function ReservationsFloorPlan({
                         <Users className="w-3 h-3" />
                         {booking.guests_count}
                       </div>
-                      {booking.notes && <span className="truncate max-w-[120px]">{booking.notes}</span>}
+                      {booking.notes && <span className="truncate max-w-30">{booking.notes}</span>}
                     </div>
                   </div>
                 ))}
@@ -446,9 +444,9 @@ export default function ReservationsFloorPlan({
       )}
 
       {/* Main Map */}
-      <Card className={cn("flex-1 flex flex-col overflow-hidden py-0 gap-0", variant === 'reservations' ? 'rounded-t-3xl' : '', !onTableSelect ? "xl:border-l-0 xl:rounded-l-none" : "")}>
+      <Card className={cn("flex-1 flex flex-col overflow-hidden py-0 gap-0", variant === 'reservations' ? 'rounded-t-none' : '', !onTableSelect ? "xl:border-l-0 xl:rounded-l-none" : "")}>
         {zones.length > 1 && (
-          <div className="flex border-b-2 overflow-x-auto">
+          <div className="flex border-b-2 bg-[#ffffff] overflow-x-auto">
             {zones.map(z => (
               <Button
                 key={z.id}

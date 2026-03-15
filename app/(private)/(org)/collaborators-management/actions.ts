@@ -6,6 +6,7 @@ import { Resend } from "resend";
 import InviteEmail from "@/emails/invite";
 import { render } from "@react-email/components";
 import { revalidatePath } from "next/cache";
+import { PATHS } from "@/lib/revalidation-paths";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -138,10 +139,64 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
       return { error: "Invito creato ma errore nell'invio dell'email" };
     }
 
-    revalidatePath("/(private)/(org)/manage-collaborators");
+    revalidatePath(PATHS.MANAGE_COLLABORATORS);
     return { success: true };
   } catch (err) {
     console.error("Unexpected error:", err);
     return { error: "Qualcosa è andato storto" };
   }
+}
+
+export async function removeCollaborators(ids: string[]) {
+  const supabase = await createClient();
+  const supabaseAdmin = createAdminClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Non autorizzato" };
+
+  const { data: currentProfile } = await supabase
+    .from("profiles")
+    .select("organization_id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (!currentProfile?.organization_id) return { error: "Organizzazione non trovata" };
+  if (currentProfile.role !== "admin" && currentProfile.role !== "owner") {
+    return { error: "Solo gli amministratori possono rimuovere i collaboratori" };
+  }
+
+  // Prevent self-removal
+  if (ids.includes(user.id)) {
+    return { error: "Non puoi rimuovere te stesso" };
+  }
+
+  // Verify all targets belong to the same organization and are not owners
+  const { data: targets } = await supabaseAdmin
+    .from("profiles")
+    .select("id, role")
+    .in("id", ids)
+    .eq("organization_id", currentProfile.organization_id);
+
+  if (!targets || targets.length !== ids.length) {
+    return { error: "Uno o più collaboratori non trovati" };
+  }
+
+  const hasOwner = targets.some((t) => t.role === "owner");
+  if (hasOwner) return { error: "Non puoi rimuovere il proprietario dell'organizzazione" };
+
+  const { error } = await supabaseAdmin
+    .from("profiles")
+    .update({ organization_id: null, role: null })
+    .in("id", ids);
+
+  if (error) {
+    console.error("Error removing collaborators:", error);
+    return { error: "Errore nella rimozione dei collaboratori" };
+  }
+
+  revalidatePath(PATHS.MANAGE_COLLABORATORS);
+  return { success: true };
 }

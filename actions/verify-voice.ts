@@ -6,7 +6,7 @@ import {
   registerNumberWithMeta,
   requestVerificationCode,
   verifyCodeWithMeta,
-} from "@/lib/meta-registration";
+} from "@/lib/whatsapp-registration";
 
 export async function triggerVoiceVerification(
   locationId: string,
@@ -32,30 +32,8 @@ export async function triggerVoiceVerification(
     return { success: false, error: "Meta Phone ID not found" };
   }
 
-  // If manual forwarding is requested, save the number to the DB
-  if (forwardingNumber) {
-    console.log(
-      `[verify-voice] Setting forwarding number for ${location.telnyx_phone_number} to ${forwardingNumber}`,
-    );
-    const { error: updateError } = await createAdminClient()
-      .from("locations")
-      .update({ voice_forwarding_number: forwardingNumber })
-      .eq("id", locationId);
-
-    if (updateError) {
-      console.error(
-        "[verify-voice] Failed to set forwarding number:",
-        updateError,
-      );
-      return { success: false, error: "Failed to save forwarding number" };
-    }
-  } else {
-    // Clear any previous forwarding number to allow standard verification
-    await createAdminClient()
-      .from("locations")
-      .update({ voice_forwarding_number: null })
-      .eq("id", locationId);
-  }
+  // Manual forwarding is no longer stored in DB as the bot handles verification.
+  // We keep the argument for backward compatibility if needed, but don't save it.
 
   console.log(
     `[verify-voice] Triggering voice verification for ${location.telnyx_phone_number} (ID: ${location.meta_phone_id})`,
@@ -129,7 +107,6 @@ export async function submitVerificationCode(
       .from("locations")
       .update({
         activation_status: "verified",
-        voice_forwarding_number: null, // Disable forwarding after success
         meta_verification_otp: null, // Clear OTP after success
       })
       .eq("id", locationId);

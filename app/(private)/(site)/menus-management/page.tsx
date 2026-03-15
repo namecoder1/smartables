@@ -1,8 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Metadata } from 'next'
-import PageWrapper from '@/components/private/page-wrapper'
 import MenusView from './menus-view'
+import { getFaqsByTopic } from '@/utils/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'Gestisci Menu',
@@ -32,6 +32,13 @@ const ManageMenus = async () => {
     .eq('organization_id', organizationId)
     .order('created_at')
 
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('stripe_price_id')
+    .eq('id', organizationId)
+    .single()
+
+
   if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
     locationsQuery = locationsQuery.in('id', profile.accessible_locations)
   }
@@ -49,13 +56,23 @@ const ManageMenus = async () => {
       is_active,
       created_at,
       content,
-      menu_locations(location_id, is_active)
+      menu_locations(location_id, is_active, daily_from, daily_until)
     `)
     .eq('organization_id', organizationId)
     .order('created_at')
 
+  const { data: subscriptionPlan } = await supabase
+    .from('subscription_plans')
+    .select('limits')
+    .eq('stripe_price_id', org?.stripe_price_id)
+    .single()
+
+  const [menuFaqs] = await Promise.all([
+    getFaqsByTopic('menus')
+  ])
+
   return (
-    <MenusView menus={menus as any} organizationId={organizationId} locations={locations || []} />
+    <MenusView menus={menus as any} limits={subscriptionPlan?.limits} organizationId={organizationId} locations={locations || []} faqs={menuFaqs} />
   )
 }
 

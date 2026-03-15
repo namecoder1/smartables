@@ -182,7 +182,7 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
               </p>
             </div>
 
-            <div className="min-h-[300px]">
+            <div className="min-h-75">
               <AnimatePresence mode="wait">
                 {step === 1 && (
                   <motion.div
@@ -251,7 +251,7 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
                             id="phoneNumber"
                             name="phoneNumber_visible"
                             context="onboarding"
-                            className="border-neutral-200 bg-white! border-2 rounded-xl "
+                            className="border-neutral-200 h-12 shadow-sm bg-white! border-2 rounded-xl "
                             defaultCountry="IT"
                             value={formData.phoneNumber}
                             onChange={(val) => updateField("phoneNumber", val)}
@@ -313,7 +313,7 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
                   type="button"
                   onClick={nextStep}
                   disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
-                  className="bg-primary text-white min-w-[120px]"
+                  className="bg-primary text-white min-w-30"
                 >
                   Continua <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -321,7 +321,7 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
                 <Button
                   type="submit"
                   disabled={!isStep3Valid || isLoading}
-                  className="min-w-[120px]"
+                  className="min-w-30"
                 >
                   {isLoading ? "Salvataggio..." : "Completa Setup"}
                 </Button>

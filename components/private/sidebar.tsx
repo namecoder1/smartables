@@ -29,16 +29,10 @@ import {
 } from "@/components/ui/collapsible"
 import { LocationsSwitcher } from "./locations-switcher"
 import ComplianceAlert from "../utility/compliance-alert"
+import { useNavData } from "@/components/providers/nav-context"
 
-interface SidebarProps extends React.ComponentProps<typeof AppSidebar> {
-  organizationId?: string
-  activationStatus?: string
-  managedAccountId?: string | null
-  starredPages?: { id: string; url: string; title: string }[]
-  complianceStatus?: string
-}
-
-const Sidebar = ({ className, organizationId, activationStatus, managedAccountId, starredPages, complianceStatus, ...props }: SidebarProps) => {
+const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar>) => {
+  const { organizationId, activationStatus, managedAccountId, starredPages, complianceStatus } = useNavData()
   const pathname = usePathname()
   const [isEditing, setIsEditing] = useState(false)
 

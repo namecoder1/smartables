@@ -1,5 +1,3 @@
-"use server";
-
 import { createClient } from "@/utils/supabase/server";
 
 /**
@@ -13,9 +11,7 @@ export async function getAuthContext() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
+  if (!user) throw new Error("Unauthorized");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -23,12 +19,26 @@ export async function getAuthContext() {
     .eq("id", user.id)
     .single();
 
+  const { data: locations } = await supabase
+    .from('locations')
+    .select('*')
+    .eq('organization_id', profile?.organization_id)
+    .order('created_at')
+
+  const { data: organization } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', profile?.organization_id)
+    .single()
+
   if (!profile || !profile.organization_id) {
     throw new Error("No organization found");
   }
 
   return {
     supabase,
+    locations,
+    organization,
     user,
     organizationId: profile.organization_id,
   };

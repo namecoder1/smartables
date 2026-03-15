@@ -14,16 +14,13 @@ import {
   UserRoundCheck,
   UserRoundX,
   LayoutList,
-  Map as MapIcon,
   Plus,
-  ScrollText,
   Grid2X2,
 } from "lucide-react"
 import { DropdownMenuContent } from "@/components/ui/dropdown-menu"
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import { Check } from "lucide-react"
-import { it as localeIt } from 'date-fns/locale'
 import { startOfWeek as fnsStartOfWeek, endOfWeek as fnsEndOfWeek, isSameDay as fnsIsSameDay } from 'date-fns'
 import { mapBookingStatus } from '@/lib/maps'
 import DetailsSheet from '@/components/private/details-sheet'
@@ -32,15 +29,28 @@ import { Booking } from '@/types/general'
 import { BookingWithCustomer } from '@/types/components'
 import { useLocationStore } from '@/store/location-store'
 import ReservationsTable from '@/components/private/reservations-table'
+import { getUserRole } from '@/app/actions/profile'
 
 import { DateNavigator } from '@/components/reservations/date-navigator'
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 import GridReservations from '@/components/reservations/grid-reservations'
 import OverviewCards from '@/components/private/overview-cards'
+import PageWrapper from '@/components/private/page-wrapper'
+import { FaqContent } from '@/components/private/faq-section'
+import { SanityFaq } from '@/utils/sanity/queries'
 
-const ReservationsView = () => {
+const ReservationsView = ({
+  faqs
+} : {
+  faqs: SanityFaq[]
+}) => {
   const [open, setOpen] = React.useState(false)
   const [data, setData] = React.useState<Booking[] | null>(null)
+  const [isAdmin, setIsAdmin] = React.useState(false)
+
+  React.useEffect(() => {
+    getUserRole().then(role => setIsAdmin(role === 'admin' || role === 'owner'))
+  }, [])
   const [viewFilter, setViewFilter] = React.useState<'asc' | 'desc'>('desc')
   const [statusFilter, setStatusFilter] = React.useState<string | null>(null)
   const [selectedBooking, setSelectedBooking] = React.useState<BookingWithCustomer | null>(null)
@@ -124,27 +134,33 @@ const ReservationsView = () => {
   }, [data, selectedDate])
 
   return (
-    <div className='space-y-6'>
-
+    <PageWrapper>
+      <div className='flex flex-col md:flex-row md:items-center justify-center md:justify-between gap-6'>
+        <div className='items-start flex-col flex gap-1'>
+          <h1 className='text-3xl font-bold tracking-tight'>Vista Prenotazioni</h1>
+          <p className='text-muted-foreground'>Gestisci le prenotazioni in tempo reale.</p>
+        </div>
+        <FaqContent variant='minimized' className='w-fit' title='Aiuto' faqs={faqs} />
+      </div>
       <OverviewCards
         data={[
           {
             title: 'Totale oggi',
             value: dailyData.length,
             description: `prenotazion${dailyData.length === 1 ? 'e' : 'i'}`,
-            icon: <TicketCheck size={24} className="text-primary" />,
+            icon: <TicketCheck className="text-primary size-6 2xl:size-8" />,
           },
           {
             title: 'Questa settimana',
             value: data?.length || 0,
             description: `prenotazion${data?.length === 1 ? 'e' : 'i'}`,
-            icon: <TicketCheck size={24} className="text-primary" />,
+            icon: <TicketCheck className="text-primary size-6 2xl:size-8" />,
           },
           {
             title: 'Coperti oggi',
             value: dailyData.reduce((acc, b) => acc + (b.guests_count || 0), 0),
             description: 'totali',
-            icon: <TicketCheck size={24} className="text-primary" />,
+            icon: <TicketCheck className="text-primary size-6 2xl:size-8" />,
           },
 
         ]}
@@ -240,6 +256,8 @@ const ReservationsView = () => {
             isSheetOpen={isSheetOpen}
             handleRowClick={handleRowClick}
             context='default'
+            isAdmin={isAdmin}
+            onDelete={fetchData}
           />
         ) : (
           selectedLocationId && dailyData && (
@@ -264,7 +282,7 @@ const ReservationsView = () => {
           onEdit={handleEdit}
         />
       </div>
-    </div>
+    </PageWrapper>
   )
 }
 

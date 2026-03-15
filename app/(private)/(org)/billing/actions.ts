@@ -1,35 +1,21 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { requireAuth } from "@/lib/supabase-helpers";
+import { okWith, fail } from "@/lib/action-response";
 
 export async function checkSubscriptionStatus() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile?.organization_id) {
-    throw new Error("No organization found");
-  }
+  const auth = await requireAuth();
+  if (!auth.success) return fail("Non autorizzato");
+  const { supabase, organizationId } = auth;
 
   const { data: org } = await supabase
     .from("organizations")
     .select("stripe_price_id, stripe_status")
-    .eq("id", profile.organization_id)
+    .eq("id", organizationId)
     .single();
 
-  return {
+  return okWith({
     priceId: org?.stripe_price_id,
     status: org?.stripe_status,
-  };
+  });
 }

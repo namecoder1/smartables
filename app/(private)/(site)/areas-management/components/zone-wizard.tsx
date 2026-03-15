@@ -265,6 +265,7 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
                     value={zoneName}
                     onChange={(e) => setZoneName(e.target.value)}
                     placeholder="Es. Sala Principale"
+                    className='h-12 bg-white!'
                   />
                 </div>
 
@@ -277,6 +278,7 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
                       onValueChange={(value) => setDimensions(prev => ({ ...prev, width: value || 0 }))}
                       min={100}
                       context="default"
+                      className='h-12 bg-white!'
                     />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -287,12 +289,13 @@ export default function ZoneWizard({ onComplete, onCancel }: ZoneWizardProps) {
                       onValueChange={(value) => setDimensions(prev => ({ ...prev, height: value || 0 }))}
                       min={100}
                       context="default"
+                      className='h-12 bg-white!'
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 h-fit p-4 bg-card rounded-xl text-sm text-muted-foreground border-2 shadow-sm">
+              <div className="pt-4 h-fit p-4 bg-card rounded-3xl text-sm text-muted-foreground border-2 shadow-sm">
                 <p className="font-medium text-foreground mb-1">Riepilogo</p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Tipologia: {ZONE_TYPES.find(t => t.id === selectedType)?.label}</li>

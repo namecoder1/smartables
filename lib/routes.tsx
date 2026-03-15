@@ -1,12 +1,9 @@
-import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, ListTodo, LogOut, Settings, Store, ToolCase, Users, MessageSquare } from "lucide-react"
-import { GiTable } from "react-icons/gi";
-import { PiForkKnifeFill, PiToolboxFill, PiListChecksFill } from "react-icons/pi";
-import { MdDashboard, MdMenuBook } from "react-icons/md";
-import { MdDashboardCustomize } from "react-icons/md";
-import { RiMegaphoneLine, RiTeamFill } from "react-icons/ri";
+import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, Settings, Store, Users } from "lucide-react"
+import { PiForkKnifeFill } from "react-icons/pi";
+import { RiTeamFill } from "react-icons/ri";
 import { IoBookSharp } from "react-icons/io5";
-import { GrDocumentUser } from "react-icons/gr";
-import { LuListTodo, LuCalendarCheck, LuNotebookPen, LuBookOpenText, LuLayoutDashboard } from "react-icons/lu";
+import { BsShieldLock } from "react-icons/bs";
+import { LuCalendarCheck, LuNotebookPen, LuBookOpenText, LuLayoutDashboard, LuBotMessageSquare, LuMessagesSquare } from "react-icons/lu";
 import { LiaTableSolid } from "react-icons/lia";
 import { FaUsers, FaUsersLine, FaWhatsapp } from "react-icons/fa6";
 import { TbRosetteDiscount } from "react-icons/tb";
@@ -83,6 +80,11 @@ export const routes = {
       url: "/orders",
     },
     {
+      label: "Inbox",
+      icon: LuMessagesSquare,
+      url: "/inbox",
+    },
+    {
       label: "Analitiche",
       icon: ChartSpline,
       url: "/analytics",
@@ -109,9 +111,20 @@ export const routes = {
       ]
     },
     {
-      label: "Gestione WhatsApp",
+      label: 'Gestione Whatsapp',
       icon: FaWhatsapp,
-      url: "/whatsapp-management",
+      items: [
+        {
+          title: "Impostazioni Bot",
+          url: "/bot-settings",
+          icon: FaWhatsapp,
+        },
+        {
+          title: "Memoria Bot",
+          url: "/bot-memory",
+          icon: LuBotMessageSquare,
+        },
+      ]
     },
     {
       label: "Collaboratori",
@@ -138,6 +151,11 @@ export const routes = {
           title: "Fatturazione",
           url: "/billing",
           icon: CreditCard,
+        },
+        {
+          title: "Limiti",
+          url: "/limits",
+          icon: BsShieldLock,
         },
         {
           title: "Impostazioni generali",

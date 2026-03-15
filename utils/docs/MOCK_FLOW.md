@@ -10,7 +10,7 @@ Questo documento spiega come funziona il flusso di integrazione WhatsApp/Telnyx 
 | ------------------------------ | --------------------------------------------------------------------------- |
 | `TELNYX_API_KEY`               | [Telnyx Portal](https://portal.telnyx.com/) → API Keys                      |
 | `TELNYX_CONNECTION_ID`         | Telnyx Portal → SIP Connections (la connessione voice)                      |
-| `WHATSAPP_ACCESS_TOKEN`        | [Meta Business](https://business.facebook.com/) → System User Token         |
+| `META_SYSTEM_USER_TOKEN`       | [Meta Business](https://business.facebook.com/) → System Users → Token      |
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | Meta Business → WhatsApp → Business Account ID                              |
 | `OPENAI_API_KEY`               | [OpenAI](https://platform.openai.com/) → API Keys (per trascrizione vocale) |
 | `RESEND_API_KEY`               | [Resend](https://resend.com/) → API Keys (per email notifica)               |

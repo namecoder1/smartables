@@ -32,13 +32,13 @@ export default function ComplianceAlert({ context = 'sidebar', status, managedAc
     return (
       <Alert
         variant="destructive"
-        className="bg-card/10 dark:bg-card border-2 border-border/20 dark:border-border rounded-xl"
+        className="bg-card/10 border-2 border-border/10 rounded-xl"
       >
-        <AlertTitle className="mb-2 text-white dark:text-foreground font-bold! text-xl tracking-tighter">
+        <AlertTitle className="mb-2 text-white font-bold! text-xl tracking-tighter">
           Documenti richiesti
         </AlertTitle>
         <AlertDescription className="flex flex-col gap-3">
-          <span className="text-white/70 dark:text-foreground">
+          <span className="text-white/70">
             Per acquistare il tuo numero locale e attivare l'assistente AI,
             devi caricare i documenti aziendali richiesti dalla normativa vigente.
           </span>
@@ -53,7 +53,6 @@ export default function ComplianceAlert({ context = 'sidebar', status, managedAc
     )
   }
 
-  console.log(status, activationStatus)
   if (activationStatus === 'provisioning') return null
 
   return (

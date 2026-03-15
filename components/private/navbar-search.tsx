@@ -56,10 +56,10 @@ const NavbarSearch = () => {
           className='max-w-40 w-full border-2 border-border/10 bg-card/10! placeholder:text-white group-hover:border-primary/60 group-hover:bg-primary/10! cursor-pointer'
           readOnly
         />
-        <div className='flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2'>
-          <Kbd className='bg-white/10 text-white border border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>Ctrl</Kbd>
+        <div className='flex items-center gap-1 text-white absolute right-2 top-1/2 -translate-y-1/2'>
+          <Kbd className='bg-white/10 border text-white border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>Ctrl</Kbd>
           +
-          <Kbd className='bg-white/10 text-white border border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>K</Kbd>
+          <Kbd className='bg-white/10 border text-white border-white/20 group-hover:border-primary/60 group-hover:bg-primary/10!'>K</Kbd>
         </div>
       </div>
 

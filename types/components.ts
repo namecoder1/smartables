@@ -1,3 +1,4 @@
+import { SanityFaq } from "@/utils/sanity/queries";
 import { Menu, Location, Customer, Booking } from "./general";
 
 export interface ColorPickerProps {
@@ -14,6 +15,8 @@ export type BookingWithCustomer = Booking & {
 
 export interface MenusViewProps {
   menus: Menu[];
+  limits: any;
   organizationId: string;
   locations: Location[];
+  faqs: SanityFaq[]
 }
