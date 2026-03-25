@@ -6,6 +6,7 @@ import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
 import { fail } from "@/lib/action-response";
+import { captureCritical } from "@/lib/monitoring";
 
 export async function searchNumbersAction(countryCode: string, region: string) {
   const auth = await requireAuth();
@@ -49,13 +50,24 @@ export async function buyNumberAction(
     await purchasePhoneNumber(phoneNumber, requirementGroupId);
 
     // 3. Save to Locations table
-    await supabase
+    const { error: saveError } = await supabase
       .from("locations")
       .update({
         telnyx_phone_number: phoneNumber,
         activation_status: "provisioning",
       })
       .eq("id", locationId);
+
+    if (saveError) {
+      // Phone purchased but not saved — critical: inconsistent state
+      captureCritical(saveError, {
+        service: "supabase",
+        flow: "phone_purchase",
+        locationId,
+        phoneNumber,
+      });
+      throw saveError;
+    }
 
     revalidatePath(PATHS.COMPLIANCE);
     return { success: true };

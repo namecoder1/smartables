@@ -1,6 +1,7 @@
 import { task, wait } from "@trigger.dev/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { isBefore, subHours } from "date-fns";
+import { captureError } from "@/lib/monitoring";
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -152,6 +153,13 @@ export const verifyBooking = task({
 
       return { success: true };
     } catch (e) {
+      captureError(e, {
+        service: "whatsapp",
+        flow: "booking_verification",
+        bookingId,
+        locationId,
+        customerPhone: guestPhone,
+      });
       console.error(`[Verify Booking] Failed to send whatsapp message`, e);
       return { success: false, error: e };
     }

@@ -5,6 +5,7 @@ import { normalizePhoneNumber } from "@/lib/utils";
 import { sendBookingPush } from "@/lib/booking-notifications";
 import { sendPushToOrganization } from "@/lib/push-notifications";
 import { checkWhatsAppLimitNotification } from "@/lib/notifications";
+import { captureError, captureCritical, captureWarning } from "@/lib/monitoring";
 
 // ── Helpers ──
 
@@ -99,6 +100,13 @@ async function upsertCustomerAndGetThread(
       .single();
 
     if (error) {
+      captureError(error, {
+        service: "supabase",
+        flow: "customer_upsert",
+        locationId,
+        organizationId,
+        customerPhone: from,
+      });
       console.error("[WhatsApp Webhook] Error creating customer:", error);
       throw error;
     }
@@ -154,6 +162,14 @@ async function saveWhatsAppMessage(
   });
 
   if (error) {
+    captureWarning(`Failed to save ${direction} WhatsApp message`, {
+      service: "supabase",
+      flow: "message_save",
+      organizationId,
+      locationId,
+      customerId,
+      direction,
+    });
     console.error(
       `[WhatsApp Webhook] Failed to save ${direction} message:`,
       error,
@@ -337,6 +353,14 @@ export async function handleFlowCompletion(
     if (!location) return null;
 
     if (!payload.date || !payload.time) {
+      captureWarning("Missing date or time in WhatsApp Flow booking payload", {
+        service: "whatsapp",
+        flow: "booking_creation",
+        locationId: location.id,
+        organizationId: location.organization_id,
+        customerPhone: from,
+        payload,
+      });
       console.error(
         "[WhatsApp Webhook] Missing date or time in flow payload:",
         payload,
@@ -351,6 +375,14 @@ export async function handleFlowCompletion(
     );
 
     if (isNaN(bookingTimeDate.getTime())) {
+      captureWarning("Invalid date/time constructed from WhatsApp Flow payload", {
+        service: "whatsapp",
+        flow: "booking_creation",
+        locationId: location.id,
+        organizationId: location.organization_id,
+        customerPhone: from,
+        rawDateTime: `${payload.date}T${payload.time}`,
+      });
       console.error(
         "[WhatsApp Webhook] Invalid date/time constructed:",
         `${payload.date}T${payload.time}`,
@@ -415,6 +447,16 @@ export async function handleFlowCompletion(
     });
 
     if (error) {
+      captureCritical(error, {
+        service: "supabase",
+        flow: "booking_creation",
+        locationId: location.id,
+        organizationId: location.organization_id,
+        customerPhone: from,
+        bookingTime: bookingDate,
+        guests: payload.guests,
+        guestName: payload.guest_name,
+      });
       console.error("Booking creation failed via WhatsApp Webhook", error);
       await sendWhatsAppText(
         from,
@@ -461,6 +503,13 @@ export async function handleFlowCompletion(
           bookingTime: bookingDate,
         });
       } catch (e) {
+        captureWarning("Failed to dispatch verify-booking Trigger task", {
+          service: "trigger",
+          flow: "booking_creation",
+          locationId: location.id,
+          bookingId: latestBooking?.id,
+          customerPhone: from,
+        });
         console.warn(
           `[WhatsApp Webhook] Failed to dispatch Trigger task:`,
           e,
@@ -479,6 +528,13 @@ export async function handleFlowCompletion(
           bookingTime: bookingDate,
         });
       } catch (e) {
+        captureWarning("Failed to dispatch request-review Trigger task", {
+          service: "trigger",
+          flow: "booking_creation",
+          locationId: location.id,
+          bookingId: latestBooking.id,
+          customerPhone: from,
+        });
         console.warn(
           `[WhatsApp Webhook] Failed to dispatch review request task:`,
           e,
@@ -508,6 +564,11 @@ export async function handleFlowCompletion(
       locationId: location.id,
     }, "whatsapp");
   } catch (e) {
+    captureError(e, {
+      service: "whatsapp",
+      flow: "booking_creation",
+      customerPhone: from,
+    });
     console.error("Error parsing flow response", e);
   }
 
@@ -589,6 +650,13 @@ export async function handleTextMessage(
         metaPhoneId: phoneNumberId,
       });
     } catch (e) {
+      captureWarning("Failed to dispatch reply-to-message Trigger task", {
+        service: "trigger",
+        flow: "ai_reply",
+        locationId: location.id,
+        organizationId: location.organization_id,
+        customerId: customer.id,
+      });
       console.error(
         `[WhatsApp Webhook] Failed to dispatch AI reply task:`,
         e,

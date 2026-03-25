@@ -1,5 +1,6 @@
 import { task, wait } from "@trigger.dev/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { captureError } from "@/lib/monitoring";
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -111,6 +112,12 @@ export const requestReview = task({
         return { success: false, reason: "MISSING_REVIEW_URL" };
       }
     } catch (e) {
+      captureError(e, {
+        service: "supabase",
+        flow: "review_request",
+        bookingId,
+        locationId,
+      });
       console.error(`[Request Review] Failed to decrypt business_connectors`, e);
       return { success: false, reason: "DECRYPT_ERROR" };
     }
@@ -153,6 +160,13 @@ export const requestReview = task({
       );
       return { success: true };
     } catch (e) {
+      captureError(e, {
+        service: "whatsapp",
+        flow: "review_request",
+        bookingId,
+        locationId,
+        customerPhone: guestPhone,
+      });
       console.error(`[Request Review] Failed to send WhatsApp message`, e);
       return { success: false, error: e };
     }

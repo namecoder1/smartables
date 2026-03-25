@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { render } from "@react-email/components";
 import ComplianceRejectedEmail from "@/emails/compliance-rejected";
 import { NextResponse } from "next/server";
+import { captureError, captureCritical, captureWarning } from "@/lib/monitoring";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -59,6 +60,12 @@ export async function handleRequirementGroupStatusUpdated(
     .single();
 
   if (updateError) {
+    captureCritical(updateError, {
+      service: "supabase",
+      flow: "compliance_status_update",
+      telnyxRequirementGroupId: id,
+      status,
+    });
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
@@ -140,6 +147,11 @@ export async function handleNumberOrderCompleted(
               html,
             });
           } catch (emailErr) {
+            captureWarning("Failed to send compliance-rejected email (number order failure)", {
+              service: "resend",
+              flow: "phone_provisioning",
+              phoneNumber: firstPhone,
+            });
             console.error(
               "[Telnyx Webhook] Failed to send compliance-rejected email:",
               emailErr,
@@ -187,6 +199,11 @@ export async function activateLocation(
     .single();
 
   if (locationFetchError || !location?.telnyx_phone_number) {
+    captureCritical(locationFetchError ?? new Error("Location or phone number missing for activation"), {
+      service: "supabase",
+      flow: "phone_provisioning",
+      locationId,
+    });
     console.error(
       "Could not find location or phone number for activation:",
       locationFetchError,
@@ -215,6 +232,12 @@ export async function activateLocation(
 
     await requestVerificationCode(metaPhoneId, "VOICE");
   } catch (error: unknown) {
+    captureCritical(error, {
+      service: "whatsapp",
+      flow: "phone_provisioning",
+      locationId,
+      telnyxPhoneNumber: location.telnyx_phone_number,
+    });
     console.error("Failed in automation flow (Meta Registration):", error);
   }
 }

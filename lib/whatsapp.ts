@@ -1,4 +1,5 @@
 import { WHATSAPP_API_URL } from "./constants/api";
+import { captureError } from "@/lib/monitoring";
 
 type WhatsAppMessageTemplate = {
   name: string;
@@ -89,8 +90,17 @@ async function sendWhatsApp(
   const data = await response.json();
 
   if (!response.ok) {
+    const err = new Error(data.error?.message || "Failed to send WhatsApp message");
+    captureError(err, {
+      service: "whatsapp",
+      flow: "send_message",
+      metaErrorCode: data.error?.code,
+      metaErrorType: data.error?.type,
+      httpStatus: response.status,
+      recipient: to,
+    });
     console.error("WhatsApp API Error:", data);
-    throw new Error(data.error?.message || "Failed to send WhatsApp message");
+    throw err;
   }
 
   return data;

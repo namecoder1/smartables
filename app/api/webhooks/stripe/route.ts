@@ -11,6 +11,7 @@ import { render } from "@react-email/components";
 import PaymentFailedEmail from "@/emails/payment-failed";
 import AccountSuspendedEmail from "@/emails/account-suspended";
 import SubscriptionExpiringEmail from "@/emails/subscription-expiring";
+import { captureError, captureCritical, captureWarning } from "@/lib/monitoring";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -54,7 +55,7 @@ async function createTransactionRecord(
 
   if (existingTx) return; // already recorded
 
-  await supabase.from("transactions").insert({
+  const { error: txError } = await supabase.from("transactions").insert({
     organization_id: organizationId,
     amount: invoice.amount_paid / 100,
     currency: invoice.currency,
@@ -73,6 +74,15 @@ async function createTransactionRecord(
     period_end: new Date(invoice.lines.data[0].period.end * 1000).toISOString(),
     description: invoice.lines.data[0].description || "Subscription Payment",
   });
+
+  if (txError) {
+    captureCritical(txError, {
+      service: "supabase",
+      flow: "transaction_record",
+      organizationId,
+      stripeInvoiceId: invoice.id,
+    });
+  }
 }
 
 export async function POST(req: Request) {
@@ -268,6 +278,11 @@ export async function POST(req: Request) {
           });
         }
       } catch (emailErr) {
+        captureWarning("Failed to send account-suspended email", {
+          service: "resend",
+          flow: "subscription_status_email",
+          stripeSubscriptionId: subscription.id,
+        });
         console.error("[stripe webhook] Failed to send account-suspended email:", emailErr);
       }
     }
@@ -289,6 +304,11 @@ export async function POST(req: Request) {
           });
         }
       } catch (emailErr) {
+        captureWarning("Failed to send subscription-expiring email", {
+          service: "resend",
+          flow: "subscription_status_email",
+          stripeSubscriptionId: subscription.id,
+        });
         console.error("[stripe webhook] Failed to send subscription-expiring email:", emailErr);
       }
     }
@@ -306,6 +326,12 @@ export async function POST(req: Request) {
         .single();
 
       if (orgError || !orgData) {
+        captureWarning("Organization not found for invoice.payment_succeeded", {
+          service: "supabase",
+          flow: "payment_succeeded",
+          stripeSubscriptionId: subscriptionId,
+          stripeInvoiceId: invoice.id,
+        });
         console.error("Error finding organization for invoice:", orgError);
       } else {
         // Reset monthly usage counters
@@ -366,6 +392,11 @@ export async function POST(req: Request) {
         });
       }
     } catch (emailErr) {
+      captureWarning("Failed to send payment-failed email", {
+        service: "resend",
+        flow: "payment_failed_email",
+        stripeInvoiceId: invoice.id,
+      });
       console.error("[stripe webhook] Failed to send payment-failed email:", emailErr);
     }
   }
@@ -386,6 +417,12 @@ export async function POST(req: Request) {
         .single();
 
       if (orgError || !org) {
+        captureCritical(orgError ?? new Error("Organization not found for refund"), {
+          service: "supabase",
+          flow: "charge_refunded",
+          stripeCustomerId: customerId,
+          stripeChargeId: charge.id,
+        });
         console.error("Error finding organization for refund:", orgError);
         return new NextResponse("Organization not found for refund", {
           status: 500,
@@ -393,7 +430,7 @@ export async function POST(req: Request) {
       }
 
       // 1. Record refund transaction
-      await supabase.from("transactions").insert({
+      const { error: refundTxError } = await supabase.from("transactions").insert({
         organization_id: org.id,
         amount: -(charge.amount_refunded / 100),
         currency: charge.currency,
@@ -410,11 +447,27 @@ export async function POST(req: Request) {
         },
       });
 
+      if (refundTxError) {
+        captureCritical(refundTxError, {
+          service: "supabase",
+          flow: "charge_refunded",
+          organizationId: org.id,
+          stripeChargeId: charge.id,
+        });
+      }
+
       // 2. Cancel the subscription if still active
       if (org.stripe_subscription_id) {
         try {
           await stripe.subscriptions.cancel(org.stripe_subscription_id);
         } catch (cancelError) {
+          captureWarning("Subscription cancel failed during refund (may already be canceled)", {
+            service: "stripe",
+            flow: "charge_refunded",
+            organizationId: org.id,
+            stripeSubscriptionId: org.stripe_subscription_id,
+            stripeChargeId: charge.id,
+          });
           console.error(
             "[charge.refunded] Subscription cancel failed (may already be canceled):",
             cancelError,
@@ -434,6 +487,12 @@ export async function POST(req: Request) {
         .eq("id", org.id);
 
       if (updateError) {
+        captureCritical(updateError, {
+          service: "supabase",
+          flow: "charge_refunded",
+          organizationId: org.id,
+          stripeChargeId: charge.id,
+        });
         console.error(
           "[charge.refunded] Error updating organization:",
           updateError,
@@ -511,6 +570,12 @@ async function getDateFromSubscription(
 
   // 4. Still not found? Log and return current date as fallback
   if (val === undefined || val === null) {
+    captureWarning(`Subscription period date "${key}" not found — using current date as fallback`, {
+      service: "stripe",
+      flow: "subscription_period_sync",
+      stripeSubscriptionId: subscription.id,
+      missingKey: key,
+    });
     console.warn(
       `Date value missing for key "${key}". Subscription keys:`,
       Object.keys(subscription),

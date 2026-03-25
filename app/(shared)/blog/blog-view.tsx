@@ -63,7 +63,7 @@ function FeaturedCard({ article }: { article: SanityArticleCard }) {
           )}
           <div className="absolute top-4 left-4">
             <span className="inline-flex items-center gap-1.5 bg-[#FF9710] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-              ⭐ In evidenza
+              In evidenza
             </span>
           </div>
         </div>
@@ -177,7 +177,7 @@ const BlogView = ({ articles }: { articles: SanityArticleCard[] }) => {
   const categories = Array.from(new Set(articles.map((a) => a.category).filter(Boolean)))
 
   const filtered = articles
-    .filter((a) => !a.featured || activeCategory !== ALL)
+    .filter((a) => activeCategory !== ALL || a.id !== featured?.id)
     .filter((a) => activeCategory === ALL || a.category === activeCategory)
 
   return (

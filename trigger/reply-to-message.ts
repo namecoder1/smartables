@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { checkWhatsAppLimitNotification } from "@/lib/notifications";
+import { captureError, captureWarning } from "@/lib/monitoring";
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -73,6 +74,13 @@ export const replyToMessage = task({
           metaPhoneId,
         );
       } catch (err) {
+        captureWarning("Failed to send WhatsApp cap-exceeded fallback message", {
+          service: "whatsapp",
+          flow: "ai_reply",
+          organizationId,
+          locationId,
+          customerId,
+        });
         console.error("[Reply Task] Failed to send fallback message:", err);
       }
 
@@ -173,6 +181,14 @@ ${rulesText ? rulesText : "(Nessuna regola aggiuntiva configurata. Rispondi in m
         );
         messageId = waResponse?.messages?.[0]?.id || null;
       } catch (err) {
+        captureError(err, {
+          service: "whatsapp",
+          flow: "ai_reply",
+          organizationId,
+          locationId,
+          customerId,
+          customerPhone,
+        });
         console.error("[Reply Task] Failed to send to WhatsApp API", err);
       }
 
@@ -192,11 +208,23 @@ ${rulesText ? rulesText : "(Nessuna regola aggiuntiva configurata. Rispondi in m
         await supabase.rpc("increment_whatsapp_usage", { org_id: organizationId });
         await checkWhatsAppLimitNotification(supabase as any, organizationId);
       } catch (err) {
+        captureWarning("Failed to increment WhatsApp usage counter", {
+          service: "supabase",
+          flow: "ai_reply",
+          organizationId,
+        });
         console.error("[Reply Task] Failed to increment usage:", err);
       }
 
       return { success: true, text };
     } catch (e) {
+      captureError(e, {
+        service: "openai",
+        flow: "ai_reply",
+        organizationId,
+        locationId,
+        customerId,
+      });
       console.error("[Reply Task] AI generation failed:", e);
       return { success: false, error: e };
     }
