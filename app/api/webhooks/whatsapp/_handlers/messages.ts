@@ -493,7 +493,9 @@ export async function handleFlowCompletion(
     );
 
     // Track WhatsApp usage for the confirmation message
-    supabase.rpc("increment_whatsapp_usage", { org_id: location.organization_id }).then(() => {
+    Promise.resolve(
+      supabase.rpc("increment_whatsapp_usage", { org_id: location.organization_id })
+    ).then(() => {
       checkWhatsAppLimitNotification(supabase, location.organization_id).catch(() => {});
     }).catch(() => {});
 

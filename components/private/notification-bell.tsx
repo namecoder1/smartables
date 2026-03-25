@@ -75,7 +75,7 @@ export function NotificationBell({ notifications, pendingCallbacks }: Notificati
             )}
 
             {notifications.map((notif) => {
-              const config = NOTIFICATION_ICONS[notif.type] ?? NOTIFICATION_ICONS.new_booking;
+              const config = NOTIFICATION_ICONS[notif.type as keyof typeof NOTIFICATION_ICONS] ?? NOTIFICATION_ICONS.new_booking;
               const { Icon, color, bg } = config;
               return (
                 <DropdownMenuItem key={notif.id} asChild>

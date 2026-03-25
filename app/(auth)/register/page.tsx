@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import RegisterView from './register-view'
 import { Metadata } from 'next'
 
@@ -8,7 +9,9 @@ export const metadata: Metadata = {
 
 const RegisterPage = () => {
   return (
-    <RegisterView />
+    <Suspense fallback={null}>
+      <RegisterView />
+    </Suspense>
   )
 }
 

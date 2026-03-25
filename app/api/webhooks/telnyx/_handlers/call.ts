@@ -139,16 +139,18 @@ export async function handleCallInitiated(
 
       if (recentMessage) {
         // Log the dropped call for dashboard visibility — non-blocking
-        supabase.from("telnyx_webhook_logs").insert({
-          event_type: "call.dropped_rate_limited",
-          location_id: location.id,
-          organization_id: location.organization_id,
-          payload: {
-            caller_number: callerNumber,
-            customer_id: customerId,
-            reason: "rate_limited_24h",
-          },
-        }).catch(() => {});
+        Promise.resolve(
+          supabase.from("telnyx_webhook_logs").insert({
+            event_type: "call.dropped_rate_limited",
+            location_id: location.id,
+            organization_id: location.organization_id,
+            payload: {
+              caller_number: callerNumber,
+              customer_id: customerId,
+              reason: "rate_limited_24h",
+            },
+          })
+        ).catch(() => {});
 
         await hangupCall(callControlId);
         return NextResponse.json({ success: true, reason: "rate_limited" });
