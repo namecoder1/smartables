@@ -1,5 +1,7 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { verifyTelnyxWebhook } from "@/lib/telnyx-verify";
 import {
   handleRequirementGroupStatusUpdated,
   handleNumberOrderCompleted,
@@ -10,8 +12,25 @@ import {
 } from "./_handlers/call";
 
 export async function POST(req: Request) {
+  const rawBody = await req.text();
+
+  const signature = req.headers.get("telnyx-signature-ed25519");
+  const timestamp = req.headers.get("telnyx-timestamp");
+
+  if (!signature || !timestamp) {
+    return NextResponse.json(
+      { error: "Missing signature headers" },
+      { status: 400 },
+    );
+  }
+
+  const isValid = await verifyTelnyxWebhook(rawBody, signature, timestamp);
+  if (!isValid) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
   try {
-    const body = await req.json();
+    const body = JSON.parse(rawBody);
     const event = body.data;
     const eventType = event.event_type;
     const payload = event.payload;
@@ -96,6 +115,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    Sentry.captureException(error);
     console.error("Error processing webhook:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },

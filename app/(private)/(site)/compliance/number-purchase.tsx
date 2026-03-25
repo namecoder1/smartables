@@ -45,6 +45,10 @@ export function NumberPurchase({ locationId, requirementGroupId, areaCode }: Num
     try {
       // Use the area code from compliance
       const results = await searchNumbersAction("IT", areaCode);
+      if (!Array.isArray(results)) {
+        toast.error("Errore ricerca numeri: " + results.error);
+        return;
+      }
       setNumbers(results);
     } catch (error: any) {
       toast.error("Errore ricerca numeri: " + error.message);

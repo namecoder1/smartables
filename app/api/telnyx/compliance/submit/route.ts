@@ -230,11 +230,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(
-      "Constructed Requirements:",
-      JSON.stringify(requirements, null, 2),
-    );
-
     // Check for undefined values in requirements
     const undefinedReqs = requirements.filter((r) => !r.field_value);
     if (undefinedReqs.length > 0) {
@@ -253,10 +248,6 @@ export async function POST(req: NextRequest) {
       "ordering",
       customerReference,
       requirements,
-    );
-    console.log(
-      "Created Requirement Group:",
-      JSON.stringify(requirementGroup, null, 2),
     );
 
     // 7.5 Submit Requirement Group (Explicitly) - REMOVED as it returns 404 for ordering RGs

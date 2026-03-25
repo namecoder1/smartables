@@ -75,9 +75,9 @@ const ReservationsTable = ({
     return (
       <div>
         {data && data.length > 0 ? (
-          <div className="bg-card">
-            <Table>
-              <TableHeader>
+          <div>
+            <Table className='border-0! rounded-none!'>
+              <TableHeader className='border-0!'>
                 <TableRow>
                   <TableHead className="px-6">Ospite</TableHead>
                   <TableHead className="px-6">Data e Ora</TableHead>
@@ -114,7 +114,7 @@ const ReservationsTable = ({
             </Table>
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-3xl justify-center p-12 bg-card min-h-100">
+          <div className="flex flex-col items-center rounded-3xl justify-center p-12 bg-card min-h-100 border-0!">
             <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-full">
               <CircleQuestionMark className="w-10 h-10 text-foreground" />
             </div>

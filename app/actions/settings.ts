@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { updateBusinessProfile, updateProfilePicture } from "@/lib/whatsapp";
 import { PATHS } from "@/lib/revalidation-paths";
 import { requireAuth } from "@/lib/supabase-helpers";
+import { fail } from "@/lib/action-response";
 
 // ── Location Actions ──
 
@@ -12,7 +13,7 @@ export async function saveGoogleReviewUrl(
   reviewUrl: string,
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { data: loc } = await supabase
@@ -44,7 +45,7 @@ export async function saveGoogleReviewUrl(
     .update({ business_connectors: encrypted })
     .eq("id", locationId);
 
-  if (error) throw new Error("Failed to save Google review URL");
+  if (error) return fail("Failed to save Google review URL");
 
   revalidatePath(PATHS.SETTINGS);
   return { success: true };
@@ -65,7 +66,7 @@ export async function updateLocation(
   },
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { error, data: result } = await supabase
@@ -75,23 +76,16 @@ export async function updateLocation(
     .select("id, meta_phone_id, branding")
     .single();
 
-  if (error) {
-    console.error("Error updating location:", error);
-    throw new Error("Failed to update location");
-  }
+  if (error) return fail("Failed to update location");
 
   // Sync with Meta if branding changed and meta_phone_id exists
   if (data.branding && result?.meta_phone_id) {
-    console.log(
-      `[settings] Syncing branding with Meta for phone ${result.meta_phone_id}...`,
-    );
     try {
       if (data.branding.logo_url) {
         await updateProfilePicture(
           result.meta_phone_id,
           data.branding.logo_url as string,
         );
-        console.log(`[settings] Meta Profile Picture updated.`);
       }
 
       const profileData: Record<string, string> = {};
@@ -102,10 +96,9 @@ export async function updateLocation(
 
       if (Object.keys(profileData).length > 0) {
         await updateBusinessProfile(result.meta_phone_id, profileData);
-        console.log(`[settings] Meta Business Profile fields updated.`);
       }
     } catch (e) {
-      console.error("[settings] Failed to sync branding with Meta:", e);
+      // Non-critical: sync failure doesn't block the location update
     }
   }
 

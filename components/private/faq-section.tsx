@@ -46,7 +46,7 @@ export function FaqContent({
           </DialogHeader>
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq) => (
-              <AccordionItem key={faq._id} value={`item-${faq._id}`} className='border-b last:border-0 py-1'>
+              <AccordionItem key={faq.id} value={`item-${faq.id}`} className='border-b last:border-0 py-1'>
                 <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-primary transition-colors py-4 text-left">
                   {faq.question}
                 </AccordionTrigger>
@@ -67,13 +67,13 @@ export function FaqContent({
       <div className='px-6 py-6 border-b-2 bg-muted/5'>
         <div className='flex items-center gap-2'>
           <HelpCircle className='w-5 h-5 text-primary' />
-          <h3 className='text-lg font-bold tracking-tight'>{title}</h3>
+          <h3 className='text-xl font-bold tracking-tight'>{title}</h3>
         </div>
       </div>
       <div className='p-6 pt-2'>
         <Accordion type="single" collapsible className="w-full">
           {faqs.map((faq) => (
-            <AccordionItem key={faq._id} value={`item-${faq._id}`} className='border-b last:border-0 py-1'>
+            <AccordionItem key={faq.id} value={`item-${faq.id}`} className='border-b last:border-0 py-1'>
               <AccordionTrigger className="text-sm font-semibold hover:no-underline hover:text-primary transition-colors py-4 text-left">
                 {faq.question}
               </AccordionTrigger>

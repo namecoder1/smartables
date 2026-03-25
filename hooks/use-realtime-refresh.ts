@@ -76,12 +76,8 @@ export function useRealtimeRefresh(
       } = await supabase.auth.getSession();
 
       if (!session) {
-        console.log(
-          "[Realtime] No session found, skipping subscription (RLS may fail)",
-        );
         return;
       }
-      console.log(`[Realtime] Session found, subscribing to ${tableName}`);
 
       channel = supabase
         .channel(`realtime_${tableName}_${filter || "all"}`)

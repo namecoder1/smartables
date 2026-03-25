@@ -1,0 +1,262 @@
+Ultimo aggiornamento: 2026-03-23
+Stato progetto: ~94% completato
+
+Da escludere dalla demo / vendita:
+  (nessun elemento — trial rimossa, debug rimosso)
+
+
+════════════════════════════════════════
+1. STATO DELL'IMPLEMENTAZIONE
+════════════════════════════════════════
+
+✅ Funziona e completo:
+  - Autenticazione multi-tenant (Supabase Auth + RLS)
+  - 88 server actions distribuite su 20+ file
+  - 40+ pagine private (org + site level)
+  - Webhook Stripe con signature verification
+  - Webhook WhatsApp (messaggi, button, flow)
+  - Webhook Telnyx (compliance, numeri, call)
+  - Billing completo: 3 piani, 6 addons, Stripe Checkout,
+    transaction history, invoice PDF
+  - Analytics sofisticate con plan-gating
+    (KPI, rush hours, trend 90gg, export CSV)
+  - Google Calendar: OAuth, 6 API endpoints,
+    UI connect/disconnect, event sheet con
+    link/unlink prenotazione — end-to-end
+  - Feedback Widget: form floating 4-step,
+    DB migration, 3 admin actions, UI polished
+  - Trigger.dev jobs: verify-booking, request-review,
+    reply-to-message
+  - Admin dashboard: Health, Organizations, Revenue —
+    dashboard operative complete
+  - Loading states: 28 loading.tsx con skeleton
+    integrati in tutte le route private
+  - Pricing page pubblica (landing completa)
+  - Email transazionali via Resend + React Email
+  - Rate limiting pubblico (public-booking.ts)
+  - OpenAI bot risposte WhatsApp
+  - Background job per 24h reminder e review request
+  - Sentry error tracking (@sentry/nextjs ^10.45.0):
+    DSN configurato, captureException nei webhook critici
+    (stripe, telnyx, whatsapp outer catch + DB 500s)
+  - Telnyx webhook: verifica firma Ed25519 completa
+    (lib/telnyx-verify.ts, TELNYX_WEBHOOK_PUBLIC_KEY)
+  - Migrations consolidate: db.sql è source of truth,
+    tutti i campi delle migration già presenti
+
+⚠️ Incompleto / a metà:
+  - app/api/webhooks/whatsapp-flow/ — route esiste ma
+    il flusso WhatsApp Flow non è testato end-to-end
+
+
+════════════════════════════════════════
+2. REFACTOR DA FARE
+════════════════════════════════════════
+
+✅ RISOLTI (non fare più):
+  - Query duplicate: home/page.tsx ora usa
+    getOrganizationById() e getLocationsByOrg()
+    da lib/queries/
+  - Validazione parziale: app/actions/bookings.ts ora
+    usa validateBookingFields() e validateGuestFields()
+    da lib/validators/booking.ts
+  - Google Calendar non integrato → ora completo
+  - Feedback Widget non linkato → ora completo
+  - loading.tsx non committati → ora integrati
+  - throw in server actions (9 file) → convertiti a
+    return fail() / return { success: false } in tutti
+    i file: admin-automation, admin-compliance,
+    menu-editor, floor-plan, telnyx-numbers,
+    call-management, branding, admin-simulation,
+    settings. Caller number-purchase.tsx aggiornato.
+
+─────────────────────────────────────────
+✅ RISOLTO — console.log rimossi da tutti i file
+  di produzione (app/, lib/, hooks/).
+  Rimasti intenzionalmente:
+  - trigger/ → log utili nel Trigger.dev dashboard
+  - app/api/debug/ → sarà rimosso con la route stessa
+  - scripts/ e utils/scripts/ → dev tools
+
+─────────────────────────────────────────
+✅ RISOLTO — checkResourceAvailability collegato:
+  lib/limiter.ts → ResourceType esteso con kb_chars
+  e analytics (oltre a staff, contacts_wa, storage,
+  locations, menus, zones, bookings).
+
+  Chiamato in:
+  - inviteCollaborator → "staff"
+  - createLocation     → "locations"
+  - createMenu         → "menus"
+  - saveFloorPlan      → "zones" (solo net-new zones)
+  - createKnowledgeBaseEntry → "kb_chars"
+  - updateKnowledgeBaseEntry → "kb_chars" (solo delta > 0)
+  - trackStorageUpload → "storage" (guard hard cap)
+  - checkStorageAvailability() → nuova action
+    da chiamare client-side prima dell'upload
+
+  WA contacts (contacts_wa) non ha una server action
+  user-facing: l'enforcement è nei webhook/trigger jobs.
+
+─────────────────────────────────────────
+✅ RISOLTO — Pattern Auth uniformato:
+  Tutti i file ora usano requireAuth() nelle
+  server actions. Migrati da vecchio pattern
+  (createClient + auth.getUser + profile query):
+  - collaborators-management/actions.ts
+  - app/actions/user-feedback.ts
+
+  CLAUDE.md aggiornato: documenta requireAuth()
+  per server actions, getAuthContext() per RSC.
+  Corrette anche le Key Libraries (lib/limiter.ts
+  e lib/supabase-helpers.ts ora elencati).
+
+  Pattern stabilito:
+  - Server actions → requireAuth() (no-throw, typed)
+  - RSC pages/layouts → getAuthContext() (throws)
+  - Admin actions → createAdminClient() (nessun auth utente)
+
+
+════════════════════════════════════════
+3. TEST COVERAGE
+════════════════════════════════════════
+
+Ratio attuale: ~68% (5.600+ righe di test
+su ~8.200 di codice applicativo).
+Total: 560 test, 41 file, tutti verdi.
+
+Migliorato da 767 → 1.745 → 2.300+ → 3.100+ → 4.400+ → 5.200+ → 5.600+ righe.
+
+Step N-2 (107 test — webhooks + analytics):
+  - tests/api/webhooks/stripe.test.ts (14)
+  - tests/api/webhooks/whatsapp.test.ts (16)
+  - tests/api/webhooks/telnyx-compliance.test.ts (13)
+  - tests/actions/settings.test.ts (9)
+  - tests/actions/storage.test.ts (14)
+  - tests/actions/user-feedback.test.ts (13)
+  - tests/lib/analytics-queries.test.ts (11)
+  - tests/lib/analytics-export.test.ts (17)
+
+Step N-1 (102 test — server actions core):
+  - tests/actions/bookings-extended.test.ts (21)
+  - tests/actions/menus.test.ts (18)
+  - tests/actions/floor-plan.test.ts (16)
+  - tests/actions/call-management.test.ts (18)
+  - tests/actions/google-calendar.test.ts (16)
+  - tests/actions/collaborators.test.ts (13)
+
+Step corrente (80 test — actions rimanenti):
+  - tests/actions/customers.test.ts (16)
+    searchCustomers, createCustomer, updateCustomer,
+    deleteCustomers (role check admin/owner), getAllCustomers
+  - tests/actions/menu-editor.test.ts (18)
+    createCategory, updateCategory, deleteCategory (storage cleanup),
+    createMenuItem, updateMenuItem, deleteMenuItem (storage cleanup)
+  - tests/actions/telnyx-numbers.test.ts (10)
+    searchNumbersAction (success/fail),
+    buyNumberAction (lock denied, success, rollback on Telnyx fail)
+  - tests/actions/general-settings.test.ts (8)
+    updateOrganizationInfo (missing fields, success, DB fail),
+    updateUxSettings (success, DB fail)
+  - tests/actions/knowledge-base.test.ts (17)
+    getKnowledgeBase, createKnowledgeBaseEntry (char limit check),
+    updateKnowledgeBaseEntry (delta check — shrink skip, grow check),
+    toggleKnowledgeBaseStatus, deleteKnowledgeBaseEntry
+  - tests/actions/inbox.test.ts (11)
+    getInboxCustomers (filter+sort), getCustomerMessages,
+    sendHumanMessage (customer not found, no location, no phone id,
+    success, WA fail), setCustomerBotHandoff (pause/reactivate)
+
+Step corrente (39 test — handler WhatsApp + admin + branding):
+  - tests/api/webhooks/whatsapp-messages.test.ts (14)
+    handleButtonClick (location not found, fornitore tag,
+    callback insert, booking confirm, cancel with/without booking),
+    handleTextMessage (location not found, annulla, bot paused, AI reply),
+    handleFlowCompletion (location not found, missing date/time,
+    booking success, booking insert error)
+  - tests/actions/admin-automation.test.ts (15)
+    syncTelnyxStatus (location not found, out-of-sync update,
+    already in sync, active number → pending_verification),
+    manualPurchaseNumber, manualMetaRegistration (WABA add + DB update),
+    manualVoiceVerification, deleteLocationAction,
+    deleteUserAction (no org, with storage cleanup, auth delete fail)
+  - tests/actions/branding.test.ts (10)
+    updateWhatsappProfile (auth fail, missing locationId, location
+    not found, no meta_phone_id, text fields only, no fields, with
+    image upload, upload error, signed URL error, DB branding update)
+
+Mancano ancora (livello basso di criticità):
+  - Nessun test di componenti React
+  - Nessun framework E2E (Cypress/Playwright non installato)
+
+
+════════════════════════════════════════
+4. QUALITÀ PROFESSIONALE E SCALABILITÀ
+════════════════════════════════════════
+
+Punti forti per un acquirente:
+  Schema DB maturo (40+ tabelle, RLS attivo),
+  TypeScript strict mode, struttura cartelle
+  chiara, 7 integrazioni esterne funzionanti
+  (Stripe, Telnyx, WhatsApp, OpenAI, Resend,
+  Trigger.dev, Google Calendar), Google Calendar
+  end-to-end, admin dashboard operativo,
+  CLAUDE.md come documentazione, feedback
+  system completo.
+
+Red flag per un acquirente serio:
+
+  ✅ RISOLTO: Error tracking — Sentry configurato,
+    captureException nei webhook critici
+  ─────────────────────────────────────
+  ✅ RISOLTO: Telnyx webhook firma verify —
+    Ed25519 completo in lib/telnyx-verify.ts
+  ─────────────────────────────────────
+  ✅ RISOLTO: console.log in produzione — rimossi
+  ─────────────────────────────────────
+  ✅ RISOLTO: app/api/debug/ rimosso
+  ─────────────────────────────────────
+  ✅ RISOLTO: Migrations consolidate — db.sql è
+    source of truth, nessuna discrepanza trovata
+  ─────────────────────────────────────
+  Problema: Test coverage ~68% (solo unit test)
+  Criticità: 🟠 Media — nessun test E2E, nessun
+    test dei componenti React
+
+Scalabilità:
+  Schema solido per volumi medi. Problemi
+  potenziali su scale:
+  - Analytics queries caricano record senza
+    LIMIT in alcuni path (risk 100K+ prenotazioni)
+  - Dashboard fa 8-10 query parallele senza
+    paginazione
+  - Nessun caching layer (SWR lato client,
+    ma RSC non cachati esplicitamente)
+
+
+════════════════════════════════════════
+5. PROSSIMI PASSI (priorità)
+════════════════════════════════════════
+
+  ✅ Implementare trial/page.tsx → rimossa
+  ✅ Collegare checkResourceAvailability
+  ✅ Fix throw → fail() nei 9 file actions
+  ✅ Rimossi console.log da app/, lib/, hooks/
+  ✅ Telnyx webhook signature verification
+  ✅ Sentry error tracking (captureException nei webhook)
+  ✅ Rimosso app/api/debug/
+  ✅ Consolidate migrations (db.sql source of truth)
+  ✅ Pattern auth uniformato
+
+  Rimanenti:
+  1. 🟠 Test E2E critici (Playwright) — almeno
+       happy path booking + checkout Stripe
+  2. 🟠 Trial/onboarding page — stub rimosso ma
+       flusso trial non ancora implementato
+  3. 🟡 WhatsApp Flow: verifica end-to-end in staging
+  4. 🟡 Analytics: aggiungere LIMIT alle query
+       senza paginazione (risk su 100K+ prenotazioni)
+  5. 🟡 RSC caching esplicito (next/cache revalidate)
+       per le pagine public e analytics
+
+Stima: ~2-3 settimane per i punti 1-7.

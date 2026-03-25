@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,13 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { QRCodeSVG } from 'qrcode.react';
-import { Printer, X } from 'lucide-react';
-import Link from 'next/link';
+import { X } from 'lucide-react';
 
 import { TableShape } from "./table-presets"
 import { NumberInput } from "@/components/ui/number-input"
-import { isDev } from "@/lib/utils"
 
 // Define the interface locally if not available from a shared type file yet, 
 // matching what's in ZoneEditor
@@ -42,10 +38,6 @@ interface TablePropertiesPanelProps {
 }
 
 export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locationSlug }: TablePropertiesPanelProps) {
-  // Only show capacity controls and QR codes for seatable items (actual tables)
-  // Exclude structural/decorative elements
-  const isSeatable = table.seats > 0 && !['wall', 'plant', 'door', 'column', 'text', 'cashier', 'restroom', 'booth', 'counter'].includes(table.type) || (table.type === 'counter' || table.type === 'booth');
-
   // Refined check: 'counter' and 'booth' MIGHT be seatable if they have seats > 0.
   // Let's stick to a positive list or a more robust negative list.
   // Based on presets: 
@@ -57,58 +49,6 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locat
   const minOptions = Array.from({ length: Math.max(table.seats, 1) }, (_, i) => i + 1);
   // Max options: from seats up to seats + 4 (arbitrary limit for squeeze)
   const maxOptions = Array.from({ length: 5 }, (_, i) => table.seats + i);
-
-  const qrUrl = locationSlug && table.uniqueId && isDev() ?
-    `http://localhost:3000/order/${locationSlug}/${table.uniqueId}` :
-    `https://smartables.it/order/${locationSlug}/${table.uniqueId}`;
-
-  const handlePrintQr = () => {
-    if (!qrUrl) return;
-
-    // Create a hidden iframe or window to print just this QR
-    const printWindow = window.open('', '_blank', 'width=600,height=600');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Stampa QR - ${table.label}</title>
-            <style>
-              body {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-                font-family: sans-serif;
-              }
-              .qr-container {
-                text-align: center;
-                border: 2px dashed #000;
-                padding: 40px;
-                border-radius: 20px;
-              }
-              h1 { margin-bottom: 20px; font-size: 32px; }
-              p { margin-top: 20px; font-size: 14px; color: #555; }
-              .cta { margin-top: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-            </style>
-          </head>
-          <body>
-            <div class="qr-container">
-              <h1>${table.label}</h1>
-              ${document.getElementById(`qr-code-${table.uniqueId}`)?.outerHTML || ''}
-              <p>${qrUrl}</p>
-              <div class="cta">Scansiona per ordinare</div>
-            </div>
-            <script>
-              window.onload = function() { window.print(); window.close(); }
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    }
-  };
 
   return (
     <div className="absolute top-52 right-5 w-64 rounded-xl bg-card border shadow-lg p-4 z-50 animate-in slide-in-from-right-10 fade-in duration-200 overflow-y-auto max-h-[calc(100vh-100px)]">
@@ -230,27 +170,6 @@ export function TablePropertiesPanel({ table, onUpdate, onClose, onDelete, locat
               </div>
             </div>
           </>
-        )}
-
-        {isInteractiveTable && locationSlug && qrUrl && (
-          <div className="pt-4 border-t space-y-2">
-            <Label className="text-xs font-semibold">QR Code Tavolo</Label>
-            <div className="flex justify-center bg-white p-2 border rounded-md">
-              <QRCodeSVG
-                id={`qr-code-${table.uniqueId}`}
-                value={qrUrl}
-                size={120}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => window.open(qrUrl, '_blank')}>
-                Apri Menu
-              </Button>
-              <Button size="sm" className="flex-1 h-8 text-xs" onClick={handlePrintQr}>
-                <Printer className="w-3 h-3 mr-1" /> Stampa
-              </Button>
-            </div>
-          </div>
         )}
 
         <div className="pt-2 border-t">

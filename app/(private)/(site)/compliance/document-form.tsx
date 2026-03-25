@@ -382,7 +382,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                   {identityFile ? (
                     <div className="flex flex-col items-center text-green-600">
                       <CheckCircle className="h-8 w-8 mb-2" />
-                      <span className="text-xs truncate max-w-[150px]">{identityFile.name}</span>
+                      <span className="text-xs truncate max-w-37.5">{identityFile.name}</span>
                     </div>
                   ) : (
                     <>
@@ -401,7 +401,7 @@ export function DocumentForm({ locationId }: DocumentFormProps) {
                   {addressFile ? (
                     <div className="flex flex-col items-center text-green-600">
                       <CheckCircle className="h-8 w-8 mb-2" />
-                      <span className="text-xs truncate max-w-[150px]">{addressFile.name}</span>
+                      <span className="text-xs truncate max-w-37.5">{addressFile.name}</span>
                     </div>
                   ) : (
                     <>

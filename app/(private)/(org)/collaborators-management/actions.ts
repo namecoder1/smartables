@@ -1,72 +1,51 @@
 "use server";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { createClient } from "@/utils/supabase/server";
-import { Resend } from "resend";
+import { requireAuth } from "@/lib/supabase-helpers";
+import { checkResourceAvailability } from "@/lib/limiter";
 import InviteEmail from "@/emails/invite";
 import { render } from "@react-email/components";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
+import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function inviteCollaborator(prevState: any, formData: FormData) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return { error: auth.error };
+  const { supabase, user, organizationId, organization } = auth;
   const supabaseAdmin = createAdminClient();
 
-  // 1. Verify current user is admin/logged in
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Non autorizzato" };
+  const staffAvail = await checkResourceAvailability(supabase, organizationId, "staff");
+  if (!staffAvail.allowed) {
+    return { error: "Limite account staff raggiunto. Aggiorna il piano o acquista lo Staff Power Pack." };
   }
 
-  // 2. Get Organization ID and Name
-  const { data: currentUserProfile } = await supabase
+  // Fetch sender's display name (not in auth context — profiles only stores organization_id)
+  const { data: senderProfile } = await supabase
     .from("profiles")
-    .select("organization_id, full_name, organizations (name)")
+    .select("full_name")
     .eq("id", user.id)
     .single();
-
-  if (!currentUserProfile?.organization_id) {
-    return { error: "Organizzazione non trovata" };
-  }
-
-  const orgData = currentUserProfile.organizations as any;
-  const organizationName = Array.isArray(orgData)
-    ? orgData[0]?.name
-    : orgData?.name || "Smartables";
+  const senderName = senderProfile?.full_name || "Un amministratore";
+  const organizationName = organization?.name || "Smartables";
 
   const email = formData.get("email") as string;
   const role = formData.get("role") as string;
   const locationType = formData.get("location_type") as string | null;
-  const selectedLocationsStr = formData.get("selected_locations") as
-    | string
-    | null;
+  const selectedLocationsStr = formData.get("selected_locations") as string | null;
 
-  if (!email) {
-    return { error: "Email richiesta" };
-  }
+  if (!email) return { error: "Email richiesta" };
+  if (role !== "admin" && role !== "staff") return { error: "Ruolo non valido" };
 
-  if (role !== "admin" && role !== "staff") {
-    return { error: "Ruolo non valido" };
-  }
-
-  // Parse accessible_locations
   let accessibleLocations: string[] | null = null;
-
-  // If role is admin, they always have access to all locations.
-  // Otherwise, if locationType is "selected", parse the locations array.
   if (role !== "admin" && locationType === "selected" && selectedLocationsStr) {
     try {
       const parsed = JSON.parse(selectedLocationsStr);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        accessibleLocations = parsed;
-      }
-    } catch (e) {
-      console.error("Failed to parse selected_locations", e);
+      if (Array.isArray(parsed) && parsed.length > 0) accessibleLocations = parsed;
+    } catch {
+      // ignore malformed JSON — default to full access
     }
   }
 
@@ -76,54 +55,39 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
         ? "http://localhost:3000"
         : process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-    // Point directly to the client page. Supabase will append the hash fragment.
-    const redirectUrl = `${siteUrl}/accept-invite`;
-
-    // 3. Generate Invite Link
     const { data: inviteData, error: inviteError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "invite",
-        email: email,
-        options: {
-          redirectTo: redirectUrl,
-        },
+        email,
+        options: { redirectTo: `${siteUrl}/accept-invite` },
       });
 
-    if (inviteError) {
-      console.error("Error generating link:", inviteError);
-      return { error: "Errore nella generazione del link di invito" };
-    }
+    if (inviteError) return { error: "Errore nella generazione del link di invito" };
 
     const newUser = inviteData.user;
     const inviteLink = inviteData.properties.action_link;
 
-    // 4. Upsert Profile
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .upsert({
         id: newUser.id,
         email: newUser.email,
-        organization_id: currentUserProfile.organization_id,
-        role: role,
+        organization_id: organizationId,
+        role,
         accessible_locations: accessibleLocations,
-        // full_name is left null until they accept
       });
 
-    if (profileError) {
-      console.error("Error updating/creating profile:", profileError);
-      return { error: "Errore nel salvataggio del profilo utente" };
-    }
+    if (profileError) return { error: "Errore nel salvataggio del profilo utente" };
 
-    // 5. Send User Invitation Email
     const emailHtml = await render(
       // @ts-ignore
       InviteEmail({
         username: email.split("@")[0],
-        invitedByUsername: currentUserProfile.full_name || "Un amministratore",
+        invitedByUsername: senderName,
         invitedByEmail: user.email || "",
         teamName: organizationName,
         teamImage: `${process.env.NEXT_PUBLIC_SITE_URL}/static/smartables-logo.png`,
-        inviteLink: inviteLink,
+        inviteLink,
       }),
     );
 
@@ -134,68 +98,54 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
       html: emailHtml,
     });
 
-    if (emailError) {
-      console.error("Email sending error:", emailError);
-      return { error: "Invito creato ma errore nell'invio dell'email" };
-    }
+    if (emailError) return { error: "Invito creato ma errore nell'invio dell'email" };
 
     revalidatePath(PATHS.MANAGE_COLLABORATORS);
     return { success: true };
-  } catch (err) {
-    console.error("Unexpected error:", err);
+  } catch {
     return { error: "Qualcosa è andato storto" };
   }
 }
 
 export async function removeCollaborators(ids: string[]) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return { error: auth.error };
+  const { supabase, user, organizationId } = auth;
   const supabaseAdmin = createAdminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Non autorizzato" };
-
+  // Fetch only the role — organizationId comes from auth context
   const { data: currentProfile } = await supabase
     .from("profiles")
-    .select("organization_id, role")
+    .select("role")
     .eq("id", user.id)
     .single();
 
-  if (!currentProfile?.organization_id) return { error: "Organizzazione non trovata" };
-  if (currentProfile.role !== "admin" && currentProfile.role !== "owner") {
+  if (currentProfile?.role !== "admin" && currentProfile?.role !== "owner") {
     return { error: "Solo gli amministratori possono rimuovere i collaboratori" };
   }
 
-  // Prevent self-removal
-  if (ids.includes(user.id)) {
-    return { error: "Non puoi rimuovere te stesso" };
-  }
+  if (ids.includes(user.id)) return { error: "Non puoi rimuovere te stesso" };
 
-  // Verify all targets belong to the same organization and are not owners
   const { data: targets } = await supabaseAdmin
     .from("profiles")
     .select("id, role")
     .in("id", ids)
-    .eq("organization_id", currentProfile.organization_id);
+    .eq("organization_id", organizationId);
 
   if (!targets || targets.length !== ids.length) {
     return { error: "Uno o più collaboratori non trovati" };
   }
 
-  const hasOwner = targets.some((t) => t.role === "owner");
-  if (hasOwner) return { error: "Non puoi rimuovere il proprietario dell'organizzazione" };
+  if (targets.some((t) => t.role === "owner")) {
+    return { error: "Non puoi rimuovere il proprietario dell'organizzazione" };
+  }
 
   const { error } = await supabaseAdmin
     .from("profiles")
     .update({ organization_id: null, role: null })
     .in("id", ids);
 
-  if (error) {
-    console.error("Error removing collaborators:", error);
-    return { error: "Errore nella rimozione dei collaboratori" };
-  }
+  if (error) return { error: "Errore nella rimozione dei collaboratori" };
 
   revalidatePath(PATHS.MANAGE_COLLABORATORS);
   return { success: true };

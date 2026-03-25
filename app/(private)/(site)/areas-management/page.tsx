@@ -20,8 +20,6 @@ const ManageAreasPage = async () => {
     .eq('stripe_price_id', organization.stripe_price_id)
     .single()
 
-  console.log(organization.stripe_price_id)
-
   const [areasFaqs] = await Promise.all([
     getFaqsByTopic('areas')
   ])

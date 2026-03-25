@@ -5,10 +5,38 @@ const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
 export type BusinessConnectors = {
+  // Google Business Profile
   google_review_url?: string;
   google_place_id?: string;
   google_access_token?: string;
   google_refresh_token?: string;
+  // Google Calendar
+  google_calendar_access_token?: string;
+  google_calendar_refresh_token?: string;
+  google_calendar_token_expiry?: number;
+  google_calendar_id?: string;
+  google_calendar_name?: string;
+  // TheFork (POS API + B2B API)
+  thefork_restaurant_id?: string;       // TheFork CustomerId (restaurant identifier)
+  thefork_consumer_id?: string;         // Our POS instance UUID assigned by TheFork
+  thefork_client_id?: string;           // OAuth2 client_id for B2B API
+  thefork_client_secret?: string;       // OAuth2 client_secret for B2B API
+  thefork_api_key?: string;             // X-Api-Key for POS API v1
+  thefork_webhook_secret?: string;      // oauthClientSecret used to verify TheFork webhooks
+  thefork_access_token?: string;        // Current OAuth2 access token (B2B API)
+  thefork_token_expires_at?: number;    // Unix timestamp for token expiry
+  // Quandoo
+  quandoo_restaurant_id?: string;       // Quandoo restaurant identifier
+  quandoo_partner_id?: string;          // Quandoo partner identifier
+  quandoo_api_key?: string;             // Quandoo API key
+  quandoo_access_token?: string;        // OAuth2 access token (if applicable)
+  quandoo_token_expires_at?: number;    // Unix timestamp for token expiry
+  // OpenTable
+  opentable_restaurant_id?: string;     // OpenTable restaurant identifier
+  opentable_client_id?: string;         // OAuth2 client_id
+  opentable_client_secret?: string;     // OAuth2 client_secret
+  opentable_access_token?: string;      // Current OAuth2 access token
+  opentable_token_expires_at?: number;  // Unix timestamp for token expiry
 };
 
 function getKey(): Buffer {

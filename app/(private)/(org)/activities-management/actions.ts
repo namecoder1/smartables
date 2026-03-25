@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { ok, fail, type ActionResult } from "@/lib/action-response";
 import { PATHS } from "@/lib/revalidation-paths";
 import { getStr, getJson } from "@/lib/form-parsers";
+import { checkResourceAvailability } from "@/lib/limiter";
 
 export async function getLocations(organizationId: string) {
   const supabase = await createClient();
@@ -31,6 +32,9 @@ export async function createLocation(
   const auth = await requireAuth();
   if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
+
+  const locAvail = await checkResourceAvailability(supabase, organizationId, "locations");
+  if (!locAvail.allowed) return fail("Limite sedi raggiunto. Aggiorna il piano o acquista l'addon Sede Extra.");
 
   const name = getStr(formData, "name");
   const phone = getStr(formData, "phone");

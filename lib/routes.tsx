@@ -1,5 +1,6 @@
-import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, Settings, Store, Users } from "lucide-react"
+import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, Settings, Store, Users, Building2, TrendingUp, Activity, ShieldCheck, MessageSquare } from "lucide-react"
 import { PiForkKnifeFill } from "react-icons/pi";
+import { GrConnect } from "react-icons/gr";
 import { RiTeamFill } from "react-icons/ri";
 import { IoBookSharp } from "react-icons/io5";
 import { BsShieldLock } from "react-icons/bs";
@@ -90,21 +91,26 @@ export const routes = {
       url: "/analytics",
     },
     {
-      label: "Gestione ristorante",
+      label: "Gestione sede",
       icon: PiForkKnifeFill,
       items: [
         {
-          title: "Mappe ristorante",
+          title: "Le tue Mappe",
           url: "/areas-management",
           icon: LiaTableSolid,
         },
         {
-          title: "Dettagli ristorante",
+          title: "Impostazioni & Dettagli",
           url: "/site-settings",
           icon: LiaTableSolid,
         },
         {
-          title: "Modulistica ristorante",
+          title: "Connessioni",
+          url: "/connections",
+          icon: GrConnect,
+        },
+        {
+          title: "Modulistica & Attivazione",
           url: "/compliance",
           icon: LiaTableSolid,
         }
@@ -185,8 +191,23 @@ export const routes = {
 
 export const adminRoutes = [
   {
-    label: "Gestisci",
+    label: "Dashboard",
     url: "/manage",
     icon: Home,
+  },
+  {
+    label: "Organizzazioni",
+    url: "/organizations",
+    icon: Building2,
+  },
+  {
+    label: "Revenue",
+    url: "/revenue",
+    icon: TrendingUp,
+  },
+  {
+    label: "System Health",
+    url: "/health",
+    icon: Activity,
   },
 ] as RouteEntry[]

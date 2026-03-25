@@ -465,10 +465,8 @@ const DashboardView = ({
             <SquareArrowOutUpRight size={16} />
           </Link>
         </CardHeader>
-        <CardContent>
-          <div className="w-full">
-            <Reservations data={todaysBookings} context="dashboard" />
-          </div>
+        <CardContent className='px-0!'>
+          <Reservations data={todaysBookings} context="dashboard" />
         </CardContent>
       </Card>
 

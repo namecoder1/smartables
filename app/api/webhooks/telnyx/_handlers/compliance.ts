@@ -146,10 +146,6 @@ export async function handleNumberOrderCompleted(
             );
           }
         }
-      } else {
-        console.log(
-          `[Telnyx Webhook] Order failed but no location found for ${firstPhone}`,
-        );
       }
     }
   } else if (phoneNumbers && Array.isArray(phoneNumbers)) {
@@ -158,9 +154,6 @@ export async function handleNumberOrderCompleted(
       const numStatus = numObj.status;
 
       if (phoneNumber && numStatus === "active") {
-        console.log(
-          `[Telnyx Webhook] Order success for ${phoneNumber}. Checking for location...`,
-        );
         const { data: location } = await supabase
           .from("locations")
           .select("id")
@@ -168,18 +161,11 @@ export async function handleNumberOrderCompleted(
           .single();
 
         if (location) {
-          console.log(
-            `[Telnyx Webhook] Found location ${location.id}. Activating...`,
-          );
           await supabase
             .from("locations")
             .update({ regulatory_status: "approved" })
             .eq("id", location.id);
           await activateLocation(location.id, supabase);
-        } else {
-          console.log(
-            `[Telnyx Webhook] No location found for ${phoneNumber}`,
-          );
         }
       } else if (phoneNumber) {
         console.warn(
@@ -209,17 +195,13 @@ export async function activateLocation(
   }
 
   try {
-    console.log(`Activating number ${location.telnyx_phone_number}...`);
-
     const cleanNumber = location.telnyx_phone_number.replace("+", "");
-    console.log(`Adding ${cleanNumber} to Meta WABA...`);
 
     const { addNumberToWaba, requestVerificationCode } = await import(
       "@/lib/whatsapp-registration"
     );
 
     const metaPhoneId = await addNumberToWaba(cleanNumber, location.name);
-    console.log(`Meta Phone ID obtained: ${metaPhoneId}`);
 
     const { error: locError } = await supabase
       .from("locations")
@@ -231,13 +213,7 @@ export async function activateLocation(
 
     if (locError) throw locError;
 
-    console.log("Requesting Voice Verification Code from Meta...");
     await requestVerificationCode(metaPhoneId, "VOICE");
-    console.log("Verification Code Requested!");
-
-    console.log(
-      `Number ${location.telnyx_phone_number} activated and pending verification.`,
-    );
   } catch (error: unknown) {
     console.error("Failed in automation flow (Meta Registration):", error);
   }

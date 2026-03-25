@@ -141,7 +141,7 @@ export default function KnowledgeBaseView({
 
   return (
     <PageWrapper>
-      <div className='flex items-center justify-between gap-6'>
+      <div className='header-container'>
         <div className='flex flex-col gap-1'>
           <h1 className="text-3xl font-bold tracking-tight">
             Memoria Bot
@@ -154,6 +154,7 @@ export default function KnowledgeBaseView({
           faqs={faqs}
           variant='minimized' 
           title='Aiuto' 
+          className='w-fit'
         />
       </div>
       <div className="space-y-6">
@@ -219,7 +220,7 @@ export default function KnowledgeBaseView({
                   />
                 </CardHeader>
                 <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">{entry.content}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1 whitespace-pre-wrap">{entry.content}</p>
                 </CardContent>
                 <div className="px-4 border-t pt-4 flex gap-2 justify-between items-center mt-auto">
                   <p className='capitalize text-xs text-muted-foreground'>

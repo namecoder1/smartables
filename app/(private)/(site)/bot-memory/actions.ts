@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
 import { ok, okWith, fail, type ActionResult } from "@/lib/action-response";
 import { PATHS } from "@/lib/revalidation-paths";
+import { checkResourceAvailability } from "@/lib/limiter";
 
 export async function getKnowledgeBase(organizationId: string) {
   const supabase = await createClient();
@@ -32,6 +33,12 @@ export async function createKnowledgeBaseEntry(
   const auth = await requireAuth();
   if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
+
+  const kbAvail = await checkResourceAvailability(supabase, organizationId, "kb_chars");
+  const newChars = title.length + content.length;
+  if (!kbAvail.allowed || newChars > kbAvail.remaining) {
+    return fail("Limite caratteri AI Knowledge Base raggiunto. Acquista l'addon per espandere la memoria del bot.");
+  }
 
   const { data, error } = await supabase
     .from("knowledge_base")
@@ -61,7 +68,22 @@ export async function updateKnowledgeBaseEntry(
 ) {
   const auth = await requireAuth();
   if (!auth.success) return fail(auth.error);
-  const { supabase } = auth;
+  const { supabase, organizationId } = auth;
+
+  // Check delta only when the entry grows
+  const { data: existing } = await supabase
+    .from("knowledge_base")
+    .select("title, content")
+    .eq("id", id)
+    .single();
+  const oldChars = (existing?.title?.length ?? 0) + (existing?.content?.length ?? 0);
+  const delta = title.length + content.length - oldChars;
+  if (delta > 0) {
+    const kbAvail = await checkResourceAvailability(supabase, organizationId, "kb_chars");
+    if (delta > kbAvail.remaining) {
+      return fail("Limite caratteri AI Knowledge Base raggiunto. Acquista l'addon per espandere la memoria del bot.");
+    }
+  }
 
   const { data, error } = await supabase
     .from("knowledge_base")

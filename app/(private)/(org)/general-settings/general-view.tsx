@@ -144,19 +144,11 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 border border-primary/20 bg-primary/10 flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-primary" />
-              </div>
-              Dati organizzazione
-            </CardTitle>
-            <CardDescription>
-              Nome pubblico, slug URL e email di fatturazione.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b-2">
+            <h2 className="text-2xl font-bold tracking-tight">Dati organizzazione</h2>
+          </div>
+          <div className="space-y-4 p-6">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="org-name">Nome organizzazione</Label>
@@ -189,28 +181,23 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
                 onChange={(e) => setBillingEmail(e.target.value)}
                 placeholder="fatturazione@esempio.com"
               />
+              <p className="text-xs text-muted-foreground">L'email su cui riceverai gli avvisi relativi ai tuoi pagamenti.</p>
             </div>
             <div className="flex justify-end">
               <Button onClick={handleSaveOrg} disabled={isPendingOrg}>
                 {isPendingOrg ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 border border-primary/20 bg-primary/10 flex items-center justify-center">
-                <Globe className="h-4 w-4 text-primary" />
-              </div>
+        <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b-2">
+            <h2 className="text-2xl font-bold tracking-tight">
               Localizzazione
-            </CardTitle>
-            <CardDescription>
-              Valuta, lingua e fuso orario della tua organizzazione. Queste impostazioni saranno utilizzate nelle future funzionalità multi-mercato.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h2>
+          </div>
+          <div className="space-y-4 p-6">
             <div className="grid sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Valuta</Label>
@@ -218,25 +205,27 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {CURRENCIES.map((c) => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Usato per vedere i dati relativi ai pagamenti con valuta diversa</p>
               </div>
               <div className="space-y-2">
                 <Label>Lingua</Label>
-                <Select value={language} onValueChange={(v) => setLanguage(v as typeof language)}>
+                <Select disabled value={language} onValueChange={(v) => setLanguage(v as typeof language)}>
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {LANGUAGES.map((l) => (
                       <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Al momento Smartables opera solo su suolo italiano, questa unzionalità è in arrivo</p>
               </div>
               <div className="space-y-2">
                 <Label>Fuso orario</Label>
@@ -244,12 +233,13 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     {TIMEZONES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">Cambiando questa impostazione ogni data sarà convertita al fuso orario selezionato.</p>
               </div>
             </div>
             <div className="flex justify-end">
@@ -257,23 +247,15 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
                 {isPendingLocale ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="h-8 w-8 border border-primary/20 bg-primary/10 flex items-center justify-center">
-              <Bell className="h-4 w-4 text-primary" />
-            </div>
-            Preferenze notifiche
-          </CardTitle>
-          <CardDescription>
-            Scegli come e quando ricevere notifiche push (app mobile) ed email.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b-2">
+          <h2 className="text-2xl font-bold tracking-tight">Preferenze notifiche</h2>
+        </div>
+        <div className="space-y-6 p-6">
           <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="personal-email">Email personale</Label>
@@ -307,7 +289,7 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
             {NOTIFICATION_PREFERENCES.map((pref) => (
               <div
                 key={pref.key}
-                className="flex items-start justify-between gap-4 p-4 border bg-input/30"
+                className="flex items-start rounded-2xl justify-between gap-4 p-4 border-2 bg-input/30"
               >
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">{pref.label}</p>
@@ -326,8 +308,8 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
               {isPendingNotif ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

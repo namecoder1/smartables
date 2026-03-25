@@ -35,7 +35,7 @@ export async function updateWhatsappProfile(formData: FormData) {
       .single();
 
     if (locError || !location?.meta_phone_id) {
-      throw new Error("Location not found or not connected to WhatsApp");
+      return fail("Location not found or not connected to WhatsApp");
     }
 
     const phoneId = location.meta_phone_id;
@@ -74,14 +74,14 @@ export async function updateWhatsappProfile(formData: FormData) {
         .from("compliance-docs")
         .upload(filePath, profileImage);
 
-      if (uploadError) throw new Error("Failed to upload image to storage");
+      if (uploadError) return fail("Failed to upload image to storage");
 
       const { data: urlData } = await supabase.storage
         .from("compliance-docs")
         .createSignedUrl(filePath, 3600);
 
       if (!urlData?.signedUrl)
-        throw new Error("Failed to get signed URL for image");
+        return fail("Failed to get signed URL for image");
 
       await updateProfilePicture(phoneId, urlData.signedUrl);
       await adjustOrgStorage(supabase, organizationId, profileImage.size);

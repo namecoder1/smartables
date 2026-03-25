@@ -2,6 +2,7 @@ import { task } from "@trigger.dev/sdk/v3";
 import { createClient } from "@supabase/supabase-js";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { checkWhatsAppLimitNotification } from "@/lib/notifications";
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -43,6 +44,41 @@ export const replyToMessage = task({
 
     console.log(`[Reply Task] Processing for ${customerPhone}...`);
 
+    // 0. Check WhatsApp usage cap before doing any work
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("whatsapp_usage_count, usage_cap_whatsapp")
+      .eq("id", organizationId)
+      .single();
+
+    const usageCount = org?.whatsapp_usage_count ?? 0;
+    const usageCap   = org?.usage_cap_whatsapp   ?? 400;
+
+    if (usageCount >= usageCap) {
+      console.warn(`[Reply Task] WhatsApp cap reached (${usageCount}/${usageCap}) for org ${organizationId}. Sending fallback.`);
+
+      const { data: loc } = await supabase
+        .from("locations")
+        .select("slug")
+        .eq("id", locationId)
+        .single();
+
+      const { sendWhatsAppText } = await import("../lib/whatsapp");
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://smartables.it";
+
+      try {
+        await sendWhatsAppText(
+          customerPhone,
+          `Il nostro assistente automatico non è al momento disponibile. Per prenotare un tavolo puoi usare il nostro sito: ${appUrl}/p/${loc?.slug ?? ""}`,
+          metaPhoneId,
+        );
+      } catch (err) {
+        console.error("[Reply Task] Failed to send fallback message:", err);
+      }
+
+      return { success: false, reason: "cap_exceeded" };
+    }
+
     // 1. Fetch Location profile to get the bot's persona
     const { data: location } = await supabase
       .from("locations")
@@ -72,7 +108,7 @@ Parli a nome del ristorante in modo cortese, amichevole e sintetico.
 Evita messaggi troppo lunghi, usa formattazione WhatsApp (grassetto testuale con *, emoji).
 Il cliente con cui stai parlando si chiama (o ha come nome profilo): "${customerName}".
 
-Sei dotato di alcune "Regole Operative / Knowledge Base". Rispondi basandoti ESCLUSIVAMENTE su quanto descritto in tali regole se l'argomento è inerente. 
+Sei dotato di alcune "Regole Operative / Knowledge Base". Rispondi basandoti ESCLUSIVAMENTE su quanto descritto in tali regole se l'argomento è inerente.
 Se il cliente chiede qualcosa che non è presente nelle regole o su cui sei incerto, offriti di contattare l'intervento umano chiedendogli di aspettare un attimo.
 
 REGOLE OPERATIVE:
@@ -150,6 +186,14 @@ ${rulesText ? rulesText : "(Nessuna regola aggiuntiva configurata. Rispondi in m
         direction: "outbound_bot",
         status: "sent",
       });
+
+      // 8. Increment WhatsApp usage counter and check thresholds
+      try {
+        await supabase.rpc("increment_whatsapp_usage", { org_id: organizationId });
+        await checkWhatsAppLimitNotification(supabase as any, organizationId);
+      } catch (err) {
+        console.error("[Reply Task] Failed to increment usage:", err);
+      }
 
       return { success: true, text };
     } catch (e) {

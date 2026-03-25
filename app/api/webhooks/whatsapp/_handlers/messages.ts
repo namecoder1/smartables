@@ -2,25 +2,42 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { sendWhatsAppText } from "@/lib/whatsapp";
 import { normalizePhoneNumber } from "@/lib/utils";
+import { sendBookingPush } from "@/lib/booking-notifications";
+import { sendPushToOrganization } from "@/lib/push-notifications";
+import { checkWhatsAppLimitNotification } from "@/lib/notifications";
 
 // ── Helpers ──
+
+/** Returns true if the value is a WhatsApp Business-Scoped User ID (not a plain phone number). */
+function isBsuid(value: string): boolean {
+  return /\D/.test(value);
+}
+
+/** Normalises phone numbers but leaves BSUIDs untouched. */
+function resolveFrom(rawFrom: string): string {
+  return isBsuid(rawFrom) ? rawFrom : normalizePhoneNumber(rawFrom);
+}
 
 async function handleBookingCancellation(
   supabase: SupabaseClient,
   locationId: string,
   from: string,
   phoneNumberId: string,
+  organizationId?: string,
+  customerId?: string,
 ) {
-  const { data: booking } = await supabase
+  const baseQuery = supabase
     .from("bookings")
     .select("id")
     .eq("location_id", locationId)
-    .eq("guest_phone", from)
     .in("status", ["pending", "confirmed"])
     .gte("booking_time", new Date().toISOString())
     .order("booking_time", { ascending: true })
-    .limit(1)
-    .single();
+    .limit(1);
+
+  const { data: booking } = await (customerId
+    ? baseQuery.eq("customer_id", customerId).single()
+    : baseQuery.eq("guest_phone", from).single());
 
   if (booking) {
     await supabase
@@ -32,6 +49,14 @@ async function handleBookingCancellation(
       `Nessun problema, abbiamo annullato la tua prenotazione. Speriamo di vederti la prossima volta! 👋`,
       phoneNumberId,
     );
+    // Push notification to staff — non-blocking
+    if (organizationId) {
+      sendPushToOrganization(organizationId, {
+        title: "❌ Prenotazione cancellata",
+        body: `${from} ha annullato la sua prenotazione.`,
+        data: { type: "booking_cancelled", bookingId: booking.id, locationId },
+      }).catch(() => {/* ignore */});
+    }
     return true;
   } else {
     await sendWhatsAppText(
@@ -50,11 +75,13 @@ async function upsertCustomerAndGetThread(
   from: string,
   customerName?: string,
 ) {
+  const fromIsBsuid = isBsuid(from);
+
   let { data: customer } = await supabase
     .from("customers")
     .select("*")
     .eq("location_id", locationId)
-    .eq("phone_number", from)
+    .eq(fromIsBsuid ? "bsuid" : "phone_number", from)
     .maybeSingle();
 
   if (!customer) {
@@ -64,6 +91,7 @@ async function upsertCustomerAndGetThread(
         organization_id: organizationId,
         location_id: locationId,
         phone_number: from,
+        bsuid: fromIsBsuid ? from : null,
         name: customerName || "Nuovo Cliente",
         total_visits: 0,
       })
@@ -75,18 +103,31 @@ async function upsertCustomerAndGetThread(
       throw error;
     }
     customer = newCustomer;
-  } else if (
-    customerName &&
-    (customer.name === "Nuovo Cliente" || !customer.name) &&
-    customerName !== "Nuovo Cliente"
-  ) {
-    const { data: updatedCustomer } = await supabase
-      .from("customers")
-      .update({ name: customerName })
-      .eq("id", customer.id)
-      .select()
-      .single();
-    if (updatedCustomer) customer = updatedCustomer;
+  } else {
+    const updates: Record<string, unknown> = {};
+
+    if (
+      customerName &&
+      (customer.name === "Nuovo Cliente" || !customer.name) &&
+      customerName !== "Nuovo Cliente"
+    ) {
+      updates.name = customerName;
+    }
+
+    // Save BSUID on an existing phone-based customer when we first see it
+    if (fromIsBsuid && !customer.bsuid) {
+      updates.bsuid = from;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { data: updatedCustomer } = await supabase
+        .from("customers")
+        .update(updates)
+        .eq("id", customer.id)
+        .select()
+        .single();
+      if (updatedCustomer) customer = updatedCustomer;
+    }
   }
 
   return customer;
@@ -129,14 +170,11 @@ export async function handleButtonClick(
   phoneNumberId: string,
 ) {
   const rawFrom = message.from as string;
-  const from = normalizePhoneNumber(rawFrom);
+  const from = resolveFrom(rawFrom);
   const buttonPayload =
     (message.button as Record<string, string>)?.payload ||
     (message.button as Record<string, string>)?.text ||
     "";
-  console.log(
-    `[WhatsApp Webhook] 🔘 Button click from ${from}: "${buttonPayload}"`,
-  );
 
   const { data: location } = await supabase
     .from("locations")
@@ -179,9 +217,6 @@ export async function handleButtonClick(
     normalizedPayload.includes("fornitore") ||
     normalizedPayload === "supplier"
   ) {
-    console.log(
-      `[WhatsApp Webhook] 📦 Tagging ${from} as supplier for location ${location.id}`,
-    );
     if (customer) {
       const currentTags = customer.tags || [];
       if (!currentTags.includes("supplier")) {
@@ -201,9 +236,6 @@ export async function handleButtonClick(
     normalizedPayload.includes("parlare") ||
     normalizedPayload === "callback"
   ) {
-    console.log(
-      `[WhatsApp Webhook] 📞 Callback request from ${from} for location ${location.id}`,
-    );
     await supabase.from("callback_requests").insert({
       location_id: location.id,
       phone_number: from,
@@ -219,16 +251,12 @@ export async function handleButtonClick(
     normalizedPayload.includes("tavolo") ||
     normalizedPayload === "book"
   ) {
-    console.log(
-      `[WhatsApp Webhook] 🍽️ Booking request from ${from} — forwarding to chatbot flow`,
-    );
     await sendWhatsAppText(
       from,
       `Perfetto! 🍽️ Per quale giorno e a che ora vorresti prenotare? E per quante persone?`,
       phoneNumberId,
     );
   } else if (normalizedPayload.includes("menu")) {
-    console.log(`[WhatsApp Webhook] 📜 Menu request from ${from}`);
     await sendWhatsAppText(
       from,
       `Ecco il link al nostro menù digitale: https://smartables.it/m/${location.id}\n\n(Il link reale verrà generato per la sede corretta)`,
@@ -236,21 +264,21 @@ export async function handleButtonClick(
     );
   } else if (
     normalizedPayload.includes("ci sono") ||
-    normalizedPayload.includes("confermo")
+    normalizedPayload.includes("confermo") ||
+    normalizedPayload.includes("conferma")
   ) {
-    console.log(
-      `[WhatsApp Webhook] ✅ Booking Confirmation from ${from} for location ${location.id}`,
-    );
-    const { data: booking } = await supabase
+    const confirmQuery = supabase
       .from("bookings")
       .select("id")
       .eq("location_id", location.id)
-      .eq("guest_phone", from)
       .eq("status", "pending")
       .gte("booking_time", new Date().toISOString())
       .order("booking_time", { ascending: true })
-      .limit(1)
-      .single();
+      .limit(1);
+
+    const { data: booking } = await (customer
+      ? confirmQuery.eq("customer_id", customer.id).single()
+      : confirmQuery.eq("guest_phone", from).single());
 
     if (booking) {
       await supabase
@@ -262,6 +290,12 @@ export async function handleButtonClick(
         `Ottimo! 🎉 Abbiamo confermato il tuo tavolo. A presto!`,
         phoneNumberId,
       );
+      // Push notification to staff — non-blocking
+      sendPushToOrganization(location.organization_id, {
+        title: "✅ Prenotazione confermata",
+        body: `${from} ha confermato la sua presenza.`,
+        data: { type: "booking_confirmed", bookingId: booking.id, locationId: location.id },
+      }).catch(() => {/* ignore */});
     } else {
       await sendWhatsAppText(
         from,
@@ -271,16 +305,9 @@ export async function handleButtonClick(
     }
   } else if (
     normalizedPayload.includes("non ci sarò") ||
-    normalizedPayload.includes("annulla")
+    normalizedPayload.includes("annulla prenotazione")
   ) {
-    console.log(
-      `[WhatsApp Webhook] ❌ Booking Cancellation from ${from} for location ${location.id}`,
-    );
-    await handleBookingCancellation(supabase, location.id, from, phoneNumberId);
-  } else {
-    console.log(
-      `[WhatsApp Webhook] ❓ Unknown button from ${from}: ${buttonPayload}`,
-    );
+    await handleBookingCancellation(supabase, location.id, from, phoneNumberId, location.organization_id, customer?.id);
   }
 
   return null;
@@ -293,8 +320,7 @@ export async function handleFlowCompletion(
   phoneNumberId: string,
 ) {
   const rawFrom = message.from as string;
-  const from = normalizePhoneNumber(rawFrom);
-  console.log(`[WhatsApp Webhook] ✅ Flow completion from ${from}`);
+  const from = resolveFrom(rawFrom);
 
   const interactiveData = (message as Record<string, unknown>).interactive as Record<string, unknown>;
   const responseJsonStr = (interactiveData.nfm_reply as Record<string, string>).response_json;
@@ -355,6 +381,22 @@ export async function handleFlowCompletion(
         },
         "inbound",
       );
+    }
+
+    // Capacity check — prevent double-booking across channels
+    const { data: slotAvailable } = await supabase.rpc("check_booking_capacity", {
+      p_location_id: location.id,
+      p_booking_time: bookingDate,
+      p_guests_count: parseInt(payload.guests),
+    });
+
+    if (slotAvailable === false) {
+      await sendWhatsAppText(
+        from,
+        `Ci dispiace, la fascia oraria che hai scelto (${payload.time} del ${payload.date}) non è più disponibile per ${payload.guests} persone. Prova a prenotare per un orario diverso oppure contattaci direttamente. 🙏`,
+        phoneNumberId,
+      );
+      return null;
     }
 
     const { error } = await supabase.from("bookings").insert({
@@ -418,9 +460,6 @@ export async function handleFlowCompletion(
           guestPhone: from,
           bookingTime: bookingDate,
         });
-        console.log(
-          `[WhatsApp Webhook] Trigger.dev verification task dispatched for ${latestBooking.id}`,
-        );
       } catch (e) {
         console.warn(
           `[WhatsApp Webhook] Failed to dispatch Trigger task:`,
@@ -439,9 +478,6 @@ export async function handleFlowCompletion(
           guestPhone: from,
           bookingTime: bookingDate,
         });
-        console.log(
-          `[WhatsApp Webhook] Review request task dispatched for ${latestBooking.id}`,
-        );
       } catch (e) {
         console.warn(
           `[WhatsApp Webhook] Failed to dispatch review request task:`,
@@ -455,6 +491,20 @@ export async function handleFlowCompletion(
       `✅ Perfetto! La tua prenotazione per *${payload.guests} persone* a nome di *${payload.guest_name}* per il *${day}/${month} alle ${payload.time}* è stata registrata! Ti aspettiamo presso ${location.name}.${extraText}`,
       phoneNumberId,
     );
+
+    // Track WhatsApp usage for the confirmation message
+    supabase.rpc("increment_whatsapp_usage", { org_id: location.organization_id }).then(() => {
+      checkWhatsAppLimitNotification(supabase, location.organization_id).catch(() => {});
+    }).catch(() => {});
+
+    // Push notification to staff — non-blocking, respects preferences
+    sendBookingPush(location.organization_id, {
+      id: latestBooking?.id,
+      guestName: payload.guest_name,
+      guestsCount: parseInt(payload.guests),
+      bookingTime: bookingDate,
+      locationId: location.id,
+    }, "whatsapp");
   } catch (e) {
     console.error("Error parsing flow response", e);
   }
@@ -469,11 +519,10 @@ export async function handleTextMessage(
   phoneNumberId: string,
 ) {
   const rawFrom = message.from as string;
-  const from = normalizePhoneNumber(rawFrom);
+  const from = resolveFrom(rawFrom);
   const textBody =
     (message.text as { body?: string })?.body?.toLowerCase().trim() || "";
   const originalText = (message.text as { body?: string })?.body || "";
-  console.log(`[WhatsApp Webhook] 💬 Text from ${from}: ${textBody}`);
 
   const { data: location } = await supabase
     .from("locations")
@@ -511,6 +560,8 @@ export async function handleTextMessage(
       location.id,
       from,
       phoneNumberId,
+      location.organization_id,
+      customer?.id,
     );
     return new NextResponse("EVENT_RECEIVED", { status: 200 });
   }
@@ -520,9 +571,6 @@ export async function handleTextMessage(
     customer?.bot_paused_until && new Date(customer.bot_paused_until) > now;
 
   if (isBotPaused) {
-    console.log(
-      `[WhatsApp Webhook] ⏸️ Bot paused for ${from}. Ignoring message.`,
-    );
     return new NextResponse("EVENT_RECEIVED", { status: 200 });
   }
 
@@ -538,9 +586,6 @@ export async function handleTextMessage(
         customerName: customerName,
         metaPhoneId: phoneNumberId,
       });
-      console.log(
-        `[WhatsApp Webhook] Trigger.dev AI reply task dispatched for ${from}`,
-      );
     } catch (e) {
       console.error(
         `[WhatsApp Webhook] Failed to dispatch AI reply task:`,

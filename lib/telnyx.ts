@@ -141,8 +141,6 @@ export async function rejectCall(callControlId: string) {
 }
 
 export async function transferCall(callControlId: string, to: string) {
-  console.log(`[Telnyx Lib] Transferring call ${callControlId} to ${to}`);
-
   await telnyxFetch(`/calls/${callControlId}/actions/transfer`, {
     method: "POST",
     body: JSON.stringify({ to }),

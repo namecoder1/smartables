@@ -14,9 +14,6 @@ export async function requestVerificationCode(
   if (!token) throw new Error("Missing META_SYSTEM_USER_TOKEN");
 
   try {
-    console.log(
-      `[Meta] Requesting code for Phone ID: ${phoneNumberId} via ${method}`,
-    );
     const startTime = Date.now();
 
     const response = await fetch(
@@ -35,12 +32,8 @@ export async function requestVerificationCode(
     );
 
     const duration = Date.now() - startTime;
-    console.log(
-      `[Meta] Request code API call took ${duration}ms. Status: ${response.status}`,
-    );
 
     const data = await response.json();
-    console.log(`[Meta] Request code response:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error(`[Meta] Request Code Error (Data):`, data);
@@ -66,7 +59,6 @@ export async function verifyCodeWithMeta(phoneNumberId: string, code: string) {
   if (!token) throw new Error("Missing META_SYSTEM_USER_TOKEN");
 
   try {
-    console.log(`[Meta] Verifying code ${code} for Phone ID: ${phoneNumberId}`);
     const response = await fetch(
       `${WHATSAPP_API_URL}/${phoneNumberId}/verify_code`,
       {
@@ -104,9 +96,6 @@ export async function registerNumberWithMeta(
   if (!token) throw new Error("Missing META_SYSTEM_USER_TOKEN");
 
   try {
-    console.log(
-      `[Meta] Registering Phone ID: ${phoneNumberId}${pin ? " with PIN" : ""}`,
-    );
     const response = await fetch(
       `${WHATSAPP_API_URL}/${phoneNumberId}/register`,
       {
@@ -207,7 +196,6 @@ export async function deregisterNumberFromWaba(phoneNumberId: string) {
   if (!token) throw new Error("Missing META_SYSTEM_USER_TOKEN");
 
   try {
-    console.log(`[Meta] Deregistering phone number ID: ${phoneNumberId}`);
     const response = await fetch(
       `${WHATSAPP_API_URL}/${phoneNumberId}/deregister`,
       {
@@ -226,7 +214,6 @@ export async function deregisterNumberFromWaba(phoneNumberId: string) {
       throw new Error(data.error?.message || "Failed to deregister number");
     }
 
-    console.log(`[Meta] Successfully deregistered number ${phoneNumberId}`);
     return data.success;
   } catch (error) {
     console.error("[Meta] Error deregistering number:", error);

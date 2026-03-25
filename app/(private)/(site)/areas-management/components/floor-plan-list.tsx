@@ -73,8 +73,7 @@ const FloorPlanCard = ({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Map className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-lg tracking-tight font-bold">
               {zone.name}
             </CardTitle>
             <CardDescription className="text-xs">
@@ -104,24 +103,26 @@ const FloorPlanCard = ({
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end gap-2 pt-0">
+      <CardFooter className="flex items-center justify-between gap-2 pt-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="cursor-pointer"
+          onClick={() => onEdit(zone)}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Modifica
+        </Button>
         <ButtonGroup>
           <Button
             variant="outline"
-            size="icon-sm"
+            size="sm"
             className="cursor-pointer"
             onClick={() => onBlock(zone)}
             title={blocked ? "Sblocca sala" : "Blocca sala"}
           >
             {blocked ? <LockOpen className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="cursor-pointer"
-            onClick={() => onEdit(zone)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
+            Blocca
           </Button>
           <Button
             variant="destructive"

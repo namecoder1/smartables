@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { requireAuth } from "@/lib/supabase-helpers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { checkResourceAvailability } from "@/lib/limiter";
 
 // --- Internal helpers ---
 
@@ -46,6 +47,18 @@ export async function adjustOrgStorage(
 // --- Server actions callable from client components ---
 
 /**
+ * Returns whether the organization can upload more files.
+ * Call this before initiating a client-side upload.
+ */
+export async function checkStorageAvailability() {
+  const auth = await requireAuth();
+  if (!auth.success) return { allowed: false };
+  const { supabase, organizationId } = auth;
+  const avail = await checkResourceAvailability(supabase, organizationId, "storage");
+  return { allowed: avail.allowed, remaining: avail.remaining, softCapWarning: avail.softCapWarning };
+}
+
+/**
  * Call this after a successful client-side storage upload to record the
  * file size in organizations.total_storage_used.
  */
@@ -53,6 +66,9 @@ export async function trackStorageUpload(bytes: number) {
   const auth = await requireAuth();
   if (!auth.success) return;
   const { supabase, organizationId } = auth;
+  // Guard: don't track if the hard cap is already exceeded
+  const avail = await checkResourceAvailability(supabase, organizationId, "storage");
+  if (!avail.allowed) return;
   await adjustOrgStorage(supabase, organizationId, bytes);
 }
 

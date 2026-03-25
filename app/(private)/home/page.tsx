@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { subDays } from 'date-fns'
 import { createClient } from '@/utils/supabase/server'
+import { getOrganizationById } from '@/lib/queries/organizations'
+import { getLocationsByOrg } from '@/lib/queries/locations'
 import PageWrapper from '@/components/private/page-wrapper'
 import { OnboardingStatus } from '@/app/(private)/home/onboarding-status'
 import HomeView from '@/app/(private)/home/home-view'
@@ -36,21 +38,14 @@ const HomePage = async () => {
 
   // ── Parallel data fetching ───────────────────────────────────────────────
   const [
-    { data: org },
-    { data: locations },
+    org,
+    locations,
     { data: bookings },
     { data: orders },
   ] = await Promise.all([
-    supabase
-      .from('organizations')
-      .select('id, slug, whatsapp_usage_count, usage_cap_whatsapp, addons_config, billing_tier, stripe_price_id')
-      .eq('id', orgId)
-      .single(),
+    getOrganizationById(supabase, orgId),
 
-    supabase
-      .from('locations')
-      .select('id, name, activation_status')
-      .eq('organization_id', orgId),
+    getLocationsByOrg(supabase, orgId),
 
     supabase
       .from('bookings')

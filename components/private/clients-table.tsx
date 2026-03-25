@@ -43,7 +43,7 @@ const ClientsTable = ({
         variant='children'
         icon={<CircleQuestionMark className="w-6 h-6 text-foreground" />}
         title="Nessun cliente"
-        description="Non ci sono clienti registrati per questa location."
+        description="Non ci sono clienti registrati per questa sede."
       />
     )
   }

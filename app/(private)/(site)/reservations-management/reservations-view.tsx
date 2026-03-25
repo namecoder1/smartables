@@ -135,7 +135,7 @@ const ReservationsView = ({
 
   return (
     <PageWrapper>
-      <div className='flex flex-col md:flex-row md:items-center justify-center md:justify-between gap-6'>
+      <div className='header-container'>
         <div className='items-start flex-col flex gap-1'>
           <h1 className='text-3xl font-bold tracking-tight'>Vista Prenotazioni</h1>
           <p className='text-muted-foreground'>Gestisci le prenotazioni in tempo reale.</p>

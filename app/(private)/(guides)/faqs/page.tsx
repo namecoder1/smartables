@@ -46,7 +46,7 @@ export default async function FaqsPage() {
               <div className="rounded-xl border border-border bg-card">
                 <Accordion type="single" collapsible className="w-full">
                   {group.faqs.map((faq) => (
-                    <AccordionItem key={faq._id} value={`item-${faq._id}`} className="px-5">
+                    <AccordionItem key={faq.id} value={`item-${faq.id}`} className="px-5">
                       <AccordionTrigger className="text-sm text-left">{faq.question}</AccordionTrigger>
                       <AccordionContent className="text-muted-foreground">
                         {faq.answer}

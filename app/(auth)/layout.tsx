@@ -14,7 +14,7 @@ const AuthLayout = ({
           src='/auth-bg.png'
           alt='Authentication background'
           fill
-          className='h-full w-full object-cover dark:brightness-[0.8] grayscale-20 hover:grayscale-0 transition-all duration-500'
+          className='h-full w-full object-cover grayscale-20 hover:grayscale-0 transition-all duration-500'
           priority
         />
         <div className='absolute top-6 right-6 z-20'>
@@ -22,7 +22,7 @@ const AuthLayout = ({
             Indietro
           </Link>
         </div>
-        <div className="absolute inset-0 bg-black/20" /> {/* Canvas effect overlay */}
+        <div className="absolute inset-0 bg-black/20" />
         <div className="absolute bottom-10 left-10 right-10 z-20 text-white">
           <blockquote className="space-y-2">
             <p className="text-lg font-medium leading-relaxed">
@@ -33,7 +33,7 @@ const AuthLayout = ({
         </div>
       </div>
       <div className='flex h-screen justify-center items-center py-12'>
-        <div className='mx-auto grid w-[350px] gap-6'>
+        <div className='mx-auto grid w-87.5 gap-6'>
           {children}
         </div>
       </div>

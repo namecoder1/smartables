@@ -1,6 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Globe, Mail, Info, Smartphone, Building2, Store, Share, Search } from "lucide-react";
+import { MapPin, Globe, Mail, Info, Building2, Store, Search } from "lucide-react";
 import { BiShare } from "react-icons/bi";
 import Image from "next/image";
 import { formatPhoneNumber } from "@/lib/utils";

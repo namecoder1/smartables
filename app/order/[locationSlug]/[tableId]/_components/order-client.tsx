@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { createOrder } from "@/app/actions/order-actions";
 import { toast } from "sonner";
-import { ShoppingCart } from "lucide-react";
+import { CircleQuestionMark, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 
 type OrderData = {
@@ -106,7 +106,7 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
         })),
       });
 
-      if (result.error) throw new Error(result.error);
+      if (!result.success) throw new Error(result.error);
 
       toast.success("Ordine inviato con successo!");
       setCart([]);
@@ -122,16 +122,9 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
   if (!menus || menus.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center space-y-4">
+        <CircleQuestionMark color={primaryColor} size={48} />
         <h1 className="text-2xl font-bold">Nessun menu attivo</h1>
         <p>Non c'è un menu attivo collegato a questa sede.</p>
-        {process.env.NODE_ENV === "development" && (
-          <div className="bg-slate-100 p-4 rounded text-left text-xs font-mono max-w-md overflow-auto border border-slate-300">
-            <p className="font-bold border-b border-slate-300 mb-2 pb-1">Debug Info:</p>
-            <p>Location: {location.name} ({location.slug})</p>
-            <p>Location ID: {location.id}</p>
-            <p>Active Menu ID: {location.active_menu_id ?? "NULL"}</p>
-          </div>
-        )}
       </div>
     );
   }

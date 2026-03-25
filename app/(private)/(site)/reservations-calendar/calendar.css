@@ -122,3 +122,9 @@
 .rbc-toolbar button:hover {
   background-color: var(--muted);
 }
+
+/* Allow DnD resize anchors to extend beyond event bounds in time views */
+.rbc-time-content .rbc-event,
+.rbc-time-content .rbc-addons-dnd-resizable {
+  overflow: visible;
+}

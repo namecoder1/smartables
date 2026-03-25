@@ -15,8 +15,6 @@ const GeneralSettingsPage = async () => {
   // - dettagli dell'organizzazione (slug, name, billing_email)
   // - dettagli transazioni 
 
-  console.log(organization)
-
   return (
     <PageWrapper>
       <div className='flex flex-col'>

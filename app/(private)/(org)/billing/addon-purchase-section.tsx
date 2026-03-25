@@ -175,9 +175,6 @@ export default function AddonPurchaseSection({ addonsConfig, addonPriceIds, bill
             const Icon = pendingAddon.Icon
             return (
               <div className={cn('flex items-center gap-3 p-4 rounded-lg border-2', c.bg, c.border)}>
-                <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
-                  <Icon className="h-5 w-5" />
-                </div>
                 <div>
                   <p className="font-semibold">{pendingAddon.name}</p>
                   <p className="text-sm text-muted-foreground">{pendingAddon.description}</p>
@@ -191,8 +188,8 @@ export default function AddonPurchaseSection({ addonsConfig, addonPriceIds, bill
               Annulla
             </Button>
             <Button onClick={handleConfirm} disabled={isPending} className="gap-2">
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              {isPending ? 'Elaborazione…' : 'Conferma e paga'}
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {!isPending && 'Conferma e paga'}
             </Button>
           </DialogFooter>
         </DialogContent>

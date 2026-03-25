@@ -123,10 +123,11 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(menuId: string, categoryId: string) {
+  const auth = await requireAuth();
+  if (!auth.success) return { error: "Unauthorized" };
+  const { supabase, organizationId } = auth;
+
   try {
-    const auth = await requireAuth();
-    if (!auth.success) throw new Error("Unauthorized");
-    const { supabase, organizationId } = auth;
 
     let content = await getMenuContent(menuId);
 
@@ -255,10 +256,11 @@ export async function updateMenuItem(
 }
 
 export async function deleteMenuItem(menuId: string, itemId: string) {
+  const auth = await requireAuth();
+  if (!auth.success) return { error: "Unauthorized" };
+  const { supabase, organizationId } = auth;
+
   try {
-    const auth = await requireAuth();
-    if (!auth.success) throw new Error("Unauthorized");
-    const { supabase, organizationId } = auth;
 
     const content = await getMenuContent(menuId);
 

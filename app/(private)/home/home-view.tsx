@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { subDays, format } from 'date-fns'
 import { LineChart, Line } from 'recharts'
-import { DonutPie } from '@/components/charts/donut-pie'
+import dynamic from 'next/dynamic'
+
+const DonutPie = dynamic(() => import('@/components/charts/donut-pie').then(m => ({ default: m.DonutPie })), { ssr: false })
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -190,7 +192,7 @@ export default function HomeView({
               <CardHeader className="border-b-2 py-5 flex items-center gap-3">
                 <CardTitle className="text-lg font-bold tracking-tight">Prossimi Passi</CardTitle>
               </CardHeader>
-              <div className="grid gap-2 p-2">
+              <div className="grid grid-rows-3 gap-2 p-2">
                 {!featureStatus.hasTeam && (
                   <ActionCard
                     title="Invita il tuo Team"
@@ -297,6 +299,9 @@ function StatCard({
   trend: number
   series: { x: string; y: number }[]
 }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const trendType = trend > 1 ? 'positive' : trend < -1 ? 'negative' : 'neutral'
   const lineColor = trendType === 'positive' ? '#287907' : trendType === 'negative' ? '#E53935' : '#A3A3A3'
   const colorClass = {
@@ -321,10 +326,12 @@ function StatCard({
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-end shrink-0">
-        <LineChart width={72} height={44} data={series}>
-          <Line type="monotone" dataKey="y" stroke={lineColor} strokeWidth={2} dot={false} isAnimationActive={false} />
-        </LineChart>
+      <div className="flex items-center justify-end shrink-0 w-18 h-11">
+        {mounted && (
+          <LineChart width={72} height={44} data={series}>
+            <Line type="monotone" dataKey="y" stroke={lineColor} strokeWidth={2} dot={false} isAnimationActive={false} />
+          </LineChart>
+        )}
       </div>
     </div>
   )
@@ -500,7 +507,7 @@ function ActionCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border-2 hover:bg-muted transition-colors">
+    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/40 border-2 hover:bg-muted transition-colors">
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-white border shadow-sm flex items-center justify-center text-primary shrink-0">
           {icon}

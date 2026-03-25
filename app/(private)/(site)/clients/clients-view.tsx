@@ -196,7 +196,7 @@ const ClientsView = ({
 
   return (
     <PageWrapper>
-      <div className='flex items-center justify-between'>
+      <div className='header-container'>
         <div className='items-start flex-col flex gap-1'>
           <h3 className="text-3xl font-bold tracking-tight">Clienti</h3>
           <p className="text-muted-foreground">Panoramica completa dei tuoi clienti</p>

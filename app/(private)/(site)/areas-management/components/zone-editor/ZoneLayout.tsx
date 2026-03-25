@@ -1,11 +1,8 @@
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Stage, Layer, Rect, Group, Line as KonvaLine, Transformer } from 'react-konva';
-import { v4 as uuidv4 } from 'uuid';
-import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
-
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Grid as GridComponent } from '../grid';
+import { v4 as uuidv4 } from 'uuid';
 
 import { TableInstance, Zone, Guide, DrawingWallState } from './types';
 import { CanvasItem } from './canvas-item';

@@ -120,7 +120,14 @@ const STATE_META: Record<
 
 // ─── page ────────────────────────────────────────────────────────────────────
 
-export default async function CompliancePage() {
+type CompliancePageProps = {
+  searchParams: Promise<{ welcome?: string }>;
+};
+
+export default async function CompliancePage({ searchParams }: CompliancePageProps) {
+  const { welcome } = await searchParams;
+  const isNewRegistration = welcome === "1";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -185,7 +192,7 @@ export default async function CompliancePage() {
   return (
     <PageWrapper>
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Compliance & Attivazione</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Modulistica & Attivazione</h1>
         <p className="text-muted-foreground">
           Per attivare i numeri locali e le funzionalità di chiamata, è necessario verificare la
           tua azienda.
@@ -194,6 +201,20 @@ export default async function CompliancePage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-5">
+
+          {/* ── Welcome banner (shown once after registration) ── */}
+          {isNewRegistration && state === "no_documents" && (
+            <div className="flex items-start gap-3 p-4 bg-primary/5 border-2 border-primary/20 rounded-2xl animate-in fade-in duration-500">
+              <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm text-foreground">Account attivato — un ultimo passo</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Carica subito i documenti aziendali: la verifica Telnyx richiede 24–48h e il tuo numero
+                  non può essere attivato finché non viene approvata. Prima invii, prima sei online.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ── Status banner ── */}
           <StatusBanner state={state} rejectionReason={primaryLocation?.regulatory_rejection_reason ?? null} />

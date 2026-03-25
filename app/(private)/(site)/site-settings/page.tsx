@@ -4,7 +4,6 @@ import { Metadata } from 'next'
 import SettingsView from './settings-view'
 import PageWrapper from '@/components/private/page-wrapper'
 import { getFaqsByTopic } from '@/utils/sanity/queries'
-import { decryptConnectors } from '@/lib/business-connectors'
 
 export const metadata: Metadata = {
   title: 'Impostazioni Sede'
@@ -43,25 +42,16 @@ const SettingsPage = async () => {
 
   const faqs = [...settingsFaqs, ...generalFaqs]
 
-  // Decrypt business_connectors server-side — never expose raw encrypted value to client
-  let googleReviewUrl: string | null = null
-  const firstLocation = locations?.[0]
-  if (firstLocation?.business_connectors) {
-    try {
-      const connectors = decryptConnectors(firstLocation.business_connectors as string)
-      googleReviewUrl = connectors.google_review_url ?? null
-    } catch {
-      // Key not set or data corrupted — silently ignore
-    }
-  }
-
   return (
     <PageWrapper>
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-black tracking-tight">Impostazioni</h1>
+        <h1 className="text-3xl font-black tracking-tight">Impostazioni & Dettagli</h1>
         <p className="text-muted-foreground max-w-2xl">Gestisci le informazioni della tua sede, l&apos;identità visiva e la presenza digitale.</p>
       </div>
-      <SettingsView locations={locations || []} faqs={faqs} googleReviewUrl={googleReviewUrl} />
+      <SettingsView
+        locations={locations || []}
+        faqs={faqs}
+      />
     </PageWrapper>
   )
 }

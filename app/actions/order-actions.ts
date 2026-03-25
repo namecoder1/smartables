@@ -4,11 +4,19 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { OrderStatus, OrderItemStatus } from "@/types/general";
+import { ok, fail } from "@/lib/action-response";
+import { OrderStatus, OrderItemStatus, type Menu } from "@/types/general";
 import { isMenuActive, isMenuAvailableAtTime } from "@/lib/menu-helpers";
 import { PATHS, dynamicPath } from "@/lib/revalidation-paths";
 import { createNotification } from "@/lib/notifications";
 import { sendPushToOrganization } from "@/lib/push-notifications";
+
+interface MenuLocation {
+  menu_id: string;
+  daily_from: string | null;
+  daily_until: string | null;
+  menus: Menu;
+}
 
 export async function getOrderData(locationSlug: string, tableId: string) {
   const supabase = createAdminClient();
@@ -39,13 +47,6 @@ export async function getOrderData(locationSlug: string, tableId: string) {
     }
 
     // 3. Fetch All Active Menus for this Location
-    // We join menu_locations to filter by location_id
-    console.log(
-      "[getOrderData] Fetching all active menus for location:",
-      location.id,
-    );
-
-    // We want menus that are active AND linked to this location
     const { data: linkedMenus, error: menusError } = await supabase
       .from("menu_locations")
       .select(
@@ -60,35 +61,21 @@ export async function getOrderData(locationSlug: string, tableId: string) {
       )
       .eq("location_id", location.id);
 
-    let menus: any[] = [];
+    let menus: Menu[] = [];
 
     if (menusError) {
-      console.error(
-        "[getOrderData] Error fetching menus:",
-        JSON.stringify(menusError, null, 2),
-      );
+      console.error("[getOrderData] Error fetching menus:", menusError.message);
     } else if (linkedMenus) {
       const now = new Date();
-      // Extract menus and filter for is_active, date validity, and daily time window
-      menus = linkedMenus
-        .filter((item: any) => isMenuAvailableAtTime(item.menus, item, now))
-        .map((item: any) => item.menus);
+      menus = (linkedMenus as unknown as MenuLocation[])
+        .filter((item) => isMenuAvailableAtTime(item.menus, item, now))
+        .map((item) => item.menus);
 
-      console.log("[getOrderData] Found active menus:", menus.length);
     }
 
-    if (menus.length === 0) {
-      console.warn(
-        "[getOrderData] No active menus found for location:",
-        location.id,
-      );
-      // Fallback check: Does the location have an "active_menu_id" set directly?
-      // This is legacy behavior but good for fallback if menu_locations isn't used yet.
-      if (location.active_menu_id) {
-        console.log(
-          "[getOrderData] Checking legacy active_menu_id:",
-          location.active_menu_id,
-        );
+    if (menus.length === 0 && location.active_menu_id) {
+      // Fallback: legacy active_menu_id for locations not yet using menu_locations
+      {
         const { data: legacyMenu } = await supabase
           .from("menus")
           .select("*")
@@ -179,8 +166,8 @@ export async function createOrder(data: CreateOrderInput) {
   });
 
   if (orderError) {
-    console.error("Error creating order:", orderError);
-    return { error: "Failed to create order" };
+    console.error("[createOrder] Error creating order:", orderError.message);
+    return fail("Impossibile creare l'ordine");
   }
 
   // 3. Create Order Items
@@ -200,8 +187,8 @@ export async function createOrder(data: CreateOrderInput) {
       .insert(itemsToInsert);
 
     if (itemsError) {
-      console.error("Error creating order items:", itemsError);
-      return { error: "Failed to create order items" };
+      console.error("[createOrder] Error creating order items:", itemsError.message);
+      return fail("Impossibile aggiungere gli articoli all'ordine");
     }
   }
 
@@ -222,7 +209,7 @@ export async function createOrder(data: CreateOrderInput) {
   });
 
   revalidatePath(dynamicPath.publicMenu(data.location_id));
-  return { success: true, orderId };
+  return { success: true as const, orderId };
 }
 
 export async function getActiveMenus(locationId: string) {
@@ -239,13 +226,13 @@ export async function getActiveMenus(locationId: string) {
       )
       .eq("location_id", locationId);
 
-    let activeMenus: any[] = [];
+    let activeMenus: Menu[] = [];
 
     if (!menusError && linkedMenus && linkedMenus.length > 0) {
       const now = new Date();
-      activeMenus = linkedMenus
-        .map((item: any) => item.menus)
-        .filter((m: any) => isMenuActive(m, now));
+      activeMenus = (linkedMenus as unknown as MenuLocation[])
+        .map((item) => item.menus)
+        .filter((m) => isMenuActive(m, now));
     }
 
     if (activeMenus.length === 0) {
@@ -316,12 +303,12 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
     .eq("id", orderId);
 
   if (error) {
-    console.error("Error updating order status:", error);
-    return { error: "Failed to update order status" };
+    console.error("[updateOrderStatus] Error:", error.message);
+    return fail("Impossibile aggiornare lo stato dell'ordine");
   }
 
   revalidatePath(PATHS.RESERVATIONS);
-  return { success: true };
+  return ok();
 }
 
 export async function updateOrderItemStatus(
@@ -336,11 +323,11 @@ export async function updateOrderItemStatus(
     .eq("id", itemId);
 
   if (error) {
-    console.error("Error updating order item status:", error);
-    return { error: "Failed to update item status" };
+    console.error("[updateOrderItemStatus] Error:", error.message);
+    return fail("Impossibile aggiornare lo stato dell'articolo");
   }
 
-  return { success: true };
+  return ok();
 }
 
 export async function getLocationOrders(locationId: string) {

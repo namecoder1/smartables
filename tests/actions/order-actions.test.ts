@@ -91,7 +91,7 @@ describe("order-actions", () => {
       const result = await createOrder(orderData);
 
       expect(result.success).toBe(true);
-      expect(result.orderId).toBe("mock-uuid");
+      if (result.success) expect(result.orderId).toBe("mock-uuid");
       expect(revalidatePath).toHaveBeenCalledWith(
         `/m/${orderData.location_id}`,
       );
@@ -130,7 +130,7 @@ describe("order-actions", () => {
 
       const result = await createOrder(orderData);
 
-      expect(result).toEqual({ error: "Failed to create order" });
+      expect(result).toEqual({ success: false, error: "Impossibile creare l'ordine" });
     });
   });
 });

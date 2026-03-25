@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/utils/stripe/client";
@@ -108,9 +109,6 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const organizationId = session.metadata?.organization_id;
 
-    console.log("=== CHECKOUT.SESSION.COMPLETED ===");
-    console.log("Organization ID:", organizationId);
-
     if (organizationId) {
       // If this is a subscription checkout
       if (session.mode === "subscription") {
@@ -121,19 +119,6 @@ export async function POST(req: Request) {
         const subscription =
           await stripe.subscriptions.retrieve(subscriptionId);
 
-        console.log("=== SUBSCRIPTION DEBUG ===");
-        console.log("Subscription ID:", subscription.id);
-        console.log("Subscription status:", subscription.status);
-        console.log(
-          "current_period_start (raw):",
-          (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
-        );
-        console.log(
-          "current_period_end (raw):",
-          (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-        );
-        console.log("Items data[0].plan:", subscription.items?.data?.[0]?.plan);
-        console.log("Full subscription keys:", Object.keys(subscription));
         const priceId = subscription.items.data[0].price.id;
 
         // Auto-disable auto-renewal (User Request: "mettere l'autorinnovo disabilitato per ora")
@@ -171,6 +156,7 @@ export async function POST(req: Request) {
           .eq("id", organizationId);
 
         if (updateError) {
+          Sentry.captureException(updateError, { extra: { organizationId, event: "checkout.session.completed" } });
           console.error(
             "Error updating organization subscription:",
             updateError,
@@ -219,9 +205,6 @@ export async function POST(req: Request) {
       if (oldPriceId && oldPriceId !== newPriceId) {
         const oldPlan = findPlanByPriceId(oldPriceId);
         const newPlan = findPlanByPriceId(newPriceId);
-        console.log(
-          `=== PLAN CHANGE DETECTED === ${oldPlan?.name || oldPriceId} → ${newPlan?.name || newPriceId}`,
-        );
       }
     }
 
@@ -266,6 +249,7 @@ export async function POST(req: Request) {
       .eq("stripe_subscription_id", subscription.id);
 
     if (updateError) {
+      Sentry.captureException(updateError, { extra: { subscriptionId: subscription.id, event: event.type } });
       console.error("Error syncing subscription status:", updateError);
       return new NextResponse("Error syncing subscription", { status: 500 });
     }
@@ -313,40 +297,6 @@ export async function POST(req: Request) {
   if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice;
     const subscriptionId = (invoice as any).subscription as string;
-
-    console.log("=== INVOICE.PAYMENT_SUCCEEDED ===");
-    console.log("Invoice ID:", invoice.id);
-    console.log(
-      "invoice.period_start (raw):",
-      invoice.period_start,
-      "->",
-      new Date((invoice.period_start || 0) * 1000).toISOString(),
-    );
-    console.log(
-      "invoice.period_end (raw):",
-      invoice.period_end,
-      "->",
-      new Date((invoice.period_end || 0) * 1000).toISOString(),
-    );
-    console.log(
-      "invoice.lines.data[0]:",
-      JSON.stringify(invoice.lines?.data?.[0], null, 2),
-    );
-    if (invoice.lines?.data?.[0]?.period) {
-      const lineItem = invoice.lines.data[0];
-      console.log(
-        "lineItem.period.start:",
-        lineItem.period.start,
-        "->",
-        new Date(lineItem.period.start * 1000).toISOString(),
-      );
-      console.log(
-        "lineItem.period.end:",
-        lineItem.period.end,
-        "->",
-        new Date(lineItem.period.end * 1000).toISOString(),
-      );
-    }
 
     if (subscriptionId) {
       const { data: orgData, error: orgError } = await supabase
@@ -427,11 +377,6 @@ export async function POST(req: Request) {
         ? charge.customer
         : charge.customer?.id;
 
-    console.log("=== CHARGE.REFUNDED ===");
-    console.log("Charge ID:", charge.id);
-    console.log("Customer ID:", customerId);
-    console.log("Amount refunded:", charge.amount_refunded);
-
     if (customerId) {
       // Find organization by stripe_customer_id
       const { data: org, error: orgError } = await supabase
@@ -498,9 +443,6 @@ export async function POST(req: Request) {
         });
       }
 
-      console.log(
-        `[charge.refunded] Organization ${org.id} refunded and canceled successfully`,
-      );
     }
   }
 

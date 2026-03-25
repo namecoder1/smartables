@@ -43,7 +43,7 @@ const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar
                 <div className="flex aspect-square size-9 items-center justify-center rounded-lg">
                   <Image src="/logo.png" alt="Logo" width={40} height={40} />
                 </div>
-                <p className="text-2xl text-foreground font-bold tracking-tighter">Smartables</p>
+                <p className="text-2xl text-white font-bold tracking-tighter">Smartables</p>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -63,8 +63,8 @@ const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar
                       isActive={pathname === entry.url}
                     >
                       <Link href={entry.url}>
-                        <entry.icon className="size-4" />
-                        <span className="font-medium">{entry.label}</span>
+                        <entry.icon className="size-4 text-white!" />
+                        <span className="font-medium text-white!">{entry.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -85,7 +85,7 @@ const Sidebar = ({ className, ...props }: React.ComponentProps<typeof AppSidebar
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton tooltip={entry.label}>
                         <span className="font-medium text-foreground">{entry.label}</span>
-                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-foreground!" />
+                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 text-white" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>

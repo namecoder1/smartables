@@ -64,7 +64,6 @@ export default function VoiceVerificationPage() {
 
         // Auto-fill OTP if found
         if (location?.meta_verification_otp && step !== "entering_code") {
-          console.log("[VoicePage] Auto-detected OTP:", location.meta_verification_otp);
           setManualCode(location.meta_verification_otp);
           setStep("entering_code");
           toast.success("Codice rilevato automaticamente!");
@@ -84,7 +83,6 @@ export default function VoiceVerificationPage() {
 
   // Load initial status
   useEffect(() => {
-    console.log("[VoicePage] Mounting...");
     async function loadStatus() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;

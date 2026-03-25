@@ -1,25 +1,21 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import React from 'react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
-import {
   Users, MessageCircle, HardDrive, LayoutGrid, UtensilsCrossed,
-  MapPin, ArrowRight, TrendingUp, Plus, BrainCircuit, BarChart3, Settings, CreditCard, Loader2,
+  MapPin, ArrowRight, TrendingUp, Plus, BrainCircuit, BarChart3,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { AddonConfig, PlanLimits } from '@/types/general'
 import type { LimitsUsage } from './page'
-import { addAddonToSubscription, createStripePortalSession } from '@/utils/stripe/actions'
-import { ADDON_CATALOG, ADDON_COLOR_MAP } from '@/lib/addon-catalog'
 import { BASE_KB_CHARS_BY_TIER, DEFAULT_BASE_KB_CHARS } from '@/lib/addons'
 import { FaqContent } from '@/components/private/faq-section'
 import { SanityFaq } from '@/utils/sanity/queries'
+import AddonsSection from '@/app/(private)/(org)/billing/addons-section'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -82,7 +78,7 @@ type DoubleLimitCardProps = {
 type LimitCardProps = SingleLimitCardProps | DoubleLimitCardProps
 
 function LimitCardRow({ item }: { item: LimitCardItem }) {
-  const { icon, label, usedLabel, baseLimit, addonExtra, usedPct, addonUnit, isUnlimited } = item
+  const { label, usedLabel, baseLimit, addonExtra, usedPct, addonUnit, isUnlimited } = item
   const total = baseLimit + addonExtra
   const hasAddon = addonExtra > 0
   const isWarning = usedPct >= 80 && usedPct < 100
@@ -329,45 +325,18 @@ function computeUpsells(
   return suggestions.slice(0, 2)
 }
 
-const TIER_LABELS: Record<string, string> = {
-  starter: 'Starter',
-  growth: 'Growth',
-  business: 'Business',
-}
 
-type PendingAddon = {
-  name: string
-  description: string
-  priceMonth: number
-  priceId: string
-  color: string
-  Icon: React.ElementType
-}
-
-export default function LimitsView({ 
-  usage, 
-  addonsConfig, 
-  planLimits, 
-  billingTier, 
-  effectiveWaCap, 
-  hasActiveSubscription, 
+export default function LimitsView({
+  usage,
+  addonsConfig,
+  planLimits,
+  billingTier,
+  effectiveWaCap,
+  hasActiveSubscription,
   addonPriceIds,
   faqs
 }: Props) {
   const limits = planLimits
-  const tier = TIER_LABELS[billingTier] ?? billingTier
-  const [pendingAddon, setPendingAddon] = useState<PendingAddon | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  const handleConfirm = () => {
-    if (!pendingAddon) return
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.set('priceId', pendingAddon.priceId)
-      await addAddonToSubscription(formData)
-    })
-  }
-
   const storageMbUsed = usage.storageBytes / (1024 * 1024)
   const totalStaff = (limits?.max_staff ?? 5) + addonsConfig.extra_staff
   const totalLocations = (limits?.max_locations ?? 1) + addonsConfig.extra_locations
@@ -388,7 +357,7 @@ export default function LimitsView({
       <div className="flex gap-4 flex-col items-start md:flex-row md:items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Limiti del Piano</h1>
-          <p className="text-muted-foreground">Monitora l'utilizzo delle risorse del tuo account</p>
+          <p className="text-muted-foreground">Monitora l&apos;utilizzo delle risorse del tuo account</p>
         </div>
         <FaqContent 
           variant='minimized'
@@ -496,8 +465,6 @@ export default function LimitsView({
       {/* Analytics Feature Card */}
       {(() => {
         const hasAdvanced = (addonsConfig.extra_analytics ?? 0) > 0 || billingTier === 'growth' || billingTier === 'business'
-        const analyticsAddon = ADDON_CATALOG.find(a => a.key === 'extra_analytics')
-        const priceId = analyticsAddon ? addonPriceIds[analyticsAddon.priceIdEnv] : undefined
         return (
           <Card className="border-2 py-0 shadow-sm w-full">
             <CardContent className="p-5 space-y-3 justify-between flex-col">
@@ -525,153 +492,18 @@ export default function LimitsView({
                     : 'Panoramica base delle prenotazioni e statistiche'}
                 </p>
               </div>
-              {!hasAdvanced && hasActiveSubscription && billingTier === 'starter' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 w-full"
-                  disabled={!priceId}
-                  onClick={() => priceId && analyticsAddon && setPendingAddon({
-                    name: analyticsAddon.name,
-                    description: analyticsAddon.description,
-                    priceMonth: analyticsAddon.priceMonth,
-                    priceId,
-                    color: analyticsAddon.color,
-                    Icon: analyticsAddon.icon,
-                  })}
-                >
-                  <Plus className="h-3 w-3" />
-                  Sblocca Analitiche Avanzate
-                </Button>
-              )}
             </CardContent>
           </Card>
         )
       })()}
 
-      {ADDON_CATALOG.some(a => (addonsConfig[a.key] ?? 0) > 0) && (
-        <Card className="border-border shadow-sm pt-0">
-          <div className="bg-muted/30 border-b px-6 py-4 flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Add-on Attivi</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">Pacchetti aggiuntivi inclusi nel tuo abbonamento</p>
-            </div>
-            <form action={createStripePortalSession}>
-              <Button size="sm" variant="ghost" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Gestisci
-              </Button>
-            </form>
-          </div>
-          <CardContent className="px-4 grid sm:grid-cols-2 gap-3">
-            {ADDON_CATALOG.filter(a => (addonsConfig[a.key] ?? 0) > 0).map((addon) => {
-              const c = ADDON_COLOR_MAP[addon.color]
-              const Icon = addon.icon
-              const value = addonsConfig[addon.key] ?? 0
-              return (
-                <div key={addon.key} className={cn('flex items-center gap-3 p-3 rounded-lg border-2', c.bg, c.border)}>
-                  <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{addon.name}</p>
-                    <p className={cn('text-xs font-medium', c.text)}>
-                      {addon.key === 'extra_analytics'
-                        ? 'Avanzate attive'
-                        : `+${value} ${addon.key === 'extra_storage_mb' ? 'MB' : addon.key === 'extra_kb_chars' ? 'chars' : 'unità'}`}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {hasActiveSubscription && ADDON_CATALOG.some(a => (addonsConfig[a.key] ?? 0) === 0) && (
-        <Card className="border-border shadow-sm py-0 gap-0">
-          <div className="bg-muted/30 border-b px-6 py-4">
-            <CardTitle className="text-base">Espandi il tuo piano</CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">Aggiungi capacità extra senza cambiare piano</p>
-          </div>
-          <CardContent className="p-6 grid sm:grid-cols-2 gap-3">
-            {ADDON_CATALOG.filter(a => (addonsConfig[a.key] ?? 0) === 0).map((addon) => {
-              const c = ADDON_COLOR_MAP[addon.color]
-              const Icon = addon.icon
-              const priceId = addonPriceIds[addon.priceIdEnv]
-              const includedInPlan = addon.starterOnly && billingTier !== 'starter'
-              return (
-                <div key={addon.key} className={cn('flex items-center gap-3 p-3 rounded-xl border-2 border-border bg-background', includedInPlan && 'opacity-60')}>
-                  <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{addon.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {includedInPlan ? 'Il tuo piano prevede già questa feature' : addon.description}
-                    </p>
-                    {!includedInPlan && (
-                      <p className={cn('text-xs font-semibold mt-0.5', c.text)}>€{addon.priceMonth.toFixed(2).replace('.', ',')}/mese</p>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1 shrink-0"
-                    disabled={includedInPlan || !priceId}
-                    onClick={() => !includedInPlan && priceId && setPendingAddon({
-                      name: addon.name,
-                      description: addon.description,
-                      priceMonth: addon.priceMonth,
-                      priceId,
-                      color: addon.color,
-                      Icon: addon.icon,
-                    })}
-                  >
-                    {includedInPlan ? 'Incluso' : <><Plus className="h-3 w-3" />Aggiungi</>}
-                  </Button>
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      <Dialog open={!!pendingAddon} onOpenChange={(open) => { if (!open) setPendingAddon(null) }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Conferma acquisto</DialogTitle>
-            <DialogDescription>
-              Verrà addebitato immediatamente sulla carta salvata. L'importo sarà proporzionale ai giorni rimanenti del ciclo di fatturazione.
-            </DialogDescription>
-          </DialogHeader>
-          {pendingAddon && (() => {
-            const c = ADDON_COLOR_MAP[pendingAddon.color]
-            const Icon = pendingAddon.Icon
-            return (
-              <div className={cn('flex items-center gap-3 p-4 rounded-lg border-2', c.bg, c.border)}>
-                <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold">{pendingAddon.name}</p>
-                  <p className="text-sm text-muted-foreground">{pendingAddon.description}</p>
-                  <p className={cn('text-sm font-bold mt-1', c.text)}>€{pendingAddon.priceMonth.toFixed(2).replace('.', ',')}/mese</p>
-                </div>
-              </div>
-            )
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingAddon(null)} disabled={isPending}>
-              Annulla
-            </Button>
-            <Button onClick={handleConfirm} disabled={isPending} className="gap-2">
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              {isPending ? 'Elaborazione…' : 'Conferma e paga'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddonsSection
+        addonsConfig={addonsConfig}
+        addonPriceIds={addonPriceIds}
+        billingTier={billingTier}
+        variant="limits"
+        canPurchase={hasActiveSubscription}
+      />
 
       {upsells.length > 0 && (
         <div className="space-y-3">

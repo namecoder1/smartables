@@ -5,7 +5,11 @@ import {
   transferCall,
 } from "@/lib/telnyx";
 import { transcribeAudio, extractVerificationCode } from "@/lib/openai";
-import { registerNumberWithMeta } from "@/lib/whatsapp-registration";
+import {
+  registerNumberWithMeta,
+  requestVerificationCode,
+} from "@/lib/whatsapp-registration";
+import { createNotification } from "@/lib/notifications";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -17,16 +21,8 @@ export async function POST(request: Request) {
     const eventType = body.data?.event_type;
     const callControlId = body.data?.payload?.call_control_id;
 
-    console.log(
-      `[Telnyx Voice] Incoming Webhook: ${eventType} (CallID: ${callControlId})`,
-    );
-
     if (eventType === "call.initiated") {
       if (callControlId) {
-        console.log(
-          `[Telnyx Voice] Call Initiated: ${callControlId}. Checking for forwarding...`,
-        );
-
         // Transfer call if needed (e.g. for testing or if bot is disabled)
         const telnyxNumber = body.data.payload.to;
         const { data: location } = await createAdminClient()
@@ -45,12 +41,7 @@ export async function POST(request: Request) {
         }
 
         // Standard Flow: Answer & Record
-        console.log(`[Telnyx Voice] No forwarding. Answering call...`);
-        const ansStart = Date.now();
         await answerCall(callControlId);
-        console.log(
-          `[Telnyx Voice] Call Answered command sent in ${Date.now() - ansStart}ms`,
-        );
       }
     } else if (eventType === "call.answered") {
       // If we see call.answered but we transferred, we might still see events?
@@ -62,94 +53,109 @@ export async function POST(request: Request) {
       // If we transferred, we likely won't command 'record_start'.
 
       if (callControlId) {
-        console.log(
-          `[Telnyx Voice] Call Answered event received: ${callControlId}.`,
-        );
         // We could double check DB or just assume if we are here and we didn't transfer, we record.
         // But to be safe, let's just proceed. If we transferred, the call flow might differ.
         // For simplicity: We only record if we ANSWERED it ourselves in step 1.
         // Telnyx usually sends 'call.answered' when the destination answers.
 
-        const recStart = Date.now();
         await startRecording(callControlId);
-        console.log(
-          `[Telnyx Voice] Start Recording command sent in ${Date.now() - recStart}ms`,
-        );
       }
     } else if (eventType === "call.recording.saved") {
       const recordingUrl = body.data.payload.recording_urls?.mp3;
-      console.log(`[Telnyx Voice] Recording Saved: ${recordingUrl}`);
+      const telnyxNumber = body.data.payload.to;
 
       if (recordingUrl) {
+        const supabase = createAdminClient();
+
         // 1. Transcribe
-        const transStart = Date.now();
-        console.log(`[Telnyx Voice] Starting Transcription...`);
         const text = await transcribeAudio(recordingUrl);
-        console.log(
-          `[Telnyx Voice] Transcribed Text in ${Date.now() - transStart}ms: "${text}"`,
-        );
 
         // 2. Extract Code
         const code = extractVerificationCode(text);
-        console.log(`[Telnyx Voice] Extracted Code: "${code}"`);
 
         if (code) {
-          // 3. Find Phone Number ID and Register
-          // We need to map the "to" number (Telnyx number) to the Meta Phone ID.
-          // For now, we assume we can query locations by telnyx_phone_number
-
-          const telnyxNumber = body.data.payload.to;
-          console.log(
-            `[Telnyx Voice] Looking up location for number: ${telnyxNumber}`,
-          );
-          const dbStart = Date.now();
-
-          const { data: location, error } = await createAdminClient()
+          // 3. Find location by Telnyx number
+          const { data: location, error } = await supabase
             .from("locations")
-            .select("meta_phone_id, id")
+            .select("meta_phone_id, id, organization_id")
             .eq("telnyx_phone_number", telnyxNumber)
             .single();
-
-          console.log(
-            `[Telnyx Voice] Location lookup took ${Date.now() - dbStart}ms. Found: ${location?.id || "None"}`,
-          );
 
           if (error) {
             console.error(`[Telnyx Voice] Error looking up location:`, error);
           }
 
           if (location?.meta_phone_id) {
-            console.log(
-              `[Telnyx Voice] Registering number for location ${location.id} with Meta ID ${location.meta_phone_id}`,
-            );
-            const regStart = Date.now();
             await registerNumberWithMeta(location.meta_phone_id, code);
-            console.log(
-              `[Telnyx Voice] Successfully registered with Meta in ${Date.now() - regStart}ms!`,
-            );
 
-            // Update location status
-            await createAdminClient()
+            // 4. Mark verified and reset retry counter
+            await supabase
               .from("locations")
-              .update({ activation_status: "verified" }) // or whatever status means "Ready for Biz"
+              .update({
+                activation_status: "verified",
+                voice_otp_retry_count: 0,
+              })
               .eq("id", location.id);
-            console.log(
-              `[Telnyx Voice] Location status updated to 'verified'.`,
-            );
           } else {
             console.error(
               `[Telnyx Voice] Could not find location/meta_phone_id for number: ${telnyxNumber}`,
             );
           }
         } else {
+          // ── Transcription succeeded but no code found — retry logic ──
           console.warn(`[Telnyx Voice] No code extracted from transcription.`);
+
+          const { data: location } = await supabase
+            .from("locations")
+            .select("id, organization_id, meta_phone_id, voice_otp_retry_count, activation_status")
+            .eq("telnyx_phone_number", telnyxNumber)
+            .maybeSingle();
+
+          // Only retry for locations that are still awaiting verification
+          if (location && location.activation_status !== "verified" && location.meta_phone_id) {
+            const retryCount = location.voice_otp_retry_count ?? 0;
+
+            if (retryCount < 1) {
+              // ── First failure: automatic retry ──
+              console.log(`[Telnyx Voice] Scheduling OTP retry for location ${location.id} (attempt ${retryCount + 1})`);
+
+              await supabase
+                .from("locations")
+                .update({ voice_otp_retry_count: retryCount + 1 })
+                .eq("id", location.id);
+
+              try {
+                await requestVerificationCode(location.meta_phone_id, "VOICE");
+                console.log(`[Telnyx Voice] OTP retry triggered successfully for location ${location.id}`);
+              } catch (retryErr) {
+                console.error(`[Telnyx Voice] Failed to re-request OTP for location ${location.id}:`, retryErr);
+              }
+            } else {
+              // ── Second failure: notify restaurant owner + reset counter ──
+              console.error(`[Telnyx Voice] OTP transcription failed after ${retryCount + 1} attempts for location ${location.id}. Manual intervention required.`);
+
+              await supabase
+                .from("locations")
+                .update({ voice_otp_retry_count: 0 })
+                .eq("id", location.id);
+
+              if (location.organization_id) {
+                await createNotification(supabase, {
+                  organizationId: location.organization_id,
+                  locationId: location.id,
+                  type: "voice_otp_failed",
+                  title: "Verifica numero non riuscita",
+                  body: "La verifica automatica del numero non è andata a buon fine dopo due tentativi. Inserisci il codice manualmente dall'app o contatta il supporto.",
+                  link: "/onboarding/voice",
+                  metadata: { locationId: location.id, attempts: retryCount + 1 },
+                });
+              }
+            }
+          }
         }
       }
     }
 
-    console.log(
-      `[Telnyx Voice] Webhook processed in ${Date.now() - startTime}ms`,
-    );
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     console.error("[Telnyx Voice] Error handling Telnyx webhook:", error);

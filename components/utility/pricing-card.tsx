@@ -110,8 +110,8 @@ const PricingCard = ({
         "flex flex-col h-full relative overflow-hidden transition-all duration-300",
         context === 'public'
           ? popular
-            ? "border-primary shadow-lg shadow-primary/40 bg-linear-to-b from-primary/90 via-primary/10 to-primary/10 rounded-3xl"
-            : "bg-neutral-50 border-border hover:shadow-lg rounded-3xl"
+            ? "border-primary shadow-lg shadow-primary/40 bg-primary rounded-3xl"
+            : "bg-transparent border-border/10 hover:shadow-lg rounded-3xl"
           : context === 'onboarding'
             ? popular
               ? "border-primary shadow-lg shadow-primary/30 bg-linear-to-b from-primary/30 via-primary/10 to-white rounded-3xl"
@@ -121,16 +121,6 @@ const PricingCard = ({
               : "hover:border-muted-foreground/20",
         changeType === 'current' && "ring-2 ring-emerald-500/40 border-emerald-500/40 hover:ring-emerald-500/40 hover:border-emerald-500/40"
       )}>
-        {popular && (
-          <div className="absolute top-0 right-0">
-            <div className={cn(
-              "text-xs font-bold px-4 py-1 shadow-sm rounded-bl-2xl",
-              context === 'public' ? "bg-primary text-white pb-1.5" : context === 'onboarding' ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"
-            )}>
-              POPOLARE
-            </div>
-          </div>
-        )}
 
         {changeType === 'current' && (
           <div className="absolute top-0 left-0">
@@ -143,12 +133,12 @@ const PricingCard = ({
         <CardHeader className="pb-4">
           <div className="space-y-1">
             <h3 className={cn(
-              "text-xl font-bold tracking-tight",
-              context === 'public' && !popular ? 'text-black' : context === 'public' && popular ? 'text-white' : context === 'onboarding' && !popular ? 'text-foreground' : context === 'onboarding' && popular ? 'text-foreground' : 'text-foreground'
+              "text-2xl font-bold tracking-tight",
+              context === 'public' && !popular ? 'text-white' : context === 'public' && popular ? 'text-black' : context === 'onboarding' && !popular ? 'text-foreground' : context === 'onboarding' && popular ? 'text-foreground' : 'text-foreground'
             )}>
               {name}
             </h3>
-            <p className={cn("text-sm", context === 'public' && popular ? "text-primary-foreground/80" : "text-muted-foreground")}>
+            <p className={cn("text-lg", context === 'public' && popular ? "text-black" : "text-muted-foreground")}>
               {id === 'starter' && 'Per piccoli ristoranti o bar.'}
               {id === 'growth' && 'Per ristoranti in crescita.'}
               {id === 'business' && 'Per gruppi e catene.'}
@@ -158,17 +148,16 @@ const PricingCard = ({
             <span className={cn(
               "font-extrabold tracking-tight",
               context === 'private' ? "text-3xl" : "text-4xl",
-              context === 'public' && popular ? 'text-white' : 'text-foreground'
+              context === 'public' && popular ? 'text-black' : 'text-white'
             )}>
               €{price}
             </span>
-            <span className="font-medium text-muted-foreground">{period}</span>
+            <span className={cn(
+              'font-medium',
+              context === 'private' ? "text-black" :
+              context === 'public' && popular ? 'text-black' : 'text-white'
+            )}>{period}</span>
           </div>
-          {isAnnual && (
-            <p className="text-xs font-semibold text-emerald-600 mt-1">
-              Risparmi €{(priceMonth * 12) - priceYear} all&apos;anno
-            </p>
-          )}
           {showSetupFee && (
             <p className={cn("text-xs mt-2", context === 'public' ? "text-gray-500" : "text-muted-foreground")}>
               + €149 setup una tantum
@@ -177,25 +166,23 @@ const PricingCard = ({
         </CardHeader>
 
         <CardContent className="flex-1">
-          <div className={cn("w-full h-px mb-6", context === 'public' ? "bg-gray-200" : "bg-border/50")} />
+          {context === 'private' && (
+            <div className="w-full h-px mb-6 bg-border/50" />
+          )}
           <ul className="space-y-4">
             {features.map((feature: string, i: number) => (
-              <li key={i} className="flex items-start gap-3 text-sm">
+              <li key={i} className="flex items-start gap-3">
                 <div className={cn(
                   "mt-0.5 rounded-full p-0.5 shrink-0",
-                  context === 'public'
-                    ? feature.startsWith('No')
-                      ? "bg-gray-100 text-gray-400"
-                      : "bg-primary text-primary-foreground"
-                    : feature.startsWith('No')
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-primary/10 text-primary"
+                  context === 'public' && popular
+                    ?  "bg-black text-white"
+                    : "bg-primary/10 text-primary"
                 )}>
                   <Check className="h-3 w-3" />
                 </div>
-                <span className={context === 'public' && !popular ? "text-muted-foreground" : popular ? "text-foreground" : "text-muted-foreground"}>
+                <p className={context === 'public' && !popular ? "text-white/70" : popular ? "text-black" : "text-muted-foreground text-sm"}>
                   {feature}
-                </span>
+                </p>
               </li>
             ))}
           </ul>
@@ -229,9 +216,9 @@ const PricingCard = ({
             <Button
               className={cn(
                 "w-full font-semibold h-11",
-                popular
-                  ? "shadow-md hover:shadow-lg transition-all"
-                  : ""
+                popular && context === 'public' ?
+                  "shadow-md hover:shadow-lg transition-all bg-black"
+                  : "bg-primary border-primary hover:bg-primary/90 hover:text-white"
               )}
               variant={popular ? 'default' : 'outline'}
               asChild

@@ -98,8 +98,8 @@ export default function TestOnboardingPage() {
           clearInterval(interval);
           toast.success("Test Riuscito! Messaggio Inviato!");
         }
-      } catch (e) {
-        console.error("Polling error", e);
+      } catch {
+        // ignore polling errors silently
       }
     }, 3000);
 

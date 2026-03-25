@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 2. ENUMS
 DO $$ BEGIN
   CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled', 'no_show', 'arrived');
-  CREATE TYPE booking_source AS ENUM ('whatsapp_auto', 'manual', 'web', 'phone');
+  CREATE TYPE booking_source AS ENUM ('whatsapp_auto', 'manual', 'web', 'phone', 'thefork', 'quandoo', 'opentable');
   CREATE TYPE compliance_status AS ENUM ('pending', 'approved', 'rejected', 'more_info_required', 'unapproved');
   CREATE TYPE promotion_type AS ENUM ('percentage', 'fixed_amount', 'bundle', 'cover_override');
   CREATE TYPE promotion_item_target_type AS ENUM ('menu_item', 'category', 'full_menu', 'cover');
@@ -122,6 +122,8 @@ CREATE TABLE public.locations (
   is_branding_completed boolean DEFAULT false,
   is_test_completed boolean DEFAULT false,
   business_connectors jsonb,  -- Encrypted BusinessConnectors JSON (AES-256-GCM), stored as text inside jsonb
+  thefork_restaurant_id text, -- TheFork CustomerId — plain/unencrypted for fast webhook routing
+  voice_otp_retry_count integer NOT NULL DEFAULT 0, -- Automatic retry attempts for Meta voice OTP transcription failures
   CONSTRAINT locations_pkey PRIMARY KEY (id),
   CONSTRAINT locations_active_menu_id_fkey FOREIGN KEY (active_menu_id) REFERENCES public.menus(id),
   CONSTRAINT locations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
@@ -176,14 +178,17 @@ CREATE TABLE public.customers (
   organization_id uuid,
   phone_number text NOT NULL,
   name text,
+  email text,                           -- Used for matching with TheFork/Quandoo/OpenTable guest profiles
   total_visits integer DEFAULT 0,
   last_visit timestamp with time zone,
   openai_thread_id text,
   bot_paused_until timestamp with time zone,
   tags text[] DEFAULT '{}'::text[],
-  metadata jsonb DEFAULT '{}'::jsonb,
+  org_tags text[] DEFAULT '{}'::text[],  -- Org-level tags shared across all locations via bsuid (VIP, blacklist, etc.)
+  metadata jsonb DEFAULT '{}'::jsonb,   -- Stores external IDs: { thefork_id, quandoo_id, opentable_id, ... }
   created_at timestamp with time zone DEFAULT now(),
   location_id uuid,
+  bsuid text,
   CONSTRAINT customers_pkey PRIMARY KEY (id),
   CONSTRAINT customers_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT customers_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id)
@@ -205,6 +210,10 @@ CREATE TABLE public.bookings (
   created_at timestamp with time zone DEFAULT now(),
   children_count text,
   allergies text,
+  google_event_id text,                 -- Google Calendar event ID linked to this booking
+  booking_end_time timestamp with time zone, -- Optional explicit end time (set when user resizes in calendar)
+  external_id text,                     -- Reservation ID on the external platform (TheFork, Quandoo, OpenTable)
+  sync_status text,                     -- 'synced' | 'pending_push' | 'conflict' | NULL (non-synced)
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
   CONSTRAINT bookings_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT bookings_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
@@ -343,6 +352,27 @@ CREATE TABLE public.feedbacks (
   CONSTRAINT feedbacks_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
+-- user_feedback: feature requests, bug reports, general feedback from clients
+-- Separate from `feedbacks` which is churn/billing feedback only.
+CREATE TABLE public.user_feedback (
+  id                 uuid        NOT NULL DEFAULT gen_random_uuid(),
+  organization_id    uuid        NOT NULL,
+  profile_id         uuid,
+  type               text        NOT NULL CHECK (type = ANY (ARRAY['feature_request'::text, 'bug_report'::text, 'general'::text, 'praise'::text])),
+  title              text        NOT NULL,
+  description        text,
+  status             text        NOT NULL DEFAULT 'open'::text CHECK (status = ANY (ARRAY['open'::text, 'reviewing'::text, 'planned'::text, 'in_progress'::text, 'done'::text, 'wont_fix'::text])),
+  priority           text        NOT NULL DEFAULT 'medium'::text CHECK (priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text])),
+  admin_response     text,
+  admin_responded_at timestamp with time zone,
+  metadata           jsonb       NOT NULL DEFAULT '{}'::jsonb,
+  created_at         timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at         timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_feedback_pkey PRIMARY KEY (id),
+  CONSTRAINT user_feedback_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE,
+  CONSTRAINT user_feedback_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
 CREATE TABLE public.promotions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL,
@@ -444,8 +474,85 @@ CREATE INDEX IF NOT EXISTS idx_orders_location_id ON public.orders(location_id);
 CREATE INDEX IF NOT EXISTS idx_special_closures_location_id ON public.special_closures(location_id);
 CREATE INDEX IF NOT EXISTS notifications_org_unread_idx ON public.notifications (organization_id, is_read, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_token_idx ON public.push_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_user_feedback_org     ON public.user_feedback(organization_id);
+CREATE INDEX IF NOT EXISTS idx_user_feedback_status  ON public.user_feedback(status);
+CREATE INDEX IF NOT EXISTS idx_user_feedback_type    ON public.user_feedback(type);
+CREATE INDEX IF NOT EXISTS idx_user_feedback_created ON public.user_feedback(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON public.customers(email);
+CREATE INDEX IF NOT EXISTS idx_customers_org_tags ON public.customers USING gin(org_tags);
+CREATE INDEX IF NOT EXISTS idx_telnyx_logs_event_location ON public.telnyx_webhook_logs(event_type, location_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_locations_thefork_restaurant_id ON public.locations(thefork_restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_external_id ON public.bookings(external_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_source ON public.bookings(source);
 
 -- 5. LOGIC (Functions & Triggers)
+
+-- Helper: Increment WhatsApp usage counter for an organization
+CREATE OR REPLACE FUNCTION public.increment_whatsapp_usage(org_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  UPDATE public.organizations
+  SET whatsapp_usage_count = whatsapp_usage_count + 1
+  WHERE id = org_id;
+$$;
+
+-- Helper: Check booking capacity for a location/time slot
+-- Returns TRUE if p_guests_count fits within remaining capacity.
+-- Capacity = sum of active table seats (via restaurant_zones join).
+-- Falls back to locations.seats if no floor plan is configured.
+-- Fail-open: returns true if location not found or no capacity data.
+CREATE OR REPLACE FUNCTION public.check_booking_capacity(
+  p_location_id  uuid,
+  p_booking_time timestamptz,
+  p_guests_count int
+) RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  v_duration_min int;
+  v_total_seats  int;
+  v_occupied     int;
+BEGIN
+  -- 1. Reservation duration for this location (default 90 min)
+  SELECT COALESCE(standard_reservation_duration, 90)
+    INTO v_duration_min
+  FROM locations
+  WHERE id = p_location_id;
+
+  IF NOT FOUND THEN RETURN true; END IF;
+
+  -- 2. Total seats: sum of active tables linked through zones
+  SELECT COALESCE(SUM(t.seats), 0)
+    INTO v_total_seats
+  FROM restaurant_tables t
+  JOIN restaurant_zones  z ON t.zone_id = z.id
+  WHERE z.location_id = p_location_id
+    AND t.is_active   = true;
+
+  -- 2b. Fallback to locations.seats when no floor plan is configured
+  IF v_total_seats = 0 THEN
+    SELECT COALESCE(seats, 0) INTO v_total_seats
+    FROM locations WHERE id = p_location_id;
+  END IF;
+
+  -- 2c. If still 0, treat as unconfigured → allow booking
+  IF v_total_seats = 0 THEN RETURN true; END IF;
+
+  -- 3. Occupied seats in the overlapping window
+  SELECT COALESCE(SUM(b.guests_count), 0)
+    INTO v_occupied
+  FROM bookings b
+  WHERE b.location_id = p_location_id
+    AND b.status NOT IN ('cancelled', 'no_show')
+    AND b.booking_time < p_booking_time + (v_duration_min || ' minutes')::interval
+    AND b.booking_time + (v_duration_min || ' minutes')::interval > p_booking_time;
+
+  RETURN (v_occupied + p_guests_count) <= v_total_seats;
+END;
+$$;
 
 -- Helper: Get Org ID
 CREATE OR REPLACE FUNCTION public.get_auth_organization_id()
@@ -494,6 +601,10 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER trigger_orders_updated_at
 BEFORE UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_user_feedback_updated_at
+BEFORE UPDATE ON public.user_feedback
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger: Handle User Deletion (Cascade cleanup of all data + storage files)
@@ -588,6 +699,7 @@ ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.knowledge_base ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
@@ -664,11 +776,22 @@ CREATE POLICY "Everyone can view plans" ON public.subscription_plans FOR SELECT 
 -- Transactions
 CREATE POLICY "Org Access Transactions" ON public.transactions USING (organization_id = public.get_auth_organization_id());
 
--- Feedbacks
+-- Feedbacks (churn/billing)
 CREATE POLICY "Org users can view feedbacks" ON public.feedbacks
   FOR SELECT USING (organization_id = public.get_auth_organization_id());
 CREATE POLICY "Authenticated users can insert feedbacks" ON public.feedbacks
   FOR INSERT TO authenticated WITH CHECK (profile_id = auth.uid());
+
+-- User Feedback (feature requests, bug reports)
+CREATE POLICY "user_feedback_select_own_org" ON public.user_feedback
+  FOR SELECT TO authenticated
+  USING (organization_id = public.get_auth_organization_id());
+CREATE POLICY "user_feedback_insert_own" ON public.user_feedback
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    organization_id = public.get_auth_organization_id()
+    AND profile_id = auth.uid()
+  );
 
 -- Promotions
 CREATE POLICY "Org Access Promotions" ON public.promotions USING (organization_id = public.get_auth_organization_id());

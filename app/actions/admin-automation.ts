@@ -33,16 +33,8 @@ export async function syncTelnyxStatus(locationId: string) {
       .single();
 
     if (locError || !location) {
-      throw new Error("Location not found");
+      return { success: false, message: "Location not found" };
     }
-
-    console.log("[Sync Debug] BEFORE State:", {
-      id: location.id,
-      telnyx_phone_number: location.telnyx_phone_number,
-      activation_status: location.activation_status,
-      reqStatus: location.regulatory_status,
-      reqGroupId: location.telnyx_requirement_group_id,
-    });
 
     const results: string[] = [];
     const reqGroupId = location.telnyx_requirement_group_id;
@@ -150,7 +142,7 @@ export async function manualPurchaseNumber(
       .single();
 
     if (locError || !location?.telnyx_phone_number) {
-      throw new Error("Location or Phone Number not found");
+      return { success: false, message: "Location or Phone Number not found" };
     }
 
     await purchasePhoneNumber(location.telnyx_phone_number, requirementGroupId);
@@ -179,7 +171,7 @@ export async function manualMetaRegistration(locationId: string) {
       .single();
 
     if (locError || !location?.telnyx_phone_number) {
-      throw new Error("Location data not found");
+      return { success: false, message: "Location data not found" };
     }
 
     const cleanNumber = location.telnyx_phone_number.replace("+", "");
@@ -196,7 +188,7 @@ export async function manualMetaRegistration(locationId: string) {
       })
       .eq("id", locationId);
 
-    if (updateError) throw updateError;
+    if (updateError) return { success: false, message: updateError.message };
 
     revalidatePath("/manage");
     return { success: true, message: "Added to Meta WABA", metaPhoneId };
@@ -222,7 +214,7 @@ export async function manualVoiceVerification(locationId: string) {
       .single();
 
     if (locError || !location?.meta_phone_id) {
-      throw new Error("Meta Phone ID not found on location");
+      return { success: false, message: "Meta Phone ID not found on location" };
     }
 
     // 2. Request Code
@@ -249,7 +241,7 @@ export async function deleteLocationAction(locationId: string) {
       .delete()
       .eq("id", locationId);
 
-    if (error) throw error;
+    if (error) return { success: false, message: error.message };
 
     revalidatePath("/manage");
     return { success: true, message: "Location deleted successfully" };
@@ -335,7 +327,7 @@ export async function deleteUserAction(userId: string) {
 
     // 4. Delete user from auth (triggers cascade for relational data)
     const { error } = await supabase.auth.admin.deleteUser(userId);
-    if (error) throw error;
+    if (error) return { success: false, message: error.message };
 
     revalidatePath("/manage");
     return { success: true, message: "User and all data deleted successfully" };

@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
+import { fail } from "@/lib/action-response";
+import { checkResourceAvailability } from "@/lib/limiter";
 
 export async function getFloorPlan(locationId: string) {
   const supabase = await createClient();
@@ -14,7 +16,7 @@ export async function getFloorPlan(locationId: string) {
     .select("*")
     .eq("location_id", locationId);
 
-  if (zonesError) throw new Error(zonesError.message);
+  if (zonesError) return { zones: [], tables: [] };
 
   // Fetch tables for these zones
   const zoneIds = zones.map((z) => z.id);
@@ -27,7 +29,7 @@ export async function getFloorPlan(locationId: string) {
       .in("zone_id", zoneIds)
       .eq("is_active", true);
 
-    if (tablesError) throw new Error(tablesError.message);
+    if (tablesError) return { zones, tables: [] };
     tables = tablesData;
   }
 
@@ -40,8 +42,22 @@ export async function saveFloorPlan(
   tables: any[],
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
-  const { supabase } = auth;
+  if (!auth.success) return fail(auth.error);
+  const { supabase, organizationId } = auth;
+
+  // Check zones limit only when adding new zones
+  const { data: existingZones } = await supabase
+    .from("restaurant_zones")
+    .select("id")
+    .eq("location_id", locationId);
+  const existingIds = new Set(existingZones?.map((z) => z.id) ?? []);
+  const netNewZones = zones.filter((z) => !existingIds.has(z.id)).length;
+  if (netNewZones > 0) {
+    const zonesAvail = await checkResourceAvailability(supabase, organizationId, "zones");
+    if (!zonesAvail.allowed || netNewZones > zonesAvail.remaining) {
+      return fail("Limite mappe sala raggiunto. Aggiorna il piano per aggiungerne altre.");
+    }
+  }
 
   // 1. Upsert Zones
   // For simplicity, we assume one zone "Main" for now if not specified,
@@ -60,7 +76,7 @@ export async function saveFloorPlan(
     )
     .select();
 
-  if (zonesError) throw new Error(zonesError.message);
+  if (zonesError) return fail(zonesError.message);
 
   // 2. Handle deletions (Soft delete tables not in the current payload)
   const zoneIds = zones.map((z) => z.id);
@@ -87,10 +103,7 @@ export async function saveFloorPlan(
         .update({ is_active: false })
         .in("id", tablesToDelete);
 
-      if (deleteError) {
-        console.error("Error soft-deleting tables:", deleteError);
-        throw new Error("Failed to delete removed tables");
-      }
+      if (deleteError) return fail("Failed to delete removed tables");
     }
   }
 
@@ -132,7 +145,7 @@ export async function saveFloorPlan(
       })),
     );
 
-  if (tablesError) throw new Error(tablesError.message);
+  if (tablesError) return fail(tablesError.message);
 
   revalidatePath(PATHS.FLOOR_PLAN);
   return { success: true };
@@ -140,7 +153,7 @@ export async function saveFloorPlan(
 
 export async function deleteFloorPlan(zoneId: any) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { error } = await supabase
@@ -148,7 +161,7 @@ export async function deleteFloorPlan(zoneId: any) {
     .delete()
     .eq("id", zoneId);
 
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
 
   revalidatePath(PATHS.FLOOR_PLAN);
   return { success: true };
@@ -161,7 +174,7 @@ export async function updateZoneBlock(
   blockedReason: string | null,
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { error } = await supabase
@@ -173,7 +186,7 @@ export async function updateZoneBlock(
     })
     .eq("id", zoneId);
 
-  if (error) throw new Error(error.message);
+  if (error) return fail(error.message);
 
   revalidatePath(PATHS.FLOOR_PLAN);
   return { success: true };
@@ -188,7 +201,7 @@ export async function getOrganizationZonesCount(organizationId: string) {
     .select("id")
     .eq("organization_id", organizationId);
 
-  if (locError) throw new Error(locError.message);
+  if (locError) return 0;
 
   if (!locations || locations.length === 0) return 0;
 
@@ -200,7 +213,7 @@ export async function getOrganizationZonesCount(organizationId: string) {
     .select("*", { count: "exact", head: true })
     .in("location_id", locationIds);
 
-  if (countError) throw new Error(countError.message);
+  if (countError) return 0;
 
   return count || 0;
 }

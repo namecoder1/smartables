@@ -2,18 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Store, Loader2, CalendarOff, Star, Calendar, CheckCircle2, AlertCircle, ExternalLink, CalendarClock, Info, Workflow } from 'lucide-react'
+import { Store, Loader2 } from 'lucide-react'
 import { LocationBranding as Branding, Location } from '@/types/general'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateLocation, saveGoogleReviewUrl } from '@/app/actions/settings'
+import { updateLocation } from '@/app/actions/settings'
 import { trackStorageUpload } from '@/app/actions/storage'
 import ColorPicker from '@/components/ui/color-picker'
 import { toast } from 'sonner'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { ImageUpload } from '@/components/private/image-upload'
 import { createClient } from '@/utils/supabase/client'
-import { FaInstagram, FaFacebook, FaTiktok, FaGoogle } from 'react-icons/fa'
+import { FaInstagram, FaFacebook, FaTiktok } from 'react-icons/fa'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { WeeklyHoursSelector } from '@/components/utility/weekly-hours-selector'
 import { NumberInput } from '@/components/ui/number-input'
@@ -22,18 +22,34 @@ import { FaqContent } from '@/components/private/faq-section'
 import { SanityFaq } from '@/utils/sanity/queries'
 import { SpecialClosuresPanel } from './special-closures-panel'
 
-const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], faqs: SanityFaq[], googleReviewUrl?: string | null }) => {
+const SettingsView = ({
+  locations,
+  faqs,
+}: {
+  locations: any[]
+  faqs: SanityFaq[]
+}) => {
   const location = locations && locations.length > 0 ? locations[0] : undefined
   const [formData, setFormData] = useState<Partial<Location>>({})
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [reviewUrl, setReviewUrl] = useState(googleReviewUrl || '')
+  const [activeTab, setActiveTab] = useState('info')
 
   const [branding, setBranding] = useState<Branding>({
     colors: { primary: '#000000', secondary: '#ffffff', accent: '#3b82f6' },
     logo_url: '',
     social_links: { instagram: '', facebook: '', tiktok: '' }
   })
+
+  // Restore tab from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
+    if (tab) {
+      setActiveTab(tab)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     if (location) {
@@ -105,8 +121,6 @@ const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], 
       setBranding(prev => ({ ...prev, logo_url: finalLogoUrl }))
       setLogoFile(null)
 
-      await saveGoogleReviewUrl(location.id, reviewUrl)
-
       toast.success('Impostazioni salvate con successo')
     } catch (error) {
       console.error('Error saving settings:', error)
@@ -137,7 +151,7 @@ const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], 
             </div>
 
             <div className='p-6'>
-              <Tabs defaultValue='info' className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className='max-w-lg'>
                   <TabsTrigger value='info' className='flex-1'>
                     Informazioni
@@ -147,9 +161,6 @@ const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], 
                   </TabsTrigger>
                   <TabsTrigger value='closures' className='flex-1'>
                     Chiusure
-                  </TabsTrigger>
-                  <TabsTrigger value='connections' className='flex-1'>
-                    Connessioni
                   </TabsTrigger>
                 </TabsList>
 
@@ -355,91 +366,6 @@ const SettingsView = ({ locations, faqs, googleReviewUrl }: { locations: any[], 
                   <SpecialClosuresPanel locationId={location.id} />
                 </TabsContent>
 
-                <TabsContent value='connections' className='mt-0'>
-                  <div>
-
-                    <div className='divide-y-2'>
-                      {/* Google Business Profile */}
-                      <div className='p-6 flex flex-col sm:flex-row sm:items-start gap-6'>
-                        <div className='flex items-center gap-3 sm:w-56 shrink-0'>
-                          <div className='w-9 h-9 rounded-xl bg-yellow-500/10 flex items-center justify-center'>
-                            <Star className='w-4 h-4 text-yellow-500' />
-                          </div>
-                          <div>
-                            <p className='text-sm font-semibold'>Google Business</p>
-                            <p className='text-xs text-muted-foreground'>Recensioni clienti</p>
-                          </div>
-                        </div>
-
-                        <div className='flex-1 flex flex-col gap-3'>
-                          <div className='flex items-center gap-2'>
-                            {reviewUrl ? (
-                              <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full'>
-                                <CheckCircle2 className='w-3.5 h-3.5' />
-                                Configurato
-                              </span>
-                            ) : (
-                              <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full'>
-                                <AlertCircle className='w-3.5 h-3.5' />
-                                Non configurato
-                              </span>
-                            )}
-                          </div>
-
-                          <div className='space-y-1.5'>
-                            <Label className='text-xs font-semibold ml-1'>URL pagina recensioni Google</Label>
-                            <div className='flex gap-2'>
-                              <Input
-                                placeholder='https://g.page/r/PLACE_ID/review'
-                                value={reviewUrl}
-                                className='h-11 rounded-xl border-2 text-sm flex-1'
-                                onChange={e => setReviewUrl(e.target.value)}
-                              />
-                              {reviewUrl && (
-                                <a
-                                  href={reviewUrl}
-                                  target='_blank'
-                                  rel='noopener noreferrer'
-                                  className='h-11 w-11 shrink-0 rounded-xl border-2 flex items-center justify-center hover:bg-muted transition-colors'
-                                >
-                                  <ExternalLink className='w-4 h-4 text-muted-foreground' />
-                                </a>
-                              )}
-                            </div>
-                            <p className='text-[11px] text-muted-foreground ml-1'>
-                              Trovalo su Google Maps → la tua attività → &quot;Ottieni link alle recensioni&quot;
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Google Calendar */}
-                      <div className='p-6 flex flex-col sm:flex-row sm:items-start gap-6 opacity-60'>
-                        <div className='flex items-center gap-3 sm:w-56 shrink-0'>
-                          <div className='w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center'>
-                            <Calendar className='w-4 h-4 text-blue-500' />
-                          </div>
-                          <div>
-                            <p className='text-sm font-semibold'>Google Calendar</p>
-                            <p className='text-xs text-muted-foreground'>Sync prenotazioni</p>
-                          </div>
-                        </div>
-
-                        <div className='flex-1 flex flex-col gap-3'>
-                          <div className='flex items-center gap-2'>
-                            <span className='inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full'>
-                              In arrivo
-                            </span>
-                          </div>
-                          <p className='text-sm text-muted-foreground'>
-                            La sincronizzazione automatica delle prenotazioni su Google Calendar sarà disponibile dopo l&apos;approvazione API da parte di Google.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </TabsContent>
               </Tabs>
             </div>
 

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { WhatsAppWebhookPayload } from "@/lib/whatsapp";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -18,7 +19,6 @@ export async function GET(req: NextRequest) {
 
   if (mode && token) {
     if (mode === "subscribe" && token === verifyToken) {
-      console.log("WEBHOOK_VERIFIED");
       return new NextResponse(challenge, { status: 200 });
     } else {
       return new NextResponse("Forbidden", { status: 403 });
@@ -31,8 +31,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body: WhatsAppWebhookPayload = await req.json();
-
-    console.log("[WhatsApp Webhook] Received:", JSON.stringify(body, null, 2));
 
     if (
       body.entry &&
@@ -86,6 +84,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse("EVENT_RECEIVED", { status: 200 });
   } catch (error) {
+    Sentry.captureException(error);
     console.error("Error processing webhook:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }

@@ -24,12 +24,11 @@ async function sendTelnyxMockWebhook(eventType: string, payload: any) {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`Webhook failed: ${response.status} ${text}`);
+      return { success: false, error: `Webhook failed: ${response.status} ${text}` };
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error("Simulation Error:", error);
     return { success: false, error: error.message };
   }
 }

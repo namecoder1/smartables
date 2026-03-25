@@ -56,8 +56,6 @@ export function DonutPie({ data }: Props) {
     ]
   }, [data])
 
-  console.log(data)
-
   const totalVisitors = React.useMemo(() => {
     return processedData.reduce((acc, curr) => acc + curr.visitors, 0)
   }, [processedData])

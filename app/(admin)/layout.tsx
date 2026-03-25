@@ -16,7 +16,7 @@ const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="fixed inset-0 h-full w-full">
       <SidebarProvider className="h-full w-full min-h-0" defaultOpen={true}>
-        <div className="flex h-full w-full lg:p-4  bg-[#fcfaee] dark:bg-[#0a0a0a]">
+        <div className="flex h-full w-full lg:p-4 bg-[#252525]">
           <Sidebar
             collapsible='none'
             className="hidden lg:flex bg-transparent border-none"
@@ -24,7 +24,7 @@ const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
 
           <div className="flex flex-1 flex-col h-full overflow-hidden">
             <Navbar />
-            <main className="flex-1 overflow-y-auto bg-background border border-border lg:m-2 h-full">
+            <main className="flex-1 overflow-y-auto bg-[#eeeeee] lg:rounded-4xl border border-border lg:m-2 h-full">
               {children}
             </main>
           </div>

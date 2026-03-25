@@ -17,22 +17,16 @@ import ComplianceRejectedEmail from "@/emails/compliance-rejected";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function approveComplianceRequest(requirementId: string) {
-  console.log("[Admin] approveComplianceRequest STARTED", { requirementId });
-
   // 1. Verify Admin
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Non autorizzato");
+  if (!auth.success) return { success: false, error: "Non autorizzato" };
   const { supabase, user } = auth;
   if (user.app_metadata?.role !== "superadmin") {
-    console.error("[Admin] Unauthorized: User is not superadmin", {
-      userId: user.id,
-    });
-    throw new Error("Unauthorized: Admin Access Required");
+    return { success: false, error: "Unauthorized: Admin Access Required" };
   }
 
   const supabaseAdmin = createAdminClient();
 
-  console.log("[Admin] Locking request...");
   // 2. Atomic Lock: Transition from 'pending_review' to 'pending'
   // This prevents race conditions where two admins click approve simultaneously.
   // We use 'pending' because 'processing' is not in the Enum, and 'pending' effectively locks it from being picked up again (since we query for pending_review)
@@ -45,21 +39,12 @@ export async function approveComplianceRequest(requirementId: string) {
     .single();
 
   if (updateError || !request) {
-    console.error("[Admin] Failed to lock request", { updateError, request });
-    throw new Error(
-      "Request not found given the criteria (it might be already processing or handled).",
-    );
+    return { success: false, error: "Request not found given the criteria (it might be already processing or handled)." };
   }
-  console.log("[Admin] Request locked and fetched", { requestId: request.id });
 
   try {
     const { identity_path, address_path, identity_filename, address_filename } =
       request.documents_data;
-
-    console.log("[Admin] Downloading documents...", {
-      identity_path,
-      address_path,
-    });
 
     // 3. Download files
     const { data: identityData, error: identityError } = await supabase.storage
@@ -78,22 +63,14 @@ export async function approveComplianceRequest(requirementId: string) {
       throw new Error("Failed to download address doc");
     }
 
-    console.log("[Admin] Documents downloaded. Uploading to Telnyx...");
-
     // 4. Upload to Telnyx
     const telnyxIdentityDoc = await uploadDocument(
       identityData,
       identity_filename,
     );
-    console.log("[Admin] Identity uploaded to Telnyx", {
-      id: telnyxIdentityDoc.id,
-    });
 
     // 4. Create Address Object in Telnyx
     const addressDoc = await uploadDocument(addressData, address_filename); // Assuming addressData is the Blob and address_filename is the filename
-    console.log("[Admin] Address doc uploaded to Telnyx", {
-      id: addressDoc.id,
-    });
 
     const telnyxAddressData = {
       customer_reference: `addr_loc_${request.location_id}`,
@@ -106,10 +83,7 @@ export async function approveComplianceRequest(requirementId: string) {
       first_name: request.documents_data.firstName,
       last_name: request.documents_data.lastName,
     };
-    console.log("[Admin] Creating Telnyx address...", telnyxAddressData);
-
     const telnyxAddress = await createAddress(telnyxAddressData); // Assuming createAddress is imported and available
-    console.log("[Admin] Telnyx address created", { id: telnyxAddress.id });
 
     // 5. Prepare Requirements Array
     const {
@@ -218,10 +192,6 @@ export async function approveComplianceRequest(requirementId: string) {
     }
 
     const customerReference = `loc_${request.id}_${request.documents_data?.area_code || "IT"}`; // Precise ref
-    console.log("[Admin] Creating Requirement Group...", {
-      customerReference,
-      requirementsCount: requirements.length,
-    });
 
     const requirementGroup = await createRequirementGroup(
       "IT",
@@ -230,16 +200,8 @@ export async function approveComplianceRequest(requirementId: string) {
       customerReference,
       requirements,
     );
-    console.log("[Admin] Requirement Group created", {
-      id: requirementGroup.id,
-      status: requirementGroup.status,
-    });
 
     // 6. Update DB
-    console.log("[Admin] Updating DB with Requirement Group ID...", {
-      status: requirementGroup.status.toLowerCase(),
-      telnyx_requirement_group_id: requirementGroup.id,
-    });
     const {
       data: updatedData,
       error: finalUpdateError,
@@ -267,17 +229,11 @@ export async function approveComplianceRequest(requirementId: string) {
       throw finalUpdateError;
     }
 
-    console.log("[Admin] DB Updated successfully. Revalidating...", {
-      updatedData,
-      updatedCount,
-    });
-
     // 7. Notify User
     // Use organization owner email? simpler query for now
     // We assume the admin knows what they are doing. Implicitly we could notify the org owner.
 
     revalidatePath("/manage");
-    console.log("[Admin] approveComplianceRequest COMPLETED SUCCESSFULLY");
     return { success: true };
   } catch (error: any) {
     console.error("[Admin] CRITICAL Approval Error:", error);
@@ -294,8 +250,6 @@ export async function approveComplianceRequest(requirementId: string) {
         requirementId,
         rollbackError,
       );
-    } else {
-      console.log("[Admin] Rolled back status to pending_review");
     }
 
     return { success: false, error: error.message };
@@ -308,9 +262,9 @@ export async function rejectComplianceRequest(
 ) {
   // 1. Verify Admin
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Non autorizzato");
+  if (!auth.success) return { success: false, error: "Non autorizzato" };
   const { user } = auth;
-  if (user.app_metadata?.role !== "superadmin") throw new Error("Unauthorized");
+  if (user.app_metadata?.role !== "superadmin") return { success: false, error: "Unauthorized" };
 
   const supabaseAdmin = createAdminClient();
 

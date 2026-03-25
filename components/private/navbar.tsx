@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '../ui/sheet'
 import PrivateSidebar from './sidebar'
 import { UserMenu } from './user-menu'
-import PageTitle from './page-title'
+import PageTitle from '../utility/page-title'
 import { createClient } from '@/utils/supabase/server'
 import { Profile, Notification } from '@/types/general'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu'
@@ -77,7 +77,7 @@ const Navbar = async ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
           <Image src='/logo.png' width={30} height={30} alt='logo' />
           <p className='text-2xl font-bold tracking-tighter text-white'>Smartables</p>
         </div>
-        <PageTitle />
+        <PageTitle star={true} />
       </div>
       <div className='flex items-center gap-2'>
         <NavbarSearch />

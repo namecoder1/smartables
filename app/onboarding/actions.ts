@@ -130,12 +130,14 @@ export async function submitOnboarding(formData: FormData) {
         : selectedPlan.priceIdMonth;
 
       if (priceId) {
-        // Trigger checkout
-        await createStripeSubscriptionCheckout(priceId);
+        // After payment, land directly on compliance so the user submits documents ASAP.
+        // Telnyx approval takes 24-48h — every hour saved counts.
+        await createStripeSubscriptionCheckout(priceId, "/compliance?welcome=1");
         return;
       }
     }
   }
 
-  redirect("/home");
+  // No plan selected (free trial or bypass) — still go to compliance first.
+  redirect("/compliance?welcome=1");
 }

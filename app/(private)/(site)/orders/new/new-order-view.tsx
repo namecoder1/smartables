@@ -58,14 +58,18 @@ const NewOrderView = () => {
     if (!selectedLocationId || !selectedTable) return
     setCreatingWalkin(true)
     try {
-      const newBooking = await createWalkInBooking(selectedLocationId, selectedTable.id, walkinGuests)
+      const result = await createWalkInBooking(selectedLocationId, selectedTable.id, walkinGuests)
+      if (!result.success) {
+        toast.error(result.error)
+        return
+      }
       toast.success("Tavolo occupato!")
       setShowWalkinDialog(false)
-      setSelectedBooking(newBooking)
+      setSelectedBooking(result.data)
       setShowOrderSheet(true)
-      fetchData() // Refresh bookings
-    } catch (e: any) {
-      toast.error(e.message || "Errore durante l'occupazione del tavolo")
+      fetchData()
+    } catch {
+      toast.error("Errore durante l'occupazione del tavolo")
     } finally {
       setCreatingWalkin(false)
     }

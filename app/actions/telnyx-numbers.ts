@@ -5,16 +5,17 @@ import { requireAuth } from "@/lib/supabase-helpers";
 import { searchAvailableNumbers, purchasePhoneNumber } from "@/lib/telnyx";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
+import { fail } from "@/lib/action-response";
 
 export async function searchNumbersAction(countryCode: string, region: string) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
 
   try {
     const numbers = await searchAvailableNumbers(countryCode, region);
     return numbers;
   } catch (error: any) {
-    throw new Error(error.message);
+    return fail(error.message);
   }
 }
 
@@ -24,7 +25,7 @@ export async function buyNumberAction(
   requirementGroupId: string,
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   try {
@@ -59,7 +60,6 @@ export async function buyNumberAction(
     revalidatePath(PATHS.COMPLIANCE);
     return { success: true };
   } catch (error: any) {
-    console.error("Buy Number Error:", error);
     // Revert lock if purchase failed
     const supabaseRollback = await createClient();
     await supabaseRollback
@@ -68,6 +68,6 @@ export async function buyNumberAction(
       .eq("id", locationId)
       .eq("activation_status", "purchasing");
 
-    throw new Error(error.message);
+    return fail(error.message);
   }
 }

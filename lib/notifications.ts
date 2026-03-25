@@ -52,17 +52,15 @@ export async function checkWhatsAppLimitNotification(
 
     const pct = (org.whatsapp_usage_count / org.usage_cap_whatsapp) * 100;
 
-    // Fire at exactly 50% or 75% (allow a small window: within 1 message of the threshold)
-    const hit50 =
-      pct >= 50 &&
-      pct < 50 + (100 / org.usage_cap_whatsapp) * 2;
-    const hit75 =
-      pct >= 75 &&
-      pct < 75 + (100 / org.usage_cap_whatsapp) * 2;
+    // Fire at exactly 50%, 75%, or 90% (allow a small window: within 1 message of the threshold)
+    const tolerance = (100 / org.usage_cap_whatsapp) * 2;
+    const hit50 = pct >= 50 && pct < 50 + tolerance;
+    const hit75 = pct >= 75 && pct < 75 + tolerance;
+    const hit90 = pct >= 90 && pct < 90 + tolerance;
 
-    if (!hit50 && !hit75) return;
+    if (!hit50 && !hit75 && !hit90) return;
 
-    const threshold = hit75 ? 75 : 50;
+    const threshold = hit90 ? 90 : hit75 ? 75 : 50;
 
     // Avoid duplicate notifications: check if we already sent one at this threshold
     const { data: existing } = await supabase

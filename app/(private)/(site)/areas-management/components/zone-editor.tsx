@@ -2,7 +2,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut, Undo2, Redo2, ChevronDown, MoreHorizontal, Loader } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, ZoomIn, ZoomOut, Undo2, Redo2, ChevronDown, MoreHorizontal, Loader, Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { isDev } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TABLE_PRESETS, PresetCategory } from './table-presets';
@@ -15,6 +17,7 @@ import { useZoneColors } from './zone-editor/use-zone-colors';
 import { NumberInput } from '@/components/ui/number-input';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { FaSpinner } from 'react-icons/fa6';
+import { ButtonGroup } from '@/components/ui/button-group';
 
 interface ZoneEditorProps {
   initialZoneId?: string;
@@ -48,6 +51,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
   // UI State that didn't need to be in the complex hook
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [viewMode, setViewMode] = useState<'2d' | 'qrcodes'>('2d');
 
   // Viewport State
   const [stageDimensions, setStageDimensions] = useState({ width: 0, height: 0 });
@@ -90,9 +94,16 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
         <div className="flex items-center gap-6">
           {/* View Modes */}
           <div className="hidden md:flex items-center bg-muted/30 p-1 rounded-xl border">
-            <Button variant="ghost" size="sm" className="bg-background shadow-xs h-8 rounded-lg px-4 text-sm font-semibold">2D piano</Button>
-            <Button variant="ghost" size="sm" className="h-8 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:text-foreground">360° panorama</Button>
-            <Button variant="ghost" size="sm" className="h-8 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:text-foreground">Descrizione</Button>
+            <Button
+              variant="ghost" size="sm"
+              className={viewMode === '2d' ? "bg-background shadow-xs h-8 rounded-lg px-4 text-sm font-semibold" : "h-8 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:text-foreground"}
+              onClick={() => setViewMode('2d')}
+            >Vista 2D</Button>
+            <Button
+              variant="ghost" size="sm"
+              className={viewMode === 'qrcodes' ? "bg-background shadow-xs h-8 rounded-lg px-4 text-sm font-semibold" : "h-8 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:text-foreground"}
+              onClick={() => setViewMode('qrcodes')}
+            >QR Codes</Button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -105,23 +116,21 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
               </Button>
             </div>
 
-            <Button variant="ghost" size="icon" className="h-9 w-9 border rounded-xl bg-muted/30">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-
-            <Button variant="outline" className="rounded-xl h-9" onClick={onBack}>
-              Annulla
-            </Button>
-            <Button onClick={handleSave} disabled={loading}>
-              {loading ? <Loader className='animate-spin' /> : <Save className="w-4 h-4" />}
-              Salva
-            </Button>
+            <ButtonGroup>
+              <Button variant="outline" className="rounded-xl h-9" onClick={onBack}>
+                Annulla
+              </Button>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading ? <Loader className='animate-spin' /> : <Save className="w-4 h-4" />}
+                Salva
+              </Button>
+            </ButtonGroup>
           </div>
         </div>
       </div>
 
       {/* SUB-TOOLBAR FOR NAME/SIZE EDITING */}
-      <div className="px-6 py-2 bg-muted/10 border-b flex items-center gap-2 shrink-0">
+      <div className="px-6 py-2 bg-white/80 border-b flex items-center gap-2 shrink-0">
         {isEditingName ? (
           <div
             className="flex items-center gap-2"
@@ -155,7 +164,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
             />
           </div>
         ) : (
-          <div className="flex items-center gap-2 group h-8 cursor-pointer px-2 -ml-2 rounded-md hover:bg-muted/50" onClick={() => setIsEditingName(true)}>
+          <div className="flex items-center border-2 gap-2 group h-9 cursor-pointer px-2 -ml-2 rounded-xl hover:bg-muted/50" onClick={() => setIsEditingName(true)}>
             <h2 className="font-medium text-sm text-muted-foreground">{currentZone.name || 'Nuova Sala'}</h2>
             <span className="text-xs text-muted-foreground/50">({currentZone.width}x{currentZone.height})</span>
             <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -163,8 +172,140 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
         )}
       </div>
 
+      {/* CONTENT: QR Codes View */}
+      {viewMode === 'qrcodes' && (() => {
+        const interactiveTypes = ['rect', 'circle', 'booth', 'counter'];
+        const tablesToShow = tables.filter(t => interactiveTypes.includes(t.type));
+
+        const handleDownloadPNG = (uniqueId: string, label: string) => {
+          const svg = document.getElementById(`qr-grid-${uniqueId}`);
+          if (!svg) return;
+          const svgData = new XMLSerializer().serializeToString(svg);
+          const canvas = document.createElement("canvas");
+          const size = 1024;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          const img = new Image();
+          img.onload = () => {
+            if (ctx) {
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.imageSmoothingEnabled = false;
+              const qrSize = Math.floor(size * 0.9);
+              const margin = (size - qrSize) / 2;
+              ctx.drawImage(img, margin, margin, qrSize, qrSize);
+            }
+            const pngFile = canvas.toDataURL("image/png");
+            const downloadLink = document.createElement("a");
+            downloadLink.download = `QR_${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+            downloadLink.href = pngFile;
+            downloadLink.click();
+          };
+          const svgWithXmlns = svgData.includes('xmlns=') ? svgData : svgData.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+          img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgWithXmlns)));
+        };
+
+        const handlePrintAll = () => {
+          const printWindow = window.open('', 'width=900,height=700');
+          if (!printWindow) return;
+          const items = tablesToShow.map(t => {
+            const url = locationSlug && isDev()
+              ? `http://localhost:3000/order/${locationSlug}/${t.uniqueId}`
+              : `https://smartables.it/order/${locationSlug}/${t.uniqueId}`;
+            const svgEl = document.getElementById(`qr-grid-${t.uniqueId}`);
+            return `<div class="qr-item"><h2>${t.label}</h2>${svgEl?.outerHTML || ''}<p class="cta">Scansiona per ordinare</p></div>`;
+          }).join('');
+          printWindow.document.write(`<html><head><title>QR Codes — ${currentZone.name}</title><style>
+            body{font-family:sans-serif;margin:0;padding:20px}
+            .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:24px}
+            .qr-item{text-align:center;border:2px dashed #000;padding:20px;border-radius:12px;break-inside:avoid}
+            h2{margin:0 0 12px;font-size:18px}
+            .url{font-size:9px;color:#666;margin-top:8px;word-break:break-all}
+            .cta{font-weight:bold;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+            @media print{body{padding:10px}}
+          </style></head><body><div class="grid">${items}</div><script>window.onload=function(){window.print();window.close()}<\/script></body></html>`);
+          printWindow.document.close();
+        };
+
+        return (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted-foreground">
+                {tablesToShow.length} {tablesToShow.length === 1 ? 'tavolo' : 'tavoli'} con QR code
+              </p>
+              {tablesToShow.length > 0 && locationSlug && (
+                <Button variant="outline" size="sm" onClick={handlePrintAll}>
+                  <Printer className="w-4 h-4 mr-2" />
+                  Stampa tutti
+                </Button>
+              )}
+            </div>
+
+            {tablesToShow.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
+                <p className="text-sm">Nessun tavolo trovato in questa sala.</p>
+                <p className="text-xs mt-1">Aggiungi dei tavoli nella Vista 2D per generare i QR code.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {tablesToShow.map(t => {
+                  const qrUrl = locationSlug
+                    ? isDev()
+                      ? `http://localhost:3000/order/${locationSlug}/${t.uniqueId}`
+                      : `https://smartables.it/order/${locationSlug}/${t.uniqueId}`
+                    : null;
+
+                  const handlePrintSingle = () => {
+                    if (!qrUrl) return;
+                    const printWindow = window.open('', 'width=900,height=900');
+                    if (!printWindow) return;
+                    const svgEl = document.getElementById(`qr-grid-${t.uniqueId}`);
+                    printWindow.document.write(`<html><head><title>QR Code — ${t.label}</title><style>
+                      body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif}
+                      .qr-container{text-align:center;border:2px solid #000;padding:40px;border-radius:20px}
+                      h1{margin-bottom:20px;font-size:32px}
+                      .cta{margin-top:20px;font-weight:bold;text-transform:uppercase;letter-spacing:1px}
+                    </style></head><body><div class="qr-container"><h1>${t.label}</h1>${svgEl?.outerHTML || ''}<div class="cta">Scansiona per ordinare</div></div><script>window.onload=function(){window.print();window.close()}<\/script></body></html>`);
+                    printWindow.document.close();
+                  };
+
+                  
+
+                  return (
+                    <div key={t.uniqueId} className="flex flex-col items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
+                      <div className='flex items-center justify-between w-full'>
+                        <p className="text-sm font-semibold text-center truncate">{t.label}</p>
+                        <p className="text-xs text-muted-foreground">{t.seats} {t.seats === 1 ? 'posto' : 'posti'}</p>
+                      </div>
+                      {qrUrl ? (
+                        <div className="bg-white p-2 rounded-md border">
+                          <QRCodeSVG id={`qr-grid-${t.uniqueId}`} value={qrUrl} className='w-full' />
+                        </div>
+                      ) : (
+                        <div className="w-[116px] h-[116px] flex items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground text-center p-2">
+                          Slug mancante
+                        </div>
+                      )}
+                      <ButtonGroup className='w-full'>
+                        <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => handleDownloadPNG(t.uniqueId, t.label)}>
+                          Scarica
+                        </Button>
+                        <Button size="sm" className="flex-1 h-7 text-xs" onClick={handlePrintSingle} disabled={!qrUrl}>
+                          Stampa
+                        </Button>
+                      </ButtonGroup>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* CONTENT: Sidebar + Canvas */}
-      <div className="flex flex-1 overflow-hidden bg-muted/5">
+      {viewMode === '2d' && <div className="flex flex-1 overflow-hidden bg-muted/5">
 
         {/* SIDEBAR - Static Left */}
         {isSidebarOpen && (
@@ -177,17 +318,17 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
 
                   return (
                     <AccordionItem key={category} value={category} className="border-none">
-                      <AccordionTrigger className="hover:no-underline py-3 px-4 rounded-xl border bg-background hover:bg-muted/30 data-[state=open]:rounded-b-none data-[state=open]:border-b-0 transition-all font-semibold shadow-sm text-sm">
+                      <AccordionTrigger className="hover:no-underline py-3 px-4 rounded-xl border-2 bg-background hover:bg-muted/30 data-[state=open]:rounded-b-none data-[state=open]:border-b-0 transition-all font-semibold shadow-sm text-sm">
                         {category}
                       </AccordionTrigger>
-                      <AccordionContent className="border border-t-0 rounded-b-xl p-4 bg-muted/10 shadow-sm">
+                      <AccordionContent className="border-2 border-t-0 rounded-b-xl p-4 bg-white/80 shadow-sm">
                         <div className="grid grid-cols-2 gap-3">
                           {items.map((preset) => (
                             <div
                               key={preset.id}
                               draggable
                               onDragStart={() => handleSidebarDragStart(preset)}
-                              className="flex cursor-grab flex-col items-center gap-3 border bg-card p-3 shadow-sm rounded-xl hover:shadow-md transition-all active:cursor-grabbing hover:border-orange-500/50"
+                              className="flex cursor-grab flex-col items-center gap-3 border-2 bg-card p-3 shadow-sm rounded-xl hover:shadow-md transition-all active:cursor-grabbing hover:border-orange-500/50"
                             >
                               <div className={`border-2 flex items-center justify-center 
                                 ${(preset.type === 'circle' || preset.type === 'plant' || (preset.type === 'column' && preset.radius)) ? 'rounded-full' : 'rounded-md'}
@@ -255,7 +396,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
                 setStageDimensions
               }}
             />
-            <div className="absolute flex bg-white dark:bg-input/30 border-2 rounded-xl items-center bottom-4 right-4 z-20 gap-2">
+            <div className="absolute flex bg-white dark:bg-input/30 border-2 rounded-xl items-center top-4 left-4 z-20 gap-2">
               <Button variant="ghost" size="icon" className='border-r-2 rounded-r-none' onClick={() => setScale(s => Math.max(0.2, s - 0.1))}><ZoomOut className="w-4 h-4" /></Button>
               <span className="text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
               <Button variant="ghost" size="icon" className='border-l-2 rounded-l-none' onClick={() => setScale(s => Math.min(3, s + 0.1))}><ZoomIn className="w-4 h-4" /></Button>
@@ -280,7 +421,7 @@ export default function ZoneEditor({ initialZoneId, onBack, onSaveSuccess, locat
           );
         })()}
 
-      </div>
+      </div>}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // -- Main DB Types --
 
-export type NotificationType = 'new_booking' | 'new_customer' | 'new_order' | 'whatsapp_limit_warning';
+export type NotificationType = 'new_booking' | 'new_customer' | 'new_order' | 'whatsapp_limit_warning' | 'voice_otp_failed';
 
 export type Notification = {
   id: string;
@@ -25,6 +25,9 @@ export type PushToken = {
   updated_at: string;
 };
 
+export type BookingSource = "whatsapp_auto" | "manual" | "web" | "phone" | "thefork" | "quandoo" | "opentable";
+export type BookingSyncStatus = "synced" | "pending_push" | "conflict";
+
 export type Booking = {
   id: string;
   organization_id: string;
@@ -36,11 +39,15 @@ export type Booking = {
   guests_count: number;
   children_count?: string | null;
   allergies?: string | null;
+  google_event_id?: string | null;
   booking_time: string;
+  booking_end_time?: string | null;
   status: "pending" | "confirmed" | "cancelled" | "no_show" | "arrived";
-  source: "whatsapp_auto" | "manual" | "web" | "phone";
+  source: BookingSource;
   notes: string | null;
   created_at: string;
+  external_id?: string | null;          // Reservation ID on the external platform
+  sync_status?: BookingSyncStatus | null;
 };
 
 export type CallbackRequest = {
@@ -53,17 +60,29 @@ export type CallbackRequest = {
   completed_at: string | null;
 };
 
+export type CustomerMetadata = {
+  thefork_id?: string;      // TheFork guest identifier (from phone lookup or webhook)
+  quandoo_id?: string;      // Quandoo guest identifier
+  opentable_id?: string;    // OpenTable guest identifier
+  dietary_preferences?: string[];
+  seating_preferences?: string[];
+  [key: string]: unknown;
+};
+
 export type Customer = {
   id: string;
   organization_id: string;
   location_id: string;
   phone_number: string;
   name: string;
+  email?: string | null;    // Used for matching with TheFork/Quandoo/OpenTable guest profiles
   total_visits: number;
   last_visit: string;
   tags: string[];
-  metadata: Record<string, unknown>;
+  org_tags: string[];
+  metadata: CustomerMetadata;
   created_at: string;
+  bsuid: string | null;
 };
 
 export type Feedback = {
@@ -75,6 +94,26 @@ export type Feedback = {
   message: string;
   metadata: Record<string, unknown>;
   created_at: string;
+};
+
+export type UserFeedbackType = 'feature_request' | 'bug_report' | 'general' | 'praise';
+export type UserFeedbackStatus = 'open' | 'reviewing' | 'planned' | 'in_progress' | 'done' | 'wont_fix';
+export type UserFeedbackPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type UserFeedback = {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  type: UserFeedbackType;
+  title: string;
+  description: string | null;
+  status: UserFeedbackStatus;
+  priority: UserFeedbackPriority;
+  admin_response: string | null;
+  admin_responded_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Location = {
@@ -108,6 +147,8 @@ export type Location = {
   is_branding_completed: boolean;
   is_test_completed: boolean;
   business_connectors?: string | null; // Encrypted BusinessConnectors JSON (AES-256-GCM)
+  thefork_restaurant_id?: string | null;
+  voice_otp_retry_count?: number;
 };
 
 export type MenuLocation = {
@@ -419,12 +460,24 @@ export type WeeklyHours = {
   [key: string]: TimeSlot[];
 };
 
+export type GoogleCalendarResource = {
+  isGoogleEvent: true;
+  id: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  htmlLink?: string;
+};
+
 export type CalendarEvent = {
   id: string;
   title: string;
   start: Date;
   end: Date;
-  resource: Booking;
+  allDay?: boolean;
+  resource: Booking | GoogleCalendarResource;
 };
 
 // -- Server Action State Types --

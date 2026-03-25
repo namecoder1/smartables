@@ -12,10 +12,6 @@ export async function handleStatusUpdates(
   statuses: StatusObject[],
 ) {
   for (const statusObj of statuses) {
-    console.log(
-      `[WhatsApp Webhook] 📊 Status update: ${statusObj.status} for message ${statusObj.id}`,
-    );
-
     await supabase
       .from("whatsapp_messages")
       .update({

@@ -139,7 +139,7 @@ const GuideCard = ({
           const Icon = getGuideIcon(guide.icon)
           return (
             <motion.div
-              key={guide._id}
+              key={guide.id}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: (sectionIndex * 0.1) + (index * 0.05) }}

@@ -5,12 +5,13 @@ import { Menu, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu"
 import {
   Sheet,
   SheetContent,
@@ -19,76 +20,100 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { useState } from 'react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'
+import { UserMenu } from '@/components/private/user-menu'
+import { Profile } from '@/types/general'
 
-const Navbar = () => {
+const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-neutral-800 bg-neutral-950">
-      <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 md:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-neutral-800 bg-neutral-800">
+      <div className="max-w-7xl mx-auto flex h-18 items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image src="/logo.png" alt="Logo" width={40} height={40} />
-          <span className="font-bold text-2xl tracking-tight text-white">Smartables</span>
+          <span className="font-bold text-2xl tracking-tighter text-white">Smartables</span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           <nav className="flex items-center gap-8 text-[15px] font-medium text-white">
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <p className='cursor-pointer'>Soluzioni</p>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-140 mt-2 p-2 bg-neutral-950 border border-neutral-800 rounded-md shadow-lg grid grid-cols-2'>
-                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/gestione-sala">
-                    <p className='font-bold text-lg'>Gestione Sala</p>
-                    <p className='text-sm'>Gestisci i tavoli con Smartables</p>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/crm">
-                    <p className='font-bold text-lg'>CRM</p>
-                    <p className='text-sm'>Gestisci più sedi con Smartables</p>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/gestione-prenotazioni">
-                    <p className='font-bold text-lg'>Gestione prenotazioni</p>
-                    <p className='text-sm'>Gestisci prenotazioni mancate con Smartables</p>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className='hover:text-[#FF9710]! flex flex-col items-start justify-center px-6 py-4 text-white transition-colors hover:bg-white/5! rounded-sm border border-neutral-800'>
-                  <Link href="/solutions/integrazione-ai">
-                    <p className='font-bold text-lg'>Integrazione AI</p>
-                    <p className='text-sm'>Il tuo assistente AI fornito da Smartables</p>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             <Link href="/pricing" className="hover:text-[#FF9710] transition-colors">
               Prezzi
             </Link>
-            <Link href="/support" className="hover:text-[#FF9710] transition-colors">
-              Supporto
-            </Link>
+
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className='bg-transparent! text-white! px-0'>Soluzioni</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className='w-96 grid grid-cols-2'>
+                      <ListItem href="/solutions/gestione-sala" title="Gestione Sala">
+                        Gestisci i tavoli con Smartables
+                      </ListItem>
+                      <ListItem href="/solutions/gestione-prenotazioni" title="Gestione Prenotazioni">
+                        Gestisci prenotazioni mancate con Smartables
+                      </ListItem>
+                      <ListItem href="/solutions/crm" title="CRM">
+                        Gestisci più sedi con Smartables
+                      </ListItem>
+                      <ListItem href="/solutions/analytics" title="Analitiche">
+                        Scopri trend e pattern ricorrenti con Smartables
+                      </ListItem>
+                      <ListItem href="/solutions/integrazione-ai" title="Integrazione AI">
+                        Il tuo assistente AI fornuto da Smartables
+                      </ListItem>
+                      <ListItem href="/solutions/menu-digitale" title="Menù digitale">
+                        Gestisci il tuo menu e i tuoi piatti con Smartables
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className='bg-transparent! text-white! px-0'>Supporto</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className='w-96 grid grid-cols-2'>
+                      <ListItem href="/support" title="Supporto">
+                        Ottieni supporto su domande e dubbi più frequenti
+                      </ListItem>
+                      <ListItem href="/release-notes" title="Note di rilascio">
+                        Analizza come è cambiato Smartables nel tempo
+                      </ListItem>
+                      <ListItem href="/docs" title="Documentazione">
+                        Esplora ed impara a fondo la documentazione di Smartables
+                      </ListItem>
+                      <ListItem href="/blog" title="Articoli">
+                        Leggi gli articoli creati dal team di Smartables
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
           </nav>
 
-          {/* Functional Divider */}
-          <div className="h-6 w-px bg-gray-200" />
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center text-white hover:text-[#FF9710] cursor-pointer">
-              <Globe className="mr-2 h-4 w-4" />
-              <span className="text-sm font-medium">IT</span>
-            </div>
-            <Button className="rounded-2xl bg-[#FF9710] font-semibold border-[#FF9710] text-white hover:bg-[#FF971080] hover:text-white" asChild>
-              <Link href="/login">
-                Accedi
-              </Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <UserMenu user={user} email={email} />
+            ) : (
+              <>
+                <Button variant='ghost' asChild className='text-white hover:text-white! hover:bg-neutral-600/40!'>
+                  <Link href="/login">
+                    Accedi
+                  </Link>
+                </Button>
+                <Button className="bg-[#FF9710] font-semibold border-[#FF9710] text-white hover:bg-[#FF971080] hover:text-white" asChild>
+                  <Link href="/register">
+                    Inizia
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -102,7 +127,7 @@ const Navbar = () => {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+            <SheetContent side="right" className="w-75 sm:w-100">
               <SheetHeader className="border-b pb-6 mb-6">
                 <SheetTitle className="text-left text-2xl font-bold">Smartables</SheetTitle>
               </SheetHeader>
@@ -121,12 +146,18 @@ const Navbar = () => {
 
                 <div className="mt-auto flex flex-col gap-4">
                   <div className="h-px bg-gray-100 my-2" />
-                  <Button variant="outline" className="w-full justify-start font-semibold border-blue-600 text-blue-600" size="lg">
-                    Accedi
-                  </Button>
-                  <Button className="w-full justify-start font-semibold bg-blue-600 hover:bg-blue-700 text-white" size="lg">
-                    Richiedi demo
-                  </Button>
+                  {user ? (
+                    <UserMenu user={user} email={email} />
+                  ) : (
+                    <>
+                      <Button variant="outline" className="w-full justify-start font-semibold border-blue-600 text-blue-600" size="lg" asChild>
+                        <Link href="/login">Accedi</Link>
+                      </Button>
+                      <Button className="w-full justify-start font-semibold bg-blue-600 hover:bg-blue-700 text-white" size="lg" asChild>
+                        <Link href="/register">Inizia</Link>
+                      </Button>
+                    </>
+                  )}
                   <div className="flex items-center gap-2 px-2 mt-4 text-gray-500">
                     <Globe className="h-4 w-4" />
                     <span className="text-sm">Italiano (IT)</span>
@@ -138,6 +169,26 @@ const Navbar = () => {
         </div>
       </div>
     </header>
+  )
+}
+
+function ListItem({
+  title,
+  children,
+  href,
+  ...props
+}: React.ComponentPropsWithoutRef<"li"> & { href: string }) {
+  return (
+    <li {...props}>
+      <NavigationMenuLink asChild className='rounded-lg'>
+        <Link href={href}>
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="leading-none font-bold text-md">{title}</div>
+            <div className="line-clamp-2 text-muted-foreground">{children}</div>
+          </div>
+        </Link>
+      </NavigationMenuLink>
+    </li>
   )
 }
 

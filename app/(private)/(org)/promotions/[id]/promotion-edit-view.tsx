@@ -46,6 +46,7 @@ import {
 import { usePromotionForm } from './_components/use-promotion-form'
 import { ImageUpload } from '@/components/private/image-upload'
 import { DateTimePicker } from '@/components/ui/datetime-picker'
+import SetPageTitle from '@/components/private/set-page-title'
 
 // ----- Helpers -----
 
@@ -99,6 +100,9 @@ const PromotionEditView = ({ promotion, locations, menus, organizationId, isNew 
 
   return (
     <PageWrapper>
+      {!isNew && name && (
+        <SetPageTitle title={name} description="Modifica promozione" />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">

@@ -142,7 +142,10 @@ export async function changeSubscription(newPriceId: string) {
   };
 }
 
-export async function createStripeSubscriptionCheckout(priceId: string) {
+export async function createStripeSubscriptionCheckout(
+  priceId: string,
+  successPath: string = "/billing?success=true",
+) {
   const { supabase, user, organizationId } = await getAuthContext();
 
   const customerId = await getOrCreateStripeCustomer(
@@ -171,7 +174,7 @@ export async function createStripeSubscriptionCheckout(priceId: string) {
     ],
     mode: "subscription",
     locale: "it",
-    success_url: `${getUrl()}/billing?success=true`,
+    success_url: `${getUrl()}${successPath}`,
     cancel_url: `${getUrl()}/billing?canceled=true`,
     metadata: {
       organization_id: organizationId,

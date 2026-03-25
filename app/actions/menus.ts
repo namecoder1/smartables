@@ -4,7 +4,9 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
 import { requireAuth } from "@/lib/supabase-helpers";
+import { ok, fail } from "@/lib/action-response";
 import { deleteFileFromStorage } from "@/app/actions/menu-editor";
+import { checkResourceAvailability } from "@/lib/limiter";
 
 export async function createMenu(
   organizationId: string,
@@ -19,8 +21,11 @@ export async function createMenu(
   },
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
+
+  const menuAvail = await checkResourceAvailability(supabase, organizationId, "menus");
+  if (!menuAvail.allowed) return fail("Limite menu digitali raggiunto. Aggiorna il piano per aggiungerne altri.");
 
   const { location_ids, ...menuData } = data;
 
@@ -39,10 +44,7 @@ export async function createMenu(
     .select()
     .single();
 
-  if (error) {
-    console.error("Error creating menu:", error);
-    throw new Error("Failed to create menu");
-  }
+  if (error) return fail("Impossibile creare il menù");
 
   if (location_ids && location_ids.length > 0) {
     const locationInserts = location_ids.map((locId) => ({
@@ -51,17 +53,11 @@ export async function createMenu(
       is_active: true,
     }));
 
-    const { error: locError } = await supabase
-      .from("menu_locations")
-      .insert(locationInserts);
-
-    if (locError) {
-      console.error("Error assigning menu to locations:", locError);
-    }
+    await supabase.from("menu_locations").insert(locationInserts);
   }
 
   revalidatePath(PATHS.SETTINGS);
-  return { success: true };
+  return ok();
 }
 
 export async function updateMenu(
@@ -76,34 +72,26 @@ export async function updateMenu(
   },
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { error } = await supabase.from("menus").update(data).eq("id", menuId);
-
-  if (error) {
-    console.error("Error updating menu:", error);
-    throw new Error("Failed to update menu");
-  }
+  if (error) return fail("Impossibile aggiornare il menù");
 
   revalidatePath(PATHS.SETTINGS);
-  return { success: true };
+  return ok();
 }
 
 export async function deleteMenu(menuId: string) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase, organizationId } = auth;
 
-  const { data: menu, error: fetchError } = await supabase
+  const { data: menu } = await supabase
     .from("menus")
     .select("content, pdf_url")
     .eq("id", menuId)
     .single();
-
-  if (fetchError) {
-    console.error("Error fetching menu for deletion:", fetchError);
-  }
 
   if (menu) {
     if (menu.pdf_url) {
@@ -123,14 +111,10 @@ export async function deleteMenu(menuId: string) {
   }
 
   const { error } = await supabase.from("menus").delete().eq("id", menuId);
-
-  if (error) {
-    console.error("Error deleting menu:", error);
-    throw new Error("Failed to delete menu");
-  }
+  if (error) return fail("Impossibile eliminare il menù");
 
   revalidatePath(PATHS.SETTINGS);
-  return { success: true };
+  return ok();
 }
 
 export async function updateMenuLocationAvailability(
@@ -140,7 +124,7 @@ export async function updateMenuLocationAvailability(
   dailyUntil: string | null,
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { error } = await supabase
@@ -149,10 +133,10 @@ export async function updateMenuLocationAvailability(
     .eq("menu_id", menuId)
     .eq("location_id", locationId);
 
-  if (error) throw new Error("Failed to update menu location availability");
+  if (error) return fail("Impossibile aggiornare la disponibilità del menù");
 
   revalidatePath(PATHS.SETTINGS);
-  return { success: true };
+  return ok();
 }
 
 export async function assignMenuToLocations(
@@ -160,7 +144,7 @@ export async function assignMenuToLocations(
   locationIds: string[],
 ) {
   const auth = await requireAuth();
-  if (!auth.success) throw new Error("Unauthorized");
+  if (!auth.success) return fail(auth.error);
   const { supabase } = auth;
 
   const { data: existing, error: fetchError } = await supabase
@@ -168,7 +152,7 @@ export async function assignMenuToLocations(
     .select("location_id")
     .eq("menu_id", menuId);
 
-  if (fetchError) throw new Error("Failed to fetch menu locations");
+  if (fetchError) return fail("Impossibile recuperare le sedi del menù");
 
   const existingIds = existing.map((r: { location_id: string }) => r.location_id);
 
@@ -183,11 +167,7 @@ export async function assignMenuToLocations(
         is_active: true,
       })),
     );
-
-    if (insertError) {
-      console.error(insertError);
-      throw new Error("Failed to assign locations");
-    }
+    if (insertError) return fail("Impossibile assegnare le sedi");
   }
 
   if (toDelete.length > 0) {
@@ -196,13 +176,9 @@ export async function assignMenuToLocations(
       .delete()
       .eq("menu_id", menuId)
       .in("location_id", toDelete);
-
-    if (deleteError) {
-      console.error(deleteError);
-      throw new Error("Failed to remove locations");
-    }
+    if (deleteError) return fail("Impossibile rimuovere le sedi");
   }
 
   revalidatePath(PATHS.SETTINGS);
-  return { success: true };
+  return ok();
 }

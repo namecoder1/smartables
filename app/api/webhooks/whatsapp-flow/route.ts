@@ -34,10 +34,6 @@ export async function POST(req: Request) {
     }
 
     const { action, data, routing_model, screen, version } = decryptedBody;
-    console.log(
-      `[WhatsApp Flow Debug] Action: ${action}, Screen: ${screen}`,
-      JSON.stringify(decryptedBody, null, 2),
-    );
 
     let responseData: any = {
       version: version || "3.0",
@@ -212,8 +208,6 @@ Altro: ${extra_notes}`;
       }
       // ── Final Submission from SUMMARY ──
       else if (screen === "SUMMARY") {
-        console.log("[WhatsApp Flow] Booking Submitted", payload);
-
         responseData = {
           ...responseData,
           screen: "SUCCESS",
@@ -232,11 +226,6 @@ Altro: ${extra_notes}`;
       console.warn(`[WhatsApp Flow] Unhandled action: ${action}`);
       return new NextResponse("Unhandled action", { status: 400 });
     }
-
-    console.log(
-      `[WhatsApp Flow] Sending Response:`,
-      JSON.stringify(responseData, null, 2),
-    );
 
     // Encrypt response
     const encryptedResponse = encryptFlowResponse(

@@ -134,7 +134,6 @@ const CollaboratorsView = ({
   }
 
   const maxStaff = BASE_STAFF_BY_TIER[organization?.billing_tier as string]
-  console.log(selected.size)
 
   return (
     <PageWrapper className='relative'>

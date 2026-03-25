@@ -9,7 +9,7 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import { AddonConfig, DEFAULT_ADDON_CONFIG } from "./addons";
+import { AddonConfig, BASE_KB_CHARS_BY_TIER, DEFAULT_ADDON_CONFIG, DEFAULT_BASE_KB_CHARS } from "./addons";
 
 export type ResourceType =
   | "staff"
@@ -18,7 +18,9 @@ export type ResourceType =
   | "locations"
   | "menus"
   | "zones"
-  | "bookings";
+  | "bookings"
+  | "kb_chars"
+  | "analytics";
 
 export type ResourceAvailability = {
   allowed: boolean;
@@ -42,7 +44,7 @@ export async function checkResourceAvailability(
   const { data: org } = await supabase
     .from("organizations")
     .select(
-      "stripe_price_id, addons_config, total_storage_used, usage_cap_whatsapp, whatsapp_usage_count, current_billing_cycle_start",
+      "stripe_price_id, billing_tier, addons_config, total_storage_used, usage_cap_whatsapp, whatsapp_usage_count, current_billing_cycle_start",
     )
     .eq("id", orgId)
     .single();
@@ -146,6 +148,29 @@ export async function checkResourceAvailability(
         remaining: Math.max(0, hardCapBytes - current),
         softCapWarning,
       };
+    }
+
+    case "kb_chars": {
+      const tier: string = (org as any).billing_tier ?? "starter";
+      const baseChars = BASE_KB_CHARS_BY_TIER[tier] ?? DEFAULT_BASE_KB_CHARS;
+      const limit = baseChars + addons.extra_kb_chars;
+      // Sum title + content lengths across all KB entries for this org
+      const { data: entries } = await supabase
+        .from("knowledge_base")
+        .select("title, content")
+        .eq("organization_id", orgId);
+      const current = (entries ?? []).reduce(
+        (sum, e) => sum + (e.title?.length ?? 0) + (e.content?.length ?? 0),
+        0,
+      );
+      return build(current, limit);
+    }
+
+    case "analytics": {
+      const tier: string = (org as any).billing_tier ?? "starter";
+      const hasAddon = addons.extra_analytics > 0;
+      const allowed = tier === "growth" || tier === "business" || hasAddon;
+      return { allowed, current: hasAddon ? 1 : 0, limit: 1, remaining: allowed ? 1 : 0 };
     }
 
     default:

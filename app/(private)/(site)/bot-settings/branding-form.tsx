@@ -61,8 +61,6 @@ export function BrandingForm({ locationId, whatsappName, initialProfile, locatio
   const [vertical, setVertical] = useState(initialProfile?.vertical || "Ristorante");
   const [profileImage, setProfileImage] = useState<File | null>(null);
 
-  console.log(initialProfile.vertical)
-
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -254,7 +252,7 @@ export function BrandingForm({ locationId, whatsappName, initialProfile, locatio
           </div>
         </div>
       </div>
-      <div className="2xl:col-span-2 hidden bg-neutral-100 rounded-r-[20px] border-l pt-4 pb-0 2xl:flex flex-col h-full overflow-hidden">
+      <div className="2xl:col-span-2 hidden bg-neutral-100 rounded-r-4xl border-l-2 pt-4 pb-0 2xl:flex flex-col h-full overflow-hidden">
         <WhatsAppProfilePreview
           name={whatsappName || "Non verificato"}
           description={description}

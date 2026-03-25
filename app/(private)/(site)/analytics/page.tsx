@@ -96,7 +96,6 @@ export default async function AnalyticsPage({
     customerMetrics,
   } = data
 
-  console.log(features)
 
   const planLabel = PLAN_LABELS[planId] ?? 'Starter'
   const isBusiness = features.longTermTrends

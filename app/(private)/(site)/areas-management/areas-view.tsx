@@ -8,7 +8,7 @@ import { deleteFloorPlan, getFloorPlan, updateZoneBlock } from '@/app/actions/fl
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Plus, Store } from 'lucide-react';
+import { ArrowRight, Plus, Store, Trash } from 'lucide-react';
 import ConfirmDialog from '@/components/utility/confirm-dialog';
 import PageWrapper from '@/components/private/page-wrapper';
 import ZoneWizard from './components/zone-wizard';
@@ -30,6 +30,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { RangePicker } from '@/components/ui/range-picker';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 interface Zone {
   id: string;
@@ -65,6 +67,7 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
 
   // State for zone blocking dialog
   const [zoneToBlock, setZoneToBlock] = useState<Zone | null>(null);
+  const [isDeletingBlock, setIsDeletingBlock] = useState(false);
   const [blockMode, setBlockMode] = useState<'free' | 'shift'>('free');
   const [blockFrom, setBlockFrom] = useState<Date | undefined>(undefined);
   const [blockUntil, setBlockUntil] = useState<Date | undefined>(undefined);
@@ -210,7 +213,7 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
     }
   };
 
-  const confirmDelete = async () => {
+  const confirmDeleteArea = async () => {
     if (!zoneToDelete) return;
 
     try {
@@ -221,6 +224,23 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
     } catch (error) {
       console.error(error);
       toast.error('Errore nell\'eliminazione della mappa');
+    }
+  };
+
+  const confirmDeleteBlock = async () => {
+    if (!zoneToBlock) return;
+    setIsSavingBlock(true);
+    try {
+      await updateZoneBlock(zoneToBlock.id, null, null, null);
+      toast.success('Blocco rimosso con successo');
+      setZoneToBlock(null);
+      setIsDeletingBlock(false);
+      loadZones();
+    } catch (error) {
+      console.error(error);
+      toast.error('Errore nella rimozione del blocco');
+    } finally {
+      setIsSavingBlock(false);
     }
   };
 
@@ -247,7 +267,7 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
         <PageWrapper className='relative'>
           <div className="flex flex-col items-start md:flex-row md:items-center gap-10 md:justify-between">
             <div className='flex flex-col gap-1'>
-              <h1 className="text-3xl font-bold tracking-tight">Mappe ristorante</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Le tue Mappe</h1>
               <p className="text-muted-foreground max-w-2xl">Gestisci le mappe del tuo locale, crea, modifica e sposta i tavoli per adattarle alle tue esigenze.</p>
             </div>
             {zones.length > 0 ? (
@@ -321,7 +341,21 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
           confirmLabel="Elimina"
           cancelLabel="Annulla"
           variant="destructive"
-          onConfirm={confirmDelete}
+          onConfirm={confirmDeleteArea}
+        />
+      )}
+
+      {/* Block Deletion Confirmation Dialog */}
+      {isDeletingBlock && (
+        <ConfirmDialog
+          open={isDeletingBlock}
+          onOpenChange={setIsDeletingBlock}
+          title="Rimuovi blocco"
+          description={`Sei sicuro di voler eliminare il blocco della sala "${zoneToBlock?.name}"?`}
+          confirmLabel="Rimuovi"
+          cancelLabel="Annulla"
+          variant="destructive"
+          onConfirm={confirmDeleteBlock}
         />
       )}
 
@@ -334,6 +368,23 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
               Imposta un periodo in cui questa sala sarà bloccata e non prenotabile.
             </DialogDescription>
           </DialogHeader>
+
+          {zoneToBlock?.blocked_from && zoneToBlock?.blocked_until && (
+            <div className='bg-white group border-2 rounded-2xl p-3 pt-2 flex flex-col items-start justify-center gap-2'>
+              <h3 className='text-base font-semibold tracking-tight'>Blocchi programmati</h3>
+              <div className='border-2 flex items-center flex-wrap justify-between w-full p-2 border-dashed rounded-xl'>
+                <p className='text-sm font-semibold'>{zoneToBlock?.blocked_reason || 'Nessuna nota'}</p>
+                <div className='flex items-center justify-center gap-2'>
+                  <p className='text-sm'>{format(zoneToBlock.blocked_from, 'dd MMM yyyy', { locale: it })}</p>
+                  <ArrowRight size={16} />
+                  <p className='text-sm'>{format(zoneToBlock.blocked_until, 'dd MMM yyyy', { locale: it })}</p>
+                  <Button onClick={() => setIsDeletingBlock(true)} variant='destructive' size='icon-xs' className='hidden group-hover:flex'>
+                    <Trash />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col gap-4 py-2">
             {/* Mode selector */}
@@ -422,20 +473,7 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={async () => {
-                  if (!zoneToBlock) return;
-                  setIsSavingBlock(true);
-                  try {
-                    await updateZoneBlock(zoneToBlock.id, null, null, null);
-                    toast.success('Blocco rimosso');
-                    setZoneToBlock(null);
-                    loadZones();
-                  } catch {
-                    toast.error('Errore nella rimozione del blocco');
-                  } finally {
-                    setIsSavingBlock(false);
-                  }
-                }}
+                onClick={() => setIsDeletingBlock(true)}
                 disabled={isSavingBlock}
               >
                 Rimuovi

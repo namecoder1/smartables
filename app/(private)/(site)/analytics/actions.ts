@@ -18,6 +18,7 @@ import {
 } from '@/lib/analytics/calculations'
 import {
   queryBookings,
+  queryBookingsTotalCount,
   queryOrders,
   queryCustomers,
   queryWhatsAppMessages,
@@ -44,10 +45,12 @@ export async function getAnalyticsData(from?: string, to?: string) {
   const diffDays = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)))
   const extendedFrom = features.periodComparison ? subDays(fromDate, diffDays) : fromDate
 
-  // Parallel fetches: all-time bookings + period bookings (with optional extended range)
-  const [allBookings, periodBookings] = await Promise.all([
-    queryBookings(organizationId),                    // all-time (no date filter)
-    queryBookings(organizationId, extendedFrom, toDate), // period (+ prev if needed)
+  // Parallel fetches: year-window bookings + period bookings (with optional extended range)
+  // totalBookings uses a count query to avoid loading all records for the counter.
+  const [allBookings, periodBookings, totalBookings] = await Promise.all([
+    queryBookings(organizationId),                        // last 1-year window (capped)
+    queryBookings(organizationId, extendedFrom, toDate),  // period (+ prev if needed)
+    queryBookingsTotalCount(organizationId),              // exact all-time count via HEAD
   ])
 
   // Conditional fetches based on plan
@@ -94,7 +97,7 @@ export async function getAnalyticsData(from?: string, to?: string) {
         )
       : null
 
-  const totalBookings = allBookings.length
+  // totalBookings is fetched via count query above — do not recompute from allBookings
   const averageCovers = features.averageCovers ? calcAverageCovers(allBookings) : null
   const totalCustomers = features.customerMetrics ? customers.length : null
 

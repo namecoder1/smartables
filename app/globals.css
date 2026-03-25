@@ -5,6 +5,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-skeleton: var(--skeleton);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -68,6 +69,7 @@
   --radius: 0.65rem;
   --background: #ffffff;
   --foreground: #09090b;
+  --skeleton: #dedede;
   --card: hsl(0, 0%, 98%);
   --card-foreground: #09090b;
   --popover: #ffffff;
@@ -106,4 +108,8 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.header-container {
+  @apply flex flex-col md:flex-row md:items-center justify-center md:justify-between gap-6
 }

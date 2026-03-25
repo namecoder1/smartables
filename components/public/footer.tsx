@@ -11,23 +11,25 @@ const Footer = () => {
             <Image src="/logo.png" alt="Logo" width={55} height={55} />
             <div className='flex flex-col'>
               <span className='text-2xl font-bold'>Smartables</span>
-              <p className='text-gray-400 text-sm'>Il sistema operativo per il tuo ristorante</p>
+              <p className='text-white/80 text-md'>Il sistema operativo per il tuo ristorante</p>
             </div>
           </div>
           <div className='grid grid-cols-3 max-w-xl gap-12'>
             <div className='flex flex-col gap-2'>
               <h4 className='font-bold text-lg mb-1'>Smartables</h4>
               <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Home</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Soluzioni</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Prezzi</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Supporto</Link>
+              <Link href='/solutions' className='hover:text-[#FF9710] transition-colors text-sm'>Soluzioni</Link>
+              <Link href='/pricing' className='hover:text-[#FF9710] transition-colors text-sm'>Prezzi</Link>
+              <Link href='/support' className='hover:text-[#FF9710] transition-colors text-sm'>Supporto</Link>
             </div>
             <div className='flex flex-col gap-2'>
               <h4 className='font-bold text-lg mb-1'>Soluzioni</h4>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Gestione Sala</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>CRM</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Gestione prenotazioni</Link>
-              <Link href='/' className='hover:text-[#FF9710] transition-colors text-sm'>Integrazione AI</Link>
+              <Link href='/solutions/gestione-sala' className='hover:text-[#FF9710] transition-colors text-sm'>Gestione Sala</Link>
+              <Link href='/solutions/crm' className='hover:text-[#FF9710] transition-colors text-sm'>CRM</Link>
+              <Link href='/solutions/gestione-prenotazioni' className='hover:text-[#FF9710] transition-colors text-sm'>Gestione prenotazioni</Link>
+              <Link href='/solutions/integrazione-ai' className='hover:text-[#FF9710] transition-colors text-sm'>Integrazione AI</Link>
+              <Link href='/solutions/analytics' className='hover:text-[#FF9710] transition-colors text-sm'>Analitiche</Link>
+              <Link href='/solutions/menu-digitale' className='hover:text-[#FF9710] transition-colors text-sm'>Menù digitale</Link>
             </div>
             <div className='flex flex-col gap-2'>
               <h4 className='font-bold text-lg mb-1'>Legale</h4>

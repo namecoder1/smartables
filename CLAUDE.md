@@ -59,23 +59,36 @@ Never throw in server actions — use `fail()`. Reserve throwing for webhook han
 
 ### Auth Context
 
-Every server action or RSC that needs the current user calls `getAuthContext()` from `lib/auth.ts`:
+Two patterns — choose based on context:
+
+**Server Actions** → use `requireAuth()` from `lib/supabase-helpers.ts`. It wraps `getAuthContext()` and converts auth failures into a typed `fail()` return (consistent with the "never throw" rule):
+
+```typescript
+const auth = await requireAuth();
+if (!auth.success) return fail(auth.error);
+const { supabase, user, organizationId, organization, locations } = auth;
+```
+
+**RSC pages / layouts** → use `getAuthContext()` from `lib/auth.ts`. It throws if unauthenticated, which Next.js propagates to the nearest error boundary or login redirect:
 
 ```typescript
 const { supabase, user, organizationId, organization, locations } = await getAuthContext();
 ```
 
-This is the canonical way to get auth + org context. It throws if unauthenticated.
+Both give you the same context object: `supabase`, `user`, `organizationId`, `organization`, `locations`.
 
 ### Key Libraries
 
 | Path | Purpose |
 |---|---|
-| `lib/auth.ts` | `getAuthContext()` — auth + org lookup for server actions |
+| `lib/auth.ts` | `getAuthContext()` — auth + org context for RSC pages |
+| `lib/supabase-helpers.ts` | `requireAuth()` — auth + org context for server actions (typed, no-throw) |
 | `lib/action-response.ts` | `ok()`, `okWith()`, `fail()` — server action response builders |
+| `lib/limiter.ts` | `checkResourceAvailability()` — plan/addon resource limit gating |
 | `lib/errors.ts` | Custom error hierarchy for webhooks/background jobs |
 | `lib/routes.tsx` | Sidebar nav structure and route definitions |
-| `lib/plans.ts` | Subscription plan feature gates |
+| `lib/plans.ts` | Subscription plan definitions and `findPlanByPriceId()` |
+| `lib/addons.ts` | Addon config, unit values, KB chars base limits per tier |
 | `lib/queries/` | Reusable database query builders |
 | `lib/validators/` | Input validation schemas |
 | `lib/form-parsers.ts` | Type-safe FormData extraction |
@@ -91,7 +104,7 @@ This is the canonical way to get auth + org context. It throws if unauthenticate
 - **Trigger.dev** — background jobs in `/trigger/` (booking verification, auto-replies, review requests)
 - **OpenAI** — bot responses and content generation
 - **Resend** — transactional emails via React Email templates in `/emails/`
-- **Upstash Redis** — rate limiting (`lib/ratelimit.ts`) and feature limits (`lib/limiter.ts`)
+- **Upstash Redis** — rate limiting (`lib/ratelimit.ts`)
 
 ### Database Migrations
 

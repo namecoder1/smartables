@@ -23,10 +23,6 @@ export async function registerWhatsAppPublicKey(phoneNumberId: string) {
 
   const publicKeyPem = getPublicKeyFromPrivate(privateKey);
 
-  console.log(
-    `[WhatsApp Encryption] Registering public key for ${phoneNumberId}...`,
-  );
-
   const response = await fetch(
     `${WHATSAPP_API_URL}/${phoneNumberId}/whatsapp_business_encryption`,
     {
@@ -48,9 +44,6 @@ export async function registerWhatsAppPublicKey(phoneNumberId: string) {
     throw new Error(data.error?.message || "Failed to register public key");
   }
 
-  console.log(
-    `[WhatsApp Encryption] ✅ Public key registered successfully for ${phoneNumberId}`,
-  );
   return data;
 }
 

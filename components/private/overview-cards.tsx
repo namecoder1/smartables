@@ -15,7 +15,7 @@ const OverviewCards = ({
           key={index} 
           className='gap-2 p-6 md:first:pl-6 md:pl-2 flex items-start justify-between bg-card/80 md:bg-transparent rounded-3xl md:rounded-none md:border-r-2 border-2 md:border-l-0 md:border-y-0 md:last:border-r-0'
         >
-          <div>
+          <div className="flex flex-col items-start justify-between h-full gap-2 md:gap-1">
             <div>
               <h2>{item.title}</h2>
             </div>

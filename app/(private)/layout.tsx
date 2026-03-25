@@ -11,6 +11,7 @@ import RefundGate from "@/components/private/refund-gate";
 import { PageTitleProvider } from "@/components/providers/page-title-context";
 import { ThemeProvider } from "@/components/utility/theme-provider";
 import { NavDataProvider } from "@/components/providers/nav-context";
+import { FeedbackWidget } from "@/components/private/feedback-widget";
 
 export const metadata = {
   title: {
@@ -103,6 +104,7 @@ export default async function PrivateLayout({
                     ) : (
                       children
                     )}
+                    <FeedbackWidget />
                   </main>
                 </div>
               </div>

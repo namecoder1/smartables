@@ -1,4 +1,5 @@
 import PageWrapper from '@/components/private/page-wrapper'
+import { getAuthContext } from '@/lib/auth'
 import { Metadata } from 'next'
 import AreaView from './area-view'
 
@@ -7,7 +8,9 @@ export const metadata: Metadata = {
   description: 'Gestisci ordini e prenotazioni con le mappe interattive che hai creato.',
 }
 
-const AreaManagement = () => {
+const AreaManagement = async () => {
+  await getAuthContext()
+
   return (
     <PageWrapper>
       <div className='items-start flex-col flex'>

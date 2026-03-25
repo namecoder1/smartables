@@ -10,6 +10,7 @@ import { subHours } from "date-fns";
 import { getStr, getNullableStr, getInt } from "@/lib/form-parsers";
 import { dynamicPath } from "@/lib/revalidation-paths";
 import { validatePublicBookingFields } from "@/lib/validators/booking";
+import { sendBookingPush } from "@/lib/booking-notifications";
 
 export async function createPublicBooking(
   prevState: CreateBookingState,
@@ -68,7 +69,7 @@ export async function createPublicBooking(
   if (existingBookings && existingBookings.length > 0) {
     // Check if any existing booking is for the same date
     const sameDayBooking = existingBookings.find((b: any) => {
-      return b.booking_time.startsWith(date);
+      return b.booking_time?.split("T")[0] === date;
     });
 
     if (sameDayBooking) {
@@ -87,6 +88,15 @@ export async function createPublicBooking(
         success: false,
       };
     }
+  }
+
+  // Capacity check — prevent double-booking from public page
+  const { data: slotAvailable, error: capacityErr } = await supabase.rpc(
+    "check_booking_capacity",
+    { p_location_id: locationId, p_booking_time: `${date}T${time}:00`, p_guests_count: guestsCount },
+  );
+  if (!capacityErr && slotAvailable === false) {
+    return { error: "Ci dispiace, la disponibilità per l'orario selezionato è esaurita. Scegli un altro orario.", success: false };
   }
 
   // Combine date and time to represent the local time at the restaurant in Italy
@@ -134,6 +144,15 @@ export async function createPublicBooking(
       success: false,
     };
   }
+
+  // Push notification to staff — non-blocking, respects preferences
+  sendBookingPush(organizationId, {
+    id: booking.id,
+    guestName: guestName,
+    guestsCount: guestsCount,
+    bookingTime: bookingTime,
+    locationId: locationId,
+  }, "public");
 
   revalidatePath(dynamicPath.publicLocation(getStr(formData, "locationSlug")));
   return { success: true, bookingId: booking.id, error: null };

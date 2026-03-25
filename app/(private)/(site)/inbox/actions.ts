@@ -1,6 +1,5 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
 import { requireAuth } from "@/lib/supabase-helpers";
 
 /**
@@ -8,12 +7,10 @@ import { requireAuth } from "@/lib/supabase-helpers";
  * ordered by the most recent message.
  */
 export async function getInboxCustomers(organizationId: string) {
-  const supabase = await createClient();
-
-  // We want to fetch customers that belong to the organization
-  // and join the latest message to order them, but a simpler query
-  // in Supabase is fetching customers directly.
-  // Then we can get the latest message for ordering.
+  const auth = await requireAuth();
+  if (!auth.success) return { success: false, error: "Unauthorized" };
+  if (auth.organizationId !== organizationId) return { success: false, error: "Forbidden" };
+  const { supabase } = auth;
 
   const { data: customers, error } = await supabase
     .from("customers")
@@ -62,7 +59,20 @@ export async function getInboxCustomers(organizationId: string) {
  * Fetch all the messages for a specific customer thread.
  */
 export async function getCustomerMessages(customerId: string) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return { success: false, error: "Unauthorized" };
+  const { supabase } = auth;
+
+  // Verify customer belongs to authenticated org
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("organization_id")
+    .eq("id", customerId)
+    .single();
+
+  if (!customer || customer.organization_id !== auth.organizationId) {
+    return { success: false, error: "Forbidden" };
+  }
 
   const { data, error } = await supabase
     .from("whatsapp_messages")
@@ -162,7 +172,20 @@ export async function setCustomerBotHandoff(
   customerId: string,
   pauseHours: number = 24,
 ) {
-  const supabase = await createClient();
+  const auth = await requireAuth();
+  if (!auth.success) return { success: false, error: "Unauthorized" };
+  const { supabase } = auth;
+
+  // Verify customer belongs to authenticated org
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("bsuid, organization_id")
+    .eq("id", customerId)
+    .single();
+
+  if (!customer || customer.organization_id !== auth.organizationId) {
+    return { success: false, error: "Forbidden" };
+  }
 
   // Calculate timestamp or null to reactivate
   const pausedUntil =
@@ -170,10 +193,21 @@ export async function setCustomerBotHandoff(
       ? new Date(Date.now() + pauseHours * 60 * 60 * 1000).toISOString()
       : null;
 
-  const { error } = await supabase
+  let updateQuery = supabase
     .from("customers")
-    .update({ bot_paused_until: pausedUntil })
-    .eq("id", customerId);
+    .update({ bot_paused_until: pausedUntil });
+
+  // If the customer has a bsuid, propagate the pause to all records
+  // sharing the same identity across locations (same person, different numbers).
+  if (customer.bsuid) {
+    updateQuery = updateQuery
+      .eq("organization_id", auth.organizationId)
+      .eq("bsuid", customer.bsuid);
+  } else {
+    updateQuery = updateQuery.eq("id", customerId);
+  }
+
+  const { error } = await updateQuery;
 
   if (error) {
     console.error(`Error pausing bot for customer ${customerId}:`, error);
