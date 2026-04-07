@@ -12,7 +12,7 @@
     "stripe": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/openai": "^3.0.51",
     "@base-ui/react": "^1.2.0",
     "@next/font": "^14.2.15",
     "@portabletext/react": "^6.0.2",
