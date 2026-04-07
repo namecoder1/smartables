@@ -6,8 +6,6 @@ import { checkWhatsAppLimitNotification } from "@/lib/notifications";
 import { captureError, captureWarning } from "@/lib/monitoring";
 import { assertEnv } from "@/lib/env-check";
 
-assertEnv();
-
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
   return createClient(
@@ -35,6 +33,7 @@ export const replyToMessage = task({
     randomize: false,
   },
   run: async (payload: ReplyToMessagePayload) => {
+    assertEnv();
     const {
       organizationId,
       locationId,

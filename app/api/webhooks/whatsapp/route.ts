@@ -1,7 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { assertEnv } from "@/lib/env-check";
-
-assertEnv();
 import { NextRequest, NextResponse } from "next/server";
 import { WhatsAppWebhookPayload } from "@/lib/whatsapp";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -46,6 +44,7 @@ function verifyMetaSignature(rawBody: string, signature: string | null): boolean
 }
 
 export async function GET(req: NextRequest) {
+  assertEnv();
   const searchParams = req.nextUrl.searchParams;
   const mode = searchParams.get("hub.mode");
   const token = searchParams.get("hub.verify_token");
@@ -65,6 +64,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  assertEnv();
   try {
     // Verify Meta signature before parsing body
     const rawBody = await req.text();

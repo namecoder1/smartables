@@ -1,8 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { assertEnv } from "@/lib/env-check";
-
-assertEnv();
 import { stripe } from "@/utils/stripe/client";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { findPlanByPriceId } from "@/lib/plans";
@@ -86,6 +84,7 @@ async function createTransactionRecord(
 }
 
 export async function POST(req: Request) {
+  assertEnv();
   const body = await req.text();
   const signature = (await headers()).get("Stripe-Signature") as string;
 

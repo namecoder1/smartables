@@ -3,8 +3,6 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { verifyTelnyxWebhook } from "@/lib/telnyx-verify";
 import { assertEnv } from "@/lib/env-check";
 import { captureError, captureWarning } from "@/lib/monitoring";
-
-assertEnv();
 import {
   handleRequirementGroupStatusUpdated,
   handleNumberOrderCompleted,
@@ -15,6 +13,7 @@ import {
 } from "./_handlers/call";
 
 export async function POST(req: Request) {
+  assertEnv();
   const rawBody = await req.text();
 
   const signature = req.headers.get("telnyx-signature-ed25519");
