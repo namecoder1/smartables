@@ -7,9 +7,7 @@ import InviteEmail from "@/emails/invite";
 import { render } from "@react-email/components";
 import { revalidatePath } from "next/cache";
 import { PATHS } from "@/lib/revalidation-paths";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { resend } from "@/utils/resend/client";
 
 export async function inviteCollaborator(prevState: any, formData: FormData) {
   const auth = await requireAuth();
@@ -37,7 +35,7 @@ export async function inviteCollaborator(prevState: any, formData: FormData) {
   const selectedLocationsStr = formData.get("selected_locations") as string | null;
 
   if (!email) return { error: "Email richiesta" };
-  if (role !== "admin" && role !== "staff") return { error: "Ruolo non valido" };
+  if (role !== "admin" && role !== "staff") return { error: "Ruolo non valido. Solo 'admin' e 'staff' possono essere invitati." };
 
   let accessibleLocations: string[] | null = null;
   if (role !== "admin" && locationType === "selected" && selectedLocationsStr) {

@@ -21,6 +21,7 @@ export const PATHS = {
   SETTINGS: "/settings",
   COMPLIANCE: "/compliance",
   BOT_MEMORY: "/bot-memory",
+  BOT_TEMPLATES: "/(private)/(site)/bot-templates",
   RESERVATIONS: "/reservations",
   CLIENTS: "/clients",
   WHATSAPP_MANAGEMENT: "/whatsapp-management",

@@ -53,6 +53,12 @@ export const verifyBooking = task({
     const createdAtStr = itFormatter.format(new Date(booking.created_at));
     const bookingTimeStr = itFormatter.format(new Date(bookingTime));
 
+    // PERCHÉ saltiamo i whatsapp_auto same-day:
+    // Quando un cliente prenota tramite WhatsApp Flow (source: "whatsapp_auto"),
+    // ha già interagito con il sistema nel giorno stesso della prenotazione.
+    // Inviargli anche un reminder "Confermi la tua prenotazione per oggi?" è
+    // ridondante e potrebbe generare confusione o block del messaggio.
+    // Il reminder 24h ha senso solo per prenotazioni future (domani o oltre).
     if (booking.source === "whatsapp_auto" && createdAtStr === bookingTimeStr) {
       console.log(
         `[Verify Booking] Booking ${bookingId} is a same-day whatsapp_auto. Skipping verification.`,
@@ -146,10 +152,13 @@ export const verifyBooking = task({
       );
 
       // Update DB to mark verification sent (if using that column) or just complete
-      await supabase
+      const { error: updateErr } = await supabase
         .from("bookings")
         .update({ verification_sent: true })
         .eq("id", bookingId);
+      if (updateErr) {
+        captureError(updateErr, { service: "supabase", flow: "booking_verification_mark_sent", bookingId, locationId });
+      }
 
       return { success: true };
     } catch (e) {

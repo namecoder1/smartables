@@ -53,7 +53,7 @@ const portableTextComponents: PortableTextComponents = {
       <h1 className="text-3xl font-bold tracking-tight text-gray-900 mt-10 mb-4">{children}</h1>
     ),
     h2: ({ children }) => (
-      <h2 className="text-2xl font-bold tracking-tight text-gray-900 mt-10 mb-3 pb-3 border-b border-gray-100">
+      <h2 className="text-2xl font-bold tracking-tight text-gray-900 mt-10 pb-3 border-b border-gray-100">
         {children}
       </h2>
     ),
@@ -270,7 +270,7 @@ export default async function ArticlePage({ params }: Props) {
 
             {/* Prev / Next */}
             {(prev || next) && (
-              <div className="flex items-stretch gap-4 mt-12 pt-8 border-t border-gray-100">
+              <div className="flex items-stretch gap-4 mt-8 pt-8 border-t border-gray-100">
                 {prev ? (
                   <Link
                     href={`/blog/${prev.slug}`}

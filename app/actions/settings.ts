@@ -5,6 +5,7 @@ import { updateBusinessProfile, updateProfilePicture } from "@/lib/whatsapp";
 import { PATHS } from "@/lib/revalidation-paths";
 import { requireAuth } from "@/lib/supabase-helpers";
 import { fail } from "@/lib/action-response";
+import { captureWarning } from "@/lib/monitoring";
 
 // ── Location Actions ──
 
@@ -99,6 +100,7 @@ export async function updateLocation(
       }
     } catch (e) {
       // Non-critical: sync failure doesn't block the location update
+      captureWarning("Failed to sync branding to Meta profile", { service: "whatsapp", flow: "location_branding_sync", locationId });
     }
   }
 

@@ -83,7 +83,7 @@ const Navbar = async ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
         <NavbarSearch />
         <NotificationBell notifications={notifications} pendingCallbacks={pendingCallbacks} />
         <SupportDropdown />
-        <UserMenu user={user as Profile} email={auth?.user?.email} />
+        <UserMenu context='default' variant='navbar' user={user as Profile} email={auth?.user?.email} />
       </div>
     </nav>
   )
@@ -92,7 +92,7 @@ const Navbar = async ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
 const SupportDropdown = () => {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className='group p-1 bg-card/10 data-[state=open]:border-primary/60 border-2 rounded-lg hover:bg-primary/10 border-border/10 hover:border-primary/60'>
+      <DropdownMenuTrigger className='group p-1 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] bg-card/10 data-[state=open]:border-primary/60 border-2 rounded-lg hover:bg-primary/10 border-border/10 hover:border-primary/60'>
         <TbHelpSquareRounded size={26} className='text-white group-data-[state=open]:text-primary group-hover:text-primary/90' />
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' >

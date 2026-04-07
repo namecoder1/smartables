@@ -69,6 +69,7 @@ export default async function AdminPage() {
   const [
     { data: allOrgs },
     { data: allLocations },
+    { data: allLocationsFunnel },
     { data: feedbackList },
     { data: pendingCompliance },
     { data: recentTransactions },
@@ -76,6 +77,8 @@ export default async function AdminPage() {
   ] = await Promise.all([
     supabase.from("organizations").select("id, name, stripe_status, billing_tier, whatsapp_usage_count, usage_cap_whatsapp, created_at").order("created_at", { ascending: false }),
     supabase.from("locations").select("*, organization:organization_id(name)").order("created_at", { ascending: false }).not("regulatory_status", "is", null).limit(30),
+    // Funnel: all locations without filters to compute pipeline stages
+    supabase.from("locations").select("organization_id, activation_status, regulatory_status, telnyx_phone_number, meta_phone_id"),
     supabase.from("user_feedback").select("*, organization:organization_id(name), profile:profile_id(full_name, email)").order("created_at", { ascending: false }).limit(100),
     supabase.from("locations").select("*, organization:organization_id(name)").eq("regulatory_status", "pending_review").order("created_at", { ascending: false }),
     supabase.from("transactions").select("id, amount, type, status, created_at").order("created_at", { ascending: false }).limit(10),
@@ -89,15 +92,40 @@ export default async function AdminPage() {
   const newThisMonth = allOrgs?.filter((o) => new Date(o.created_at) >= thisMonth) ?? [];
   const mrrEstimate  = activeOrgs.reduce((sum, o) => {
     const tier = o.billing_tier;
-    return sum + (tier === "starter" ? 79 : tier === "growth" ? 99 : tier === "business" ? 199 : 0);
+    return sum + (tier === "starter" ? 59 : tier === "growth" ? 129 : tier === "business" ? 229 : 0);
   }, 0);
 
-  // ── Onboarding funnel ────────────────────────────────────────────────────
+  // ── Onboarding funnel (activation pipeline) ─────────────────────────────
+  // Orgs that have at least 1 location
+  const orgsWithLocation = new Set((allLocationsFunnel ?? []).map((l) => l.organization_id));
+  // Orgs with compliance approved or number ordered
+  const orgsWithCompliance = new Set(
+    (allLocationsFunnel ?? [])
+      .filter((l) => l.regulatory_status === "approved" || l.regulatory_status === "unapproved")
+      .map((l) => l.organization_id)
+  );
+  // Orgs with Telnyx phone number purchased
+  const orgsWithPhone = new Set(
+    (allLocationsFunnel ?? []).filter((l) => l.telnyx_phone_number).map((l) => l.organization_id)
+  );
+  // Orgs with Meta WA configured
+  const orgsWithMeta = new Set(
+    (allLocationsFunnel ?? []).filter((l) => l.meta_phone_id).map((l) => l.organization_id)
+  );
+  // Orgs fully activated (at least 1 verified location)
+  const orgsVerified = new Set(
+    (allLocationsFunnel ?? []).filter((l) => l.activation_status === "verified").map((l) => l.organization_id)
+  );
+
   const funnelSteps = [
-    { label: "Registrati senza piano",    count: allOrgs?.filter((o) => !o.stripe_status).length ?? 0,         color: "bg-gray-300" },
-    { label: "Piano attivo",              count: activeOrgs.length,                                              color: "bg-blue-400" },
-    { label: "Compliance pending review", count: pendingCompliance?.length ?? 0,                                 color: "bg-amber-400" },
-    { label: "Completamente attivi",      count: allLocations?.filter((l) => l.activation_status === "verified").length ?? 0, color: "bg-green-500" },
+    { label: "Registrati (totale)",        count: allOrgs?.length ?? 0,                                        color: "bg-slate-400",  pct: 100 },
+    { label: "Senza piano",                count: allOrgs?.filter((o) => !o.stripe_status).length ?? 0,        color: "bg-gray-300",   pct: null },
+    { label: "Piano attivo",               count: activeOrgs.length,                                            color: "bg-blue-400",   pct: null },
+    { label: "Sede creata",                count: orgsWithLocation.size,                                        color: "bg-indigo-400", pct: null },
+    { label: "Compliance approvata",       count: orgsWithCompliance.size,                                      color: "bg-amber-400",  pct: null },
+    { label: "Numero Telnyx acquistato",   count: orgsWithPhone.size,                                           color: "bg-orange-400", pct: null },
+    { label: "WhatsApp configurato",       count: orgsWithMeta.size,                                            color: "bg-teal-400",   pct: null },
+    { label: "Completamente attivi ✓",     count: orgsVerified.size,                                            color: "bg-green-500",  pct: null },
   ];
 
   // ── Enhance compliance with signed URLs ─────────────────────────────────

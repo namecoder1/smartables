@@ -48,8 +48,8 @@ describe("markCallbackCompleted", () => {
     const { markCallbackCompleted } = await import("@/app/actions/call-management");
     const result = await markCallbackCompleted("req_1");
 
-    // Returns undefined on success (only revalidatePath is called)
-    expect(result).toBeUndefined();
+    // Returns ok() on success
+    expect(result).toEqual({ success: true });
     const updateFn = supabase.from.mock.results[0].value.update;
     expect(updateFn).toHaveBeenCalledWith(
       expect.objectContaining({ status: "completed" }),
@@ -186,7 +186,7 @@ describe("addSpecialClosure", () => {
     const { addSpecialClosure } = await import("@/app/actions/call-management");
     const result = await addSpecialClosure("loc_1", "2025-12-24", "2025-12-26", "Natale");
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ success: true });
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         location_id: "loc_1",
@@ -233,7 +233,7 @@ describe("removeSpecialClosure", () => {
     const { removeSpecialClosure } = await import("@/app/actions/call-management");
     const result = await removeSpecialClosure("cl_1");
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ success: true });
     expect(deleteEq).toHaveBeenCalledWith("id", "cl_1");
   });
 });

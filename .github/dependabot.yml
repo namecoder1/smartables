@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Rome"
+    open-pull-requests-limit: 10
+    groups:
+      # Group all @types/* and dev tooling together to reduce PR noise
+      dev-tooling:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "vitest*"
+          - "@vitejs/*"
+          - "typescript"
+          - "prettier"
+      # Group Radix UI components (they release frequently)
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+      # Group Sentry packages
+      sentry:
+        patterns:
+          - "@sentry/*"
+    ignore:
+      # Next.js major upgrades require manual review
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      # Supabase major upgrades require migration testing
+      - dependency-name: "@supabase/*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

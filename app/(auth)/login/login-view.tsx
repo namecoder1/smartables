@@ -53,6 +53,7 @@ const LoginView = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-background"
+                data-testid="login-email"
               />
             </div>
             <div className="grid gap-2">
@@ -74,10 +75,11 @@ const LoginView = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-background"
+                data-testid="login-password"
               />
             </div>
-            {error && <p className="text-sm font-medium text-destructive text-center">{error}</p>}
-            <Button className="w-full font-semibold" type="submit" disabled={isLoading}>
+            {error && <p className="text-sm font-medium text-destructive text-center" data-testid="login-error">{error}</p>}
+            <Button className="w-full font-semibold" type="submit" disabled={isLoading} data-testid="login-submit">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Accedi
             </Button>

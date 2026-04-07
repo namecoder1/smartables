@@ -27,6 +27,21 @@ vi.mock("@/lib/push-notifications", () => ({
   sendPushToOrganization: vi.fn(),
 }));
 
+// Mock ratelimit (module throws at import if env vars missing)
+vi.mock("@/lib/ratelimit", () => ({
+  checkOrderRateLimit: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+// Mock next/headers (needed by createOrder)
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue({ get: vi.fn().mockReturnValue("127.0.0.1") }),
+}));
+
+// Mock notifications (fire-and-forget, don't pollute test output)
+vi.mock("@/lib/notifications", () => ({
+  createNotification: vi.fn(),
+}));
+
 describe("order-actions", () => {
   let mockSupabase: any;
 
@@ -102,7 +117,7 @@ describe("order-actions", () => {
         organization_id: "org-123",
         location_id: "loc-123",
         table_id: "table-123",
-        items: [],
+        items: [{ menu_item_id: "item-1", name: "Pizza", price: 900, quantity: 1 }],
       };
 
       mockSupabase.from.mockImplementation((table: string) => {

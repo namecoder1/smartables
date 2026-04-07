@@ -1,7 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import {
+  makeWebhookPayload as makeFixturePayload,
+  makeTextMessage,
+  makeButtonMessage,
+  makeInteractiveNfmReply,
+  makeInteractiveButtonReply,
+  makeStatusPayload,
+} from "@/tests/__fixtures__/whatsapp";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
+
+// Must mock env-check FIRST — assertEnv() is called at module top-level in the route
+vi.mock("@/lib/env-check", () => ({ assertEnv: vi.fn() }));
+vi.mock("@/lib/monitoring", () => ({
+  captureError: vi.fn(),
+  captureCritical: vi.fn(),
+  captureWarning: vi.fn(),
+}));
 
 const mockHandleStatusUpdates = vi.fn();
 const mockHandleButtonClick = vi.fn();
@@ -44,29 +60,9 @@ function makePostRequest(body: unknown): NextRequest {
   });
 }
 
+/** Adapter that preserves the old inline call signature used in existing tests. */
 function makeWebhookPayload(messageType: string, extra: Record<string, unknown> = {}) {
-  return {
-    entry: [
-      {
-        changes: [
-          {
-            value: {
-              metadata: { phone_number_id: "phone_123" },
-              messages: [
-                {
-                  type: messageType,
-                  from: "393401234567",
-                  id: "wamid_123",
-                  timestamp: "1700000000",
-                  ...extra,
-                },
-              ],
-            },
-          },
-        ],
-      },
-    ],
-  };
+  return makeFixturePayload({ type: messageType, from: "393401234567", id: "wamid_123", timestamp: "1700000000", ...extra });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

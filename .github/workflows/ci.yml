@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Type · Lint · Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 1. TypeScript — fails on any type error
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      # 2. ESLint — fails on any lint error
+      - name: ESLint
+        run: npm run lint
+
+      # 3. Vitest — fails if any test fails
+      - name: Run tests
+        run: npx vitest run
+        env:
+          # Minimal env stubs so tests can import without crashing
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Only run build check on pushes to main (expensive)
+    if: github.ref == 'refs/heads/main'
+    needs: check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Stub all required env vars so next build doesn't crash on missing envs
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          SUPABASE_SERVICE_ROLE_KEY: test-service-key
+          STRIPE_SECRET_KEY: sk_test_stub
+          STRIPE_WEBHOOK_KEY: whsec_stub
+          STRIPE_WEBHOOK_KEY_TEST: whsec_stub
+          TELNYX_API_KEY: stub
+          OPENAI_API_KEY: sk-stub
+          RESEND_API_KEY: re_stub
+          META_APP_SECRET: stub
+          WHATSAPP_WEBHOOK_VERIFY_TOKEN: stub
+          WHATSAPP_BUSINESS_ACCOUNT_ID: stub
+          WHATSAPP_PRIVATE_KEY: stub
+          TRIGGER_SECRET_KEY: stub

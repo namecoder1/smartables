@@ -71,7 +71,7 @@ export function CallbackRequestsPanel({ locationId }: { locationId: string }) {
       {pending.length === 0 && completed.length === 0 ? (
         <NoItems 
           variant="children"
-          icon={<Phone className="h-8 w-8 text-primary" />}
+          icon={<Phone size={28} className='text-primary' />}
           title="Nessuna richiesta di richiamata"
           description="Quando un cliente clicca 'Richiamatemi' sul messaggio WhatsApp, apparirà qui."
         />

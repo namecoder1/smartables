@@ -12,6 +12,58 @@ import { useTransition } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
+// ─── Style helpers ───────────────────────────────────────────────────────────
+
+function getCardClass(context: string, popular: boolean, changeType: string) {
+  const base = "flex flex-col h-full relative overflow-hidden transition-all duration-300"
+
+  if (context === 'private') {
+    return cn(
+      base,
+      popular ? "border-primary/40 shadow-md" : "hover:border-muted-foreground/20",
+      changeType === 'current' && "ring-2 ring-emerald-500/40 border-emerald-500/40 hover:ring-emerald-500/40 hover:border-emerald-500/40",
+    )
+  }
+
+  if (context === 'public') {
+    return cn(base, popular
+      ? "border-primary shadow-lg shadow-primary/40 bg-primary rounded-3xl"
+      : "bg-transparent border-border/10 hover:shadow-lg rounded-3xl")
+  }
+
+  // onboarding
+  return cn(base, popular
+    ? "border-primary shadow-lg shadow-primary/30 bg-linear-to-b from-primary/30 via-primary/10 to-white rounded-3xl"
+    : "bg-neutral-50 border-border hover:shadow-lg rounded-3xl")
+}
+
+function getTextStyles(context: string, popular: boolean) {
+  const isPublicPopular = context === 'public' && popular
+  const isPublicNotPopular = context === 'public' && !popular
+
+  return {
+    name:        context === 'private' ? 'text-foreground text-2xl font-bold tracking-tight'
+                 : isPublicPopular     ? 'text-black text-2xl font-bold tracking-tight'
+                 :                       'text-white text-2xl font-bold tracking-tight',
+    description: context === 'private' ? 'text-muted-foreground text-lg'
+                 : isPublicPopular     ? 'text-black text-lg'
+                 :                       'text-muted-foreground text-lg',
+    price:       context === 'private' ? 'text-foreground text-3xl font-extrabold tracking-tight'
+                 : isPublicPopular     ? 'text-black text-4xl font-extrabold tracking-tight'
+                 :                       'text-white text-4xl font-extrabold tracking-tight',
+    period:      context === 'private' ? 'text-muted-foreground font-medium'
+                 : isPublicPopular     ? 'text-black font-medium'
+                 :                       'text-white font-medium',
+    setupFee:    context === 'public'  ? 'text-gray-500 text-xs mt-2' : 'text-muted-foreground text-xs mt-2',
+    featureIcon: isPublicPopular       ? 'bg-black text-white' : 'bg-primary/10 text-primary',
+    featureText: isPublicNotPopular    ? 'text-white/70'
+                 : isPublicPopular     ? 'text-black'
+                 :                       'text-muted-foreground text-sm',
+  }
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 const PricingCard = ({
   plan,
   isAnnual,
@@ -37,7 +89,6 @@ const PricingCard = ({
   const hasActiveSub = currentPriceId && stripeStatus === 'active'
   const isCurrentPlan = hasActiveSub && (plan.priceIdMonth === currentPriceId || plan.priceIdYear === currentPriceId)
 
-  // Determine if this card is upgrade or downgrade relative to current plan
   let changeType: 'upgrade' | 'downgrade' | 'current' | 'none' = 'none'
   if (context === 'private' && hasActiveSub) {
     if (isCurrentPlan && targetPriceId === currentPriceId) {
@@ -54,7 +105,6 @@ const PricingCard = ({
       } else if (thisPlanIndex < currentPlanIndex) {
         changeType = 'downgrade'
       } else {
-        // Same tier, different interval (monthly ↔ annual)
         changeType = targetPriceId === plan.priceIdYear ? 'upgrade' : 'downgrade'
       }
     }
@@ -79,26 +129,17 @@ const PricingCard = ({
     })
   }
 
-  // Determine button label and behavior
-  const getButtonContent = () => {
-    if (context !== 'private' || !hasActiveSub) {
-      // Public / onboarding / no active sub: use Link as today
-      return null
-    }
-
-    if (changeType === 'current') {
-      return { label: 'Piano Attivo', disabled: true, onClick: undefined }
-    }
-    if (changeType === 'upgrade') {
-      return { label: 'Upgrade', disabled: false, onClick: handlePlanChange }
-    }
-    if (changeType === 'downgrade') {
-      return { label: 'Downgrade', disabled: false, onClick: handlePlanChange }
-    }
+  // ── Private context: action button ──────────────────────────────────────
+  const getPrivateButton = () => {
+    if (!hasActiveSub) return null
+    if (changeType === 'current')   return { label: 'Piano Attivo', disabled: true,  onClick: undefined }
+    if (changeType === 'upgrade')   return { label: 'Upgrade',      disabled: false, onClick: handlePlanChange }
+    if (changeType === 'downgrade') return { label: 'Downgrade',    disabled: false, onClick: handlePlanChange }
     return null
   }
 
-  const actionButton = getButtonContent()
+  const actionButton = context === 'private' ? getPrivateButton() : null
+  const t = getTextStyles(context, popular)
 
   return (
     <motion.div
@@ -106,21 +147,7 @@ const PricingCard = ({
       transition={{ type: "spring", stiffness: 300 }}
       className="h-full"
     >
-      <Card className={cn(
-        "flex flex-col h-full relative overflow-hidden transition-all duration-300",
-        context === 'public'
-          ? popular
-            ? "border-primary shadow-lg shadow-primary/40 bg-primary rounded-3xl"
-            : "bg-transparent border-border/10 hover:shadow-lg rounded-3xl"
-          : context === 'onboarding'
-            ? popular
-              ? "border-primary shadow-lg shadow-primary/30 bg-linear-to-b from-primary/30 via-primary/10 to-white rounded-3xl"
-              : "bg-neutral-50 border-border hover:shadow-lg rounded-3xl"
-            : popular
-              ? "border-primary/40 shadow-md"
-              : "hover:border-muted-foreground/20",
-        changeType === 'current' && "ring-2 ring-emerald-500/40 border-emerald-500/40 hover:ring-emerald-500/40 hover:border-emerald-500/40"
-      )}>
+      <Card className={getCardClass(context, popular, changeType)}>
 
         {changeType === 'current' && (
           <div className="absolute top-0 left-0">
@@ -132,36 +159,19 @@ const PricingCard = ({
 
         <CardHeader className="pb-4">
           <div className="space-y-1">
-            <h3 className={cn(
-              "text-2xl font-bold tracking-tight",
-              context === 'public' && !popular ? 'text-white' : context === 'public' && popular ? 'text-black' : context === 'onboarding' && !popular ? 'text-foreground' : context === 'onboarding' && popular ? 'text-foreground' : 'text-foreground'
-            )}>
-              {name}
-            </h3>
-            <p className={cn("text-lg", context === 'public' && popular ? "text-black" : "text-muted-foreground")}>
-              {id === 'starter' && 'Per piccoli ristoranti o bar.'}
-              {id === 'growth' && 'Per ristoranti in crescita.'}
+            <h3 className={t.name}>{name}</h3>
+            <p className={t.description}>
+              {id === 'starter'  && 'Per piccoli ristoranti o bar.'}
+              {id === 'growth'   && 'Per ristoranti in crescita.'}
               {id === 'business' && 'Per gruppi e catene.'}
             </p>
           </div>
           <div className="mt-4 flex items-baseline gap-1">
-            <span className={cn(
-              "font-extrabold tracking-tight",
-              context === 'private' ? "text-3xl" : "text-4xl",
-              context === 'public' && popular ? 'text-black' : 'text-white'
-            )}>
-              €{price}
-            </span>
-            <span className={cn(
-              'font-medium',
-              context === 'private' ? "text-black" :
-              context === 'public' && popular ? 'text-black' : 'text-white'
-            )}>{period}</span>
+            <span className={t.price}>€{price}</span>
+            <span className={t.period}>{period}</span>
           </div>
           {showSetupFee && (
-            <p className={cn("text-xs mt-2", context === 'public' ? "text-gray-500" : "text-muted-foreground")}>
-              + €149 setup una tantum
-            </p>
+            <p className={t.setupFee}>+ €149 setup una tantum</p>
           )}
         </CardHeader>
 
@@ -172,17 +182,10 @@ const PricingCard = ({
           <ul className="space-y-4">
             {features.map((feature: string, i: number) => (
               <li key={i} className="flex items-start gap-3">
-                <div className={cn(
-                  "mt-0.5 rounded-full p-0.5 shrink-0",
-                  context === 'public' && popular
-                    ?  "bg-black text-white"
-                    : "bg-primary/10 text-primary"
-                )}>
+                <div className={cn("mt-0.5 rounded-full p-0.5 shrink-0", t.featureIcon)}>
                   <Check className="h-3 w-3" />
                 </div>
-                <p className={context === 'public' && !popular ? "text-white/70" : popular ? "text-black" : "text-muted-foreground text-sm"}>
-                  {feature}
-                </p>
+                <p className={t.featureText}>{feature}</p>
               </li>
             ))}
           </ul>
@@ -193,11 +196,8 @@ const PricingCard = ({
             <Button
               className={cn(
                 "w-full font-semibold h-11",
-                changeType === 'current'
-                  ? "opacity-60"
-                  : changeType === 'upgrade'
-                    ? "shadow-md hover:shadow-lg transition-all"
-                    : ""
+                changeType === 'current'  && "opacity-60",
+                changeType === 'upgrade'  && "shadow-md hover:shadow-lg transition-all",
               )}
               variant={changeType === 'upgrade' ? 'default' : changeType === 'current' ? 'secondary' : 'outline'}
               disabled={actionButton.disabled || isPending}
@@ -216,8 +216,8 @@ const PricingCard = ({
             <Button
               className={cn(
                 "w-full font-semibold h-11",
-                popular && context === 'public' ?
-                  "shadow-md hover:shadow-lg transition-all bg-black"
+                popular && context === 'public'
+                  ? "shadow-md hover:shadow-lg transition-all bg-black"
                   : "bg-primary border-primary hover:bg-primary/90 hover:text-white"
               )}
               variant={popular ? 'default' : 'outline'}

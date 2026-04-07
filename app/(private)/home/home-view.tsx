@@ -6,7 +6,7 @@ import { LineChart, Line } from 'recharts'
 import dynamic from 'next/dynamic'
 
 const DonutPie = dynamic(() => import('@/components/charts/donut-pie').then(m => ({ default: m.DonutPie })), { ssr: false })
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -143,11 +143,14 @@ export default function HomeView({
                   Canale prenotazioni
                 </CardTitle>
               </CardHeader>
-              <CardContent className='mt-auto pb-4'>
+              <CardContent className='mt-auto pb-10'>
                 <div className="w-full max-w-64 mx-auto">
                   <DonutPie data={bookings} />
                 </div>
               </CardContent>
+              <CardFooter className='pb-8 mx-auto'>
+                <p className='text-muted-foreground text-xs max-w-60 text-center'>Mostra la fonte delle prenotazioni per questa sede</p>
+              </CardFooter>
             </Card>
 
             <div className="min-[1470px]:w-full 2xl:col-span-7">
@@ -369,14 +372,12 @@ function AddonsSection({ addons, billingTier }: { addons: AddonConfig; billingTi
     <Card className="border-2 shadow-sm h-full py-0 gap-0">
       <CardHeader className="border-b-2 bg-muted/20 py-5 flex flex-row justify-between items-center">
         <CardTitle className="text-lg font-bold tracking-tight">Add-ons</CardTitle>
-        <Button variant="outline" size="icon" className="h-7 text-xs rounded-lg" asChild>
+        <Button variant="outline" size="icon-sm" className="text-xs rounded-lg" asChild>
           <Link href="/billing"><Settings /></Link>
         </Button>
       </CardHeader>
 
       <CardContent className="p-3 space-y-3">
-
-        {/* Active add-ons */}
         {active.length > 0 && (
           <div className="space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Attivi</p>
@@ -423,7 +424,7 @@ function AddonsSection({ addons, billingTier }: { addons: AddonConfig; billingTi
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                    <div className="h-8 w-8 border rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div>
@@ -435,7 +436,7 @@ function AddonsSection({ addons, billingTier }: { addons: AddonConfig; billingTi
                       </div>
                     </div>
                   </div>
-                  <Button size={includedInPlan ? "sm" : "icon"} variant={includedInPlan ? "default" : "outline"} className="h-7 text-xs rounded-lg shrink-0" disabled={includedInPlan} asChild={!includedInPlan}>
+                  <Button size={includedInPlan ? "sm" : "icon-sm"} variant={includedInPlan ? "default" : "outline"} className=" text-xs rounded-lg shrink-0" disabled={includedInPlan} asChild={!includedInPlan}>
                     {includedInPlan ? (
                       <span>Incluso</span>
                     ) : (
@@ -470,7 +471,7 @@ function FeatureTaskCard({
     <div className={cn(
       'group relative flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-300',
       completed
-        ? 'bg-card shadow-sm'
+        ? 'bg-muted/40'
         : 'bg-card border-card-foreground/5 shadow-xs hover:border-primary/30 hover:shadow-md'
     )}>
       <div className="flex items-center gap-3">
@@ -481,10 +482,12 @@ function FeatureTaskCard({
           {completed ? <Check className="h-5 w-5" /> : icon}
         </div>
         <div>
-          <div className={cn('font-bold text-sm leading-tight', completed && 'text-muted-foreground line-through')}>
+          <div className={cn('font-bold text-sm leading-tight', completed && 'text-green-500')}>
             {label}
           </div>
-          <p className="text-xs text-muted-foreground font-medium leading-tight mt-0.5">{description}</p>
+          <p className={cn('text-xs text-muted-foreground font-medium leading-tight mt-0.5', completed && 'text-green-500')}>
+            {description}
+          </p>
         </div>
       </div>
       {!completed && (

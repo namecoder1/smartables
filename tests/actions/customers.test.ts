@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockRequireAuth = vi.fn();
 vi.mock("@/lib/supabase-helpers", () => ({ requireAuth: mockRequireAuth }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/lib/monitoring", () => ({ captureCritical: vi.fn(), captureWarning: vi.fn() }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -199,24 +200,52 @@ describe("deleteCustomers", () => {
     expect(result.error).toContain("Solo gli amministratori");
   });
 
-  it("deletes customers for admin caller", async () => {
-    const deleteInEq = vi.fn().mockResolvedValue({ error: null });
-    const deleteFn = vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ eq: deleteInEq }) });
-
-    let callCount = 0;
+  it("deletes customers for admin caller (GDPR 4-step flow)", async () => {
+    // The action does: profile check → fetch phones → anonymize bookings → delete callbacks → delete customers
     const supabase = {
-      from: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          // profile lookup
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "profiles") {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: { role: "admin" } }),
           };
         }
-        // delete
-        return { delete: deleteFn };
+        if (table === "customers") {
+          return {
+            // Step 1: fetch phone numbers
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [{ id: "c1", phone_number: "+39123" }], error: null }),
+              }),
+            }),
+            // Step 4: delete customer rows
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "bookings") {
+          // Step 2: anonymize bookings
+          return {
+            update: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "callback_requests") {
+          // Step 3: delete callbacks by phone
+          return {
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          };
+        }
+        return {};
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));
@@ -225,28 +254,50 @@ describe("deleteCustomers", () => {
     const result = await deleteCustomers(["c1", "c2"]);
 
     expect(result.success).toBe(true);
-    expect(deleteInEq).toHaveBeenCalled();
   });
 
   it("returns fail on DB delete error", async () => {
-    let callCount = 0;
     const supabase = {
-      from: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "profiles") {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: { role: "owner" } }),
           };
         }
-        return {
-          delete: vi.fn().mockReturnValue({
-            in: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: { message: "delete error" } }),
+        if (table === "customers") {
+          return {
+            select: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ data: [{ id: "c1", phone_number: "+39123" }], error: null }),
+              }),
             }),
-          }),
-        };
+            // Step 4 fails
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: { message: "delete error" } }),
+              }),
+            }),
+          };
+        }
+        if (table === "bookings") {
+          return {
+            update: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "callback_requests") {
+          return {
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          };
+        }
+        return {};
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));

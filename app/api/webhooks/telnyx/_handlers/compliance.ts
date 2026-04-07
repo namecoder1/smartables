@@ -1,11 +1,9 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { resend } from "@/utils/resend/client";
 import { render } from "@react-email/components";
 import ComplianceRejectedEmail from "@/emails/compliance-rejected";
 import { NextResponse } from "next/server";
-import { captureError, captureCritical, captureWarning } from "@/lib/monitoring";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { captureCritical, captureWarning } from "@/lib/monitoring";
 
 async function sendComplianceRejectedEmail(
   supabase: SupabaseClient,
@@ -33,10 +31,7 @@ async function sendComplianceRejectedEmail(
       });
     }
   } catch (emailErr) {
-    console.error(
-      "[Telnyx Webhook] Failed to send compliance-rejected email:",
-      emailErr,
-    );
+    captureWarning("Failed to send compliance-rejected email", { service: "resend", flow: "compliance_status_update", organizationId });
   }
 }
 
@@ -152,10 +147,6 @@ export async function handleNumberOrderCompleted(
               flow: "phone_provisioning",
               phoneNumber: firstPhone,
             });
-            console.error(
-              "[Telnyx Webhook] Failed to send compliance-rejected email:",
-              emailErr,
-            );
           }
         }
       }
@@ -180,9 +171,7 @@ export async function handleNumberOrderCompleted(
           await activateLocation(location.id, supabase);
         }
       } else if (phoneNumber) {
-        console.warn(
-          `[Telnyx Webhook] Number ${phoneNumber} has status "${numStatus}", skipping activation.`,
-        );
+        captureWarning(`Number ${phoneNumber} has unexpected status "${numStatus}", skipping activation`, { service: "telnyx", flow: "phone_provisioning", phoneNumber, numStatus });
       }
     }
   }
@@ -204,10 +193,6 @@ export async function activateLocation(
       flow: "phone_provisioning",
       locationId,
     });
-    console.error(
-      "Could not find location or phone number for activation:",
-      locationFetchError,
-    );
     return;
   }
 
@@ -238,6 +223,5 @@ export async function activateLocation(
       locationId,
       telnyxPhoneNumber: location.telnyx_phone_number,
     });
-    console.error("Failed in automation flow (Meta Registration):", error);
   }
 }

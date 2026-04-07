@@ -20,6 +20,7 @@ export type AddonConfig = {
   extra_locations: number;
   extra_kb_chars: number;
   extra_analytics: number;
+  extra_connections: number;
 };
 
 export const DEFAULT_ADDON_CONFIG: AddonConfig = {
@@ -29,6 +30,7 @@ export const DEFAULT_ADDON_CONFIG: AddonConfig = {
   extra_locations: 0,
   extra_kb_chars: 0,
   extra_analytics: 0,
+  extra_connections: 0,
 };
 
 /** How much capacity each pack unit adds */
@@ -39,6 +41,7 @@ export const ADDON_UNIT_VALUE: Record<AddonKey, number> = {
   extra_locations: 1,      // Sede Extra: +1 location per unit
   extra_kb_chars: 5000,    // AI Knowledge Base: +5000 chars per unit
   extra_analytics: 1,      // Analytics Pro: unlocks advanced analytics (boolean toggle)
+  extra_connections: 1,    // Connection Pack: unlocks TheFork/Quandoo/OpenTable for Starter (boolean toggle)
 };
 
 /** Base KB characters included in each billing tier (before add-ons) */
@@ -75,6 +78,7 @@ export function getAddonPriceMap(): Record<string, AddonKey> {
     [process.env.STRIPE_PRICE_ADDON_LOCATION, "extra_locations"],
     [process.env.STRIPE_PRICE_ADDON_KB, "extra_kb_chars"],
     [process.env.STRIPE_PRICE_ADDON_ANALYTICS, "extra_analytics"],
+    [process.env.STRIPE_PRICE_ADDON_CONNECTIONS, "extra_connections"],
   ];
 
   const map: Record<string, AddonKey> = {};

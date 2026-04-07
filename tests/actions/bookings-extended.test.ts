@@ -15,6 +15,9 @@ vi.mock("@/lib/validators/booking", () => ({
 vi.mock("@trigger.dev/sdk/v3", () => ({ tasks: { trigger: vi.fn().mockResolvedValue(undefined) } }));
 vi.mock("@/trigger/verify-booking", () => ({ verifyBooking: {} }));
 vi.mock("@/trigger/request-review", () => ({ requestReview: {} }));
+vi.mock("@/trigger/sync-booking-to-gcal", () => ({ syncBookingToGcal: {} }));
+vi.mock("@/lib/monitoring", () => ({ captureWarning: vi.fn(), captureCritical: vi.fn() }));
+vi.mock("@/lib/booking-notifications", () => ({ sendBookingPush: vi.fn() }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -312,6 +315,7 @@ describe("deleteBookings", () => {
 
   it("deletes bookings and returns ok for admin user", async () => {
     const deleteInEq = vi.fn().mockResolvedValue({ error: null });
+    let bookingsCallCount = 0;
     const supabase = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === "profiles") {
@@ -321,11 +325,26 @@ describe("deleteBookings", () => {
             single: vi.fn().mockResolvedValue({ data: { role: "admin" } }),
           };
         }
-        return {
-          delete: vi.fn().mockReturnThis(),
-          in: vi.fn().mockReturnThis(),
-          eq: deleteInEq,
-        };
+        if (table === "bookings") {
+          bookingsCallCount++;
+          if (bookingsCallCount === 1) {
+            // SELECT for linked GCal events
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  not: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+            };
+          }
+          // DELETE
+          return {
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({ eq: deleteInEq }),
+            }),
+          };
+        }
+        return {};
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));
@@ -337,6 +356,7 @@ describe("deleteBookings", () => {
   });
 
   it("deletes bookings and returns ok for owner user", async () => {
+    let bookingsCallCount = 0;
     const supabase = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === "profiles") {
@@ -346,11 +366,26 @@ describe("deleteBookings", () => {
             single: vi.fn().mockResolvedValue({ data: { role: "owner" } }),
           };
         }
-        return {
-          delete: vi.fn().mockReturnThis(),
-          in: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        };
+        if (table === "bookings") {
+          bookingsCallCount++;
+          if (bookingsCallCount === 1) {
+            return {
+              select: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  not: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+            };
+          }
+          return {
+            delete: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          };
+        }
+        return {};
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));
@@ -374,9 +409,22 @@ describe("updateBooking (direct data)", () => {
 
   it("updates booking with direct data and returns success", async () => {
     const updateEq = vi.fn().mockResolvedValue({ error: null });
+    let bookingCallCount = 0;
     const supabase = {
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({ eq: updateEq }),
+      from: vi.fn().mockImplementation(() => {
+        bookingCallCount++;
+        if (bookingCallCount === 1) {
+          // First call: SELECT to get current booking's location_id/google_event_id
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { location_id: null, google_event_id: null, status: null } }),
+              }),
+            }),
+          };
+        }
+        // Second call: UPDATE
+        return { update: vi.fn().mockReturnValue({ eq: updateEq }) };
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));
@@ -389,11 +437,24 @@ describe("updateBooking (direct data)", () => {
   });
 
   it("returns fail when DB update fails", async () => {
+    let bookingCallCount = 0;
     const supabase = {
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
-        }),
+      from: vi.fn().mockImplementation(() => {
+        bookingCallCount++;
+        if (bookingCallCount === 1) {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { location_id: null, google_event_id: null, status: null } }),
+              }),
+            }),
+          };
+        }
+        return {
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
+          }),
+        };
       }),
     };
     mockRequireAuth.mockResolvedValue(makeAuth(supabase));

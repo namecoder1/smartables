@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import HomeView from './home-view'
 import { getFaqsByTopic } from '@/utils/sanity/queries'
-import * as Sentry from '@sentry/nextjs'
+import { captureError } from '@/lib/monitoring'
 
 
 const HomePage = async () => {
@@ -15,7 +15,11 @@ const HomePage = async () => {
     getFaqsByTopic('landing')
   ])
 
-  Sentry.captureException(new Error("TestGlitchTip"))
+  captureError(new Error('Test error from HomePage'), {
+    service: 'supabase',
+    flow: 'home_page_load',
+    reservationCount,
+  })
 
   return (
     <HomeView reservations={reservationCount} setupFee={setupFee} faqs={landingFaqs} />

@@ -70,6 +70,7 @@ const RegisterView = () => {
               <div className='relative bg-muted/50 flex items-center rounded-2xl p-1 border'>
                 <button
                   onClick={() => setIsAnnual(false)}
+                  data-testid="billing-monthly"
                   className={cn(
                     "relative z-10 px-5 py-1.5 text-sm font-medium transition-colors duration-200 text-black"
                   )}
@@ -78,6 +79,7 @@ const RegisterView = () => {
                 </button>
                 <button
                   onClick={() => setIsAnnual(true)}
+                  data-testid="billing-annual"
                   className={cn(
                     "relative z-10 px-5 py-1.5 text-sm font-medium transition-colors duration-200 text-black",
                   )}
@@ -159,6 +161,7 @@ const RegisterView = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-background"
+                data-testid="register-email"
               />
             </div>
             <div className="grid gap-2">
@@ -170,12 +173,13 @@ const RegisterView = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                data-testid="register-password"
               />
             </div>
-            {error && <p className="text-sm font-medium text-destructive text-center">{error}</p>}
+            {error && <p className="text-sm font-medium text-destructive text-center" data-testid="register-error">{error}</p>}
             <input type="hidden" name="plan" value={plan || ''} />
             <input type="hidden" name="interval" value={interval || ''} />
-            <Button className="w-full font-semibold" type="submit" disabled={isLoading || !isPasswordValid(password)}>
+            <Button className="w-full font-semibold" type="submit" disabled={isLoading || !isPasswordValid(password)} data-testid="register-submit">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Registrati
             </Button>
@@ -282,7 +286,7 @@ const PricingCard = ({
             variant={popular ? 'default' : 'outline'}
             asChild
           >
-            <Link href={`/register?plan=${id}&interval=${isAnnual ? 'year' : 'month'}`}>
+            <Link href={`/register?plan=${id}&interval=${isAnnual ? 'year' : 'month'}`} data-testid={`plan-select-${id}`}>
               Seleziona {showSetupFee && "+ Setup"}
             </Link>
           </Button>

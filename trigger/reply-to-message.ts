@@ -4,6 +4,9 @@ import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { checkWhatsAppLimitNotification } from "@/lib/notifications";
 import { captureError, captureWarning } from "@/lib/monitoring";
+import { assertEnv } from "@/lib/env-check";
+
+assertEnv();
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -193,7 +196,7 @@ ${rulesText ? rulesText : "(Nessuna regola aggiuntiva configurata. Rispondi in m
       }
 
       // 7. Save the bot's response to DB
-      await supabase.from("whatsapp_messages").insert({
+      const { error: saveErr } = await supabase.from("whatsapp_messages").insert({
         organization_id: organizationId,
         location_id: locationId,
         customer_id: customerId,
@@ -202,6 +205,9 @@ ${rulesText ? rulesText : "(Nessuna regola aggiuntiva configurata. Rispondi in m
         direction: "outbound_bot",
         status: "sent",
       });
+      if (saveErr) {
+        captureWarning("Failed to save AI reply message to DB", { service: "supabase", flow: "ai_reply_save", organizationId, locationId, customerId });
+      }
 
       // 8. Increment WhatsApp usage counter and check thresholds
       try {

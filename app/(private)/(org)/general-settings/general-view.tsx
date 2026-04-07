@@ -145,8 +145,8 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
         <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b-2">
-            <h2 className="text-2xl font-bold tracking-tight">Dati organizzazione</h2>
+          <div className="p-5 border-b-2">
+            <h2 className="text-lg font-bold tracking-tight">Dati organizzazione</h2>
           </div>
           <div className="space-y-4 p-6">
             <div className="grid sm:grid-cols-2 gap-4">
@@ -192,8 +192,8 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
         </div>
 
         <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b-2">
-            <h2 className="text-2xl font-bold tracking-tight">
+          <div className="p-5 border-b-2">
+            <h2 className="text-lg font-bold tracking-tight">
               Localizzazione
             </h2>
           </div>
@@ -252,8 +252,8 @@ const GeneralView = ({ organization }: { organization: Organization }) => {
       </div>
 
       <div className="bg-card text-card-foreground rounded-[32px] border-2 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b-2">
-          <h2 className="text-2xl font-bold tracking-tight">Preferenze notifiche</h2>
+        <div className="p-5 border-b-2">
+          <h2 className="text-lg font-bold tracking-tight">Preferenze notifiche</h2>
         </div>
         <div className="space-y-6 p-6">
           <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">

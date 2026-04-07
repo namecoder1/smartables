@@ -8,13 +8,12 @@ import {
   TELNYX_REQ_IDS,
 } from "@/lib/telnyx";
 
-import { Resend } from "resend";
+import { resend } from "@/utils/resend/client";
 import { render } from "@react-email/components";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/supabase-helpers";
 import ComplianceRejectedEmail from "@/emails/compliance-rejected";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { captureCritical, captureWarning } from "@/lib/monitoring";
 
 export async function approveComplianceRequest(requirementId: string) {
   // 1. Verify Admin
@@ -236,6 +235,7 @@ export async function approveComplianceRequest(requirementId: string) {
     revalidatePath("/manage");
     return { success: true };
   } catch (error: any) {
+    captureCritical(error, { service: "telnyx", flow: "compliance_approval", locationId: requirementId });
     console.error("[Admin] CRITICAL Approval Error:", error);
     // Rollback: Revert to pending_review so it reappears in dashboard and can be retried
     const { error: rollbackError } = await supabaseAdmin
@@ -245,6 +245,7 @@ export async function approveComplianceRequest(requirementId: string) {
       .eq("regulatory_status", "pending"); // Safety check
 
     if (rollbackError) {
+      captureCritical(rollbackError, { service: "supabase", flow: "compliance_approval_rollback", locationId: requirementId });
       console.error(
         "[Admin] CRITICAL: Failed to rollback status for req",
         requirementId,
@@ -294,6 +295,7 @@ export async function rejectComplianceRequest(
       });
     }
   } catch (emailErr) {
+    captureWarning("Failed to send compliance-rejected email", { service: "resend", flow: "compliance_rejection_email", locationId: requirementId });
     console.error("[rejectComplianceRequest] Failed to send email:", emailErr);
   }
 

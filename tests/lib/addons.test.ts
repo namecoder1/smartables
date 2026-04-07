@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   computeAddonConfig,
+  getAddonPriceMap,
   ADDON_UNIT_VALUE,
   BASE_KB_CHARS_BY_TIER,
   BASE_STAFF_BY_TIER,
@@ -155,5 +156,99 @@ describe("computeAddonConfig", () => {
   it("analytics addon > 0 after purchase (boolean-style check)", () => {
     const result = computeAddonConfig([{ price: { id: ANALYTICS_PRICE }, quantity: 1 }]);
     expect(result.extra_analytics).toBeGreaterThan(0);
+  });
+});
+
+// ── getAddonPriceMap ─────────────────────────────────────────────────────────
+
+describe("getAddonPriceMap()", () => {
+  const ENV_KEYS = [
+    "STRIPE_PRICE_ADDON_STAFF",
+    "STRIPE_PRICE_ADDON_CONTACTS_WA",
+    "STRIPE_PRICE_ADDON_STORAGE",
+    "STRIPE_PRICE_ADDON_LOCATION",
+    "STRIPE_PRICE_ADDON_KB",
+    "STRIPE_PRICE_ADDON_ANALYTICS",
+    "STRIPE_PRICE_ADDON_CONNECTIONS",
+  ] as const;
+
+  afterEach(() => {
+    // Clean up all stubbed env vars
+    ENV_KEYS.forEach((k) => vi.unstubAllEnvs());
+  });
+
+  it("returns empty map when no env vars are set", () => {
+    ENV_KEYS.forEach((k) => vi.stubEnv(k, ""));
+    const map = getAddonPriceMap();
+    expect(Object.keys(map)).toHaveLength(0);
+  });
+
+  it("maps STRIPE_PRICE_ADDON_STAFF → extra_staff", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_STAFF", "price_staff_abc");
+    const map = getAddonPriceMap();
+    expect(map["price_staff_abc"]).toBe("extra_staff");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_CONTACTS_WA → extra_contacts_wa", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_CONTACTS_WA", "price_wa_xyz");
+    const map = getAddonPriceMap();
+    expect(map["price_wa_xyz"]).toBe("extra_contacts_wa");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_STORAGE → extra_storage_mb", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_STORAGE", "price_storage_123");
+    const map = getAddonPriceMap();
+    expect(map["price_storage_123"]).toBe("extra_storage_mb");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_LOCATION → extra_locations", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_LOCATION", "price_loc_456");
+    const map = getAddonPriceMap();
+    expect(map["price_loc_456"]).toBe("extra_locations");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_KB → extra_kb_chars", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_KB", "price_kb_789");
+    const map = getAddonPriceMap();
+    expect(map["price_kb_789"]).toBe("extra_kb_chars");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_ANALYTICS → extra_analytics", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_ANALYTICS", "price_analytics_aaa");
+    const map = getAddonPriceMap();
+    expect(map["price_analytics_aaa"]).toBe("extra_analytics");
+  });
+
+  it("maps STRIPE_PRICE_ADDON_CONNECTIONS → extra_connections", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_CONNECTIONS", "price_conn_bbb");
+    const map = getAddonPriceMap();
+    expect(map["price_conn_bbb"]).toBe("extra_connections");
+  });
+
+  it("builds a complete map when all env vars are set", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_STAFF", "price_s");
+    vi.stubEnv("STRIPE_PRICE_ADDON_CONTACTS_WA", "price_wa");
+    vi.stubEnv("STRIPE_PRICE_ADDON_STORAGE", "price_st");
+    vi.stubEnv("STRIPE_PRICE_ADDON_LOCATION", "price_l");
+    vi.stubEnv("STRIPE_PRICE_ADDON_KB", "price_kb");
+    vi.stubEnv("STRIPE_PRICE_ADDON_ANALYTICS", "price_an");
+    vi.stubEnv("STRIPE_PRICE_ADDON_CONNECTIONS", "price_co");
+
+    const map = getAddonPriceMap();
+
+    expect(Object.keys(map)).toHaveLength(7);
+    expect(map["price_s"]).toBe("extra_staff");
+    expect(map["price_wa"]).toBe("extra_contacts_wa");
+    expect(map["price_an"]).toBe("extra_analytics");
+  });
+
+  it("skips entries where the env var is undefined", () => {
+    vi.stubEnv("STRIPE_PRICE_ADDON_STAFF", "price_staff_only");
+    // All others remain undefined (not stubbed)
+    const map = getAddonPriceMap();
+    expect(map["price_staff_only"]).toBe("extra_staff");
+    // Map should only contain the one set entry
+    const addonKeys = Object.values(map);
+    expect(addonKeys.every((k) => k === "extra_staff")).toBe(true);
   });
 });

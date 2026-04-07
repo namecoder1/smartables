@@ -80,11 +80,15 @@ const ProfileView = ({ profile }: ProfileViewProps) => {
   };
 
   const getRoleBadgeVariant = (role: string) => {
-    return role === "admin" ? "default" : "secondary";
+    if (role === "owner") return "default";
+    if (role === "admin") return "default";
+    return "secondary";
   };
 
   const getRoleLabel = (role: string) => {
-    return role === "admin" ? "Amministratore" : "Staff";
+    if (role === "owner") return "Proprietario";
+    if (role === "admin") return "Amministratore";
+    return "Staff";
   };
 
   const handleDeleteAccount = async () => {
@@ -214,8 +218,8 @@ Esportato il: ${new Date().toLocaleString("it-IT")}
             </CardContent>
           </Card>
 
-          {/* Danger Zone — only for admin */}
-          {profile.role === "admin" && (
+          {/* Danger Zone — only for admin and owner */}
+          {(profile.role === "admin" || profile.role === "owner") && (
             <Card className="border-red-200 bg-red-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg text-red-600">

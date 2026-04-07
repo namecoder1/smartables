@@ -97,6 +97,11 @@ const pathToDataMap: Record<string, PageData> = {
     path: { current: "Impostazioni Bot" },
     description: "Gestisci le impostazioni del tuo bot"
   },
+  "/bot-templates": {
+    title: "Template Bot",
+    path: { current: "Template Bot" },
+    description: "Gestisci la memoria del tuo bot"
+  },
   "/bot-memory": {
     title: "Memoria Bot",
     path: { current: "Memoria Bot" },
@@ -148,8 +153,8 @@ const pathToDataMap: Record<string, PageData> = {
     description: "Scopri come usare Smartables al meglio con le nostre guide passo-passo"
   },
   "/faqs": {
-    title: "FAQ",
-    path: { current: "FAQ" },
+    title: "FAQs",
+    path: { current: "FAQs" },
     description: "Trova risposte rapide alle domande più comuni su Smartables."
   },
   // Parte Admin

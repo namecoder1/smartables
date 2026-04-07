@@ -48,7 +48,7 @@ describe("getInboxCustomers", () => {
         whatsapp_messages: [], // no messages → filtered out
       },
     ];
-    mockClientSupabase = {
+    const supabase = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -56,6 +56,7 @@ describe("getInboxCustomers", () => {
         limit: vi.fn().mockResolvedValue({ data: customers, error: null }),
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { getInboxCustomers } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await getInboxCustomers("org_123");
@@ -79,7 +80,7 @@ describe("getInboxCustomers", () => {
         whatsapp_messages: [{ created_at: "2025-06-10T10:00:00Z", direction: "inbound" }],
       },
     ];
-    mockClientSupabase = {
+    const supabase = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -87,6 +88,7 @@ describe("getInboxCustomers", () => {
         limit: vi.fn().mockResolvedValue({ data: customers, error: null }),
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { getInboxCustomers } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await getInboxCustomers("org_123");
@@ -98,7 +100,7 @@ describe("getInboxCustomers", () => {
   });
 
   it("returns error on DB failure", async () => {
-    mockClientSupabase = {
+    const supabase = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -106,6 +108,7 @@ describe("getInboxCustomers", () => {
         limit: vi.fn().mockResolvedValue({ data: null, error: { message: "DB error" } }),
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { getInboxCustomers } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await getInboxCustomers("org_123");
@@ -124,13 +127,25 @@ describe("getCustomerMessages", () => {
       { id: "m1", content: "Hello", direction: "inbound" },
       { id: "m2", content: "Hi there", direction: "outbound" },
     ];
-    mockClientSupabase = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: messages, error: null }),
+    // getCustomerMessages first checks customer org ownership, then fetches messages
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "customers") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { organization_id: "org_123" } }),
+          };
+        }
+        // whatsapp_messages
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: messages, error: null }),
+        };
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { getCustomerMessages } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await getCustomerMessages("c1");
@@ -140,13 +155,23 @@ describe("getCustomerMessages", () => {
   });
 
   it("returns error on DB failure", async () => {
-    mockClientSupabase = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: null, error: { message: "err" } }),
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "customers") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { organization_id: "org_123" } }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: null, error: { message: "err" } }),
+        };
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { getCustomerMessages } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await getCustomerMessages("c1");
@@ -368,11 +393,25 @@ describe("setCustomerBotHandoff", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("pauses the bot for 24 hours by default", async () => {
-    const updateEq = vi.fn().mockResolvedValue({ error: null });
-    const updateFn = vi.fn().mockReturnValue({ eq: updateEq });
-    mockClientSupabase = {
-      from: vi.fn().mockReturnValue({ update: updateFn }),
+    const updateFn = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    });
+    // setCustomerBotHandoff: lookup customer first, then update
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "customers") {
+          // Both lookup (single) and update share the same table mock
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { bsuid: null, organization_id: "org_123" } }),
+            update: updateFn,
+          };
+        }
+        return {};
+      }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { setCustomerBotHandoff } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await setCustomerBotHandoff("c1");
@@ -388,9 +427,20 @@ describe("setCustomerBotHandoff", () => {
     const updateFn = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ error: null }),
     });
-    mockClientSupabase = {
-      from: vi.fn().mockReturnValue({ update: updateFn }),
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "customers") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { bsuid: null, organization_id: "org_123" } }),
+            update: updateFn,
+          };
+        }
+        return {};
+      }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { setCustomerBotHandoff } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await setCustomerBotHandoff("c1", 0);
@@ -401,13 +451,22 @@ describe("setCustomerBotHandoff", () => {
   });
 
   it("returns error on DB failure", async () => {
-    mockClientSupabase = {
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
-        }),
+    const supabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "customers") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { bsuid: null, organization_id: "org_123" } }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: { message: "DB error" } }),
+            }),
+          };
+        }
+        return {};
       }),
     };
+    mockRequireAuth.mockResolvedValue(makeAuth(supabase));
 
     const { setCustomerBotHandoff } = await import("@/app/(private)/(site)/inbox/actions");
     const result = await setCustomerBotHandoff("c1", 24);

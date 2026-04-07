@@ -140,7 +140,7 @@ describe("inviteCollaborator", () => {
       makeFormData({ email: "staff@test.it", role: "superadmin" }),
     );
 
-    expect(result.error).toBe("Ruolo non valido");
+    expect(result.error).toContain("Ruolo non valido");
   });
 
   it("sends invite email and returns success for valid admin invite", async () => {

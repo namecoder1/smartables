@@ -87,9 +87,13 @@ function FeaturedCard({ article }: { article: SanityArticleCard }) {
           </p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#FF9710]/10 flex items-center justify-center text-sm font-bold text-[#FF9710]">
-                {article.author?.[0] ?? 'S'}
-              </div>
+              {article.author === 'Tobia Bartolomei' ? (
+                <Image src='/tobia-bartolomei.png' alt='Author Photo' width={100} height={100} className='w-10 h-10 border rounded-xl' />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#FF9710]/10 flex items-center justify-center text-base font-bold text-[#FF9710]">
+                  {article.author?.[0] ?? 'S'}
+                </div>
+              )}
               <div>
                 <p className="text-sm font-semibold text-gray-800">{article.author}</p>
                 {article.publishedAt && (

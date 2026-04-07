@@ -1,19 +1,24 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Card, CardContent, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Plus, CreditCard, Loader2, Trash2, Check, Package } from 'lucide-react'
+import { Plus, CreditCard, Loader2, Trash2, Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { addAddonToSubscription, removeAddonFromSubscription } from '@/utils/stripe/actions'
 import type { AddonConfig } from '@/types/general'
 import { ADDON_CATALOG, ADDON_COLOR_MAP } from '@/lib/addon-catalog'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type PendingPurchase = {
   name: string; description: string; priceMonth: number
@@ -66,20 +71,21 @@ export default function AddonsSection({
   return (
     <>
       <Card className="border-2 shadow-sm py-0 gap-0">
-        <div className="bg-muted/20 border-b-2 px-6 py-5 flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base font-bold tracking-tight">Add-on</CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">Pacchetti extra per espandere il piano</p>
-          </div>
+        <CardHeader className="border-b-2 p-5 flex items-center gap-3">
+          <Tooltip>
+            <TooltipTrigger>
+              <h3 className="text-md font-bold tracking-tight">Add-ons</h3>
+            </TooltipTrigger>
+            <TooltipContent side='right'>
+              <p>Analizza i pacchetti di add-ons disponibili e quelli attivi</p>
+            </TooltipContent>
+          </Tooltip>
           {activeAddons.length > 0 && (
             <Badge className="bg-green-100 text-green-700 border-green-200 border text-xs shrink-0">
               {activeAddons.length} {activeAddons.length === 1 ? 'attivo' : 'attivi'}
             </Badge>
           )}
-        </div>
+        </CardHeader>
 
         {variant === 'billing' ? (
           <ScrollArea className='max-h-100 h-full'>
@@ -138,7 +144,7 @@ export default function AddonsSection({
                   <div
                     key={addon.key}
                     className={cn(
-                      'flex items-center gap-3 p-3 rounded-xl border-2 border-border bg-background',
+                      'flex items-center h-20 gap-3 p-3 rounded-xl border-2 border-border bg-background',
                       includedInPlan && 'opacity-60',
                     )}
                   >
@@ -189,106 +195,109 @@ export default function AddonsSection({
           </ScrollArea>
         ) : (
           <CardContent className={cn(
-            'p-5', 'grid sm:grid-cols-2 xl:grid-cols-3 gap-3'
+            'px-0', 'flex items-center gap-3'
           )}>
-            {/* Active addons */}
-            {activeAddons.map((addon) => {
-              const c = ADDON_COLOR_MAP[addon.color]
-              const Icon = addon.icon
-              const value = addonsConfig[addon.key] ?? 0
-              const priceId = addonPriceIds[addon.priceIdEnv]
-
-              return (
-                <div
-                  key={addon.key}
-                  className={cn('flex items-center gap-3 p-3 rounded-xl border-2', c.bg, c.border)}
-                >
-                  <div className="relative shrink-0">
-                    <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center', c.badge)}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
-                      <Check className="h-2.5 w-2.5 text-white" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{addon.name}</p>
-                    <p className={cn('text-xs font-medium', c.text)}>
-                      {addon.key === 'extra_analytics'
-                        ? 'Avanzate attive'
-                        : `+${value} ${addon.key === 'extra_storage_mb' ? 'MB' : addon.key === 'extra_kb_chars' ? 'chars' : 'unità'}`}
-                    </p>
-                  </div>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                    onClick={() => priceId && setPendingRemoval({ name: addon.name, priceId, color: addon.color, Icon: addon.icon })}
-                    disabled={!priceId}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )
-            })}
-
-            {/* Inactive addons — shown only when canPurchase */}
-            {canPurchase && inactiveAddons.map((addon) => {
-              const c = ADDON_COLOR_MAP[addon.color]
-              const Icon = addon.icon
-              const priceId = addonPriceIds[addon.priceIdEnv]
-              const includedInPlan = addon.starterOnly && billingTier !== 'starter'
-
-              return (
-                <div
-                  key={addon.key}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border-2 border-border bg-background',
-                    includedInPlan && 'opacity-60',
-                  )}
-                >
-                  <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{addon.name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">
-                      {includedInPlan ? 'Incluso nel tuo piano' : addon.description}
-                    </p>
-                    {!includedInPlan && (
-                      <p className={cn('text-xs font-bold mt-0.5', c.text)}>
-                        €{addon.priceMonth.toFixed(2).replace('.', ',')}/mese
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    size={includedInPlan ? 'sm' : 'icon-sm'}
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={includedInPlan || !priceId}
-                    onClick={() =>
-                      !includedInPlan && priceId &&
-                      setPendingPurchase({
-                        name: addon.name,
-                        description: addon.description,
-                        priceMonth: addon.priceMonth,
-                        priceId,
-                        color: addon.color,
-                        Icon: addon.icon,
-                      })
-                    }
-                  >
-                    {includedInPlan ? 'Incluso' : <Plus className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              )
-            })}
-
-            {/* Empty state */}
-            {activeAddons.length === 0 && !canPurchase && (
+            {activeAddons.length === 0 && !canPurchase ? (
               <div className="col-span-full py-6 text-center text-sm text-muted-foreground">
                 Nessun add-on attivo
               </div>
+            ) : (
+              <ScrollArea className='h-fit w-full'>
+                <div className='flex flex-row items-center gap-4 m-4'>
+                  {activeAddons.map((addon) => {
+                    const c = ADDON_COLOR_MAP[addon.color]
+                    const Icon = addon.icon
+                    const value = addonsConfig[addon.key] ?? 0
+                    const priceId = addonPriceIds[addon.priceIdEnv]
+      
+                    return (
+                      <div
+                        key={addon.key}
+                        className={cn('flex w-full h-full items-center gap-3 p-3 rounded-xl border-2', c.bg, c.border)}
+                      >
+                        <div className="relative shrink-0">
+                          <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center', c.badge)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm">
+                            <Check className="h-2.5 w-2.5 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{addon.name}</p>
+                          <p className={cn('text-xs font-medium', c.text)}>
+                            {addon.key === 'extra_analytics'
+                              ? 'Avanzate attive'
+                              : `+${value} ${addon.key === 'extra_storage_mb' ? 'MB' : addon.key === 'extra_kb_chars' ? 'chars' : 'unità'}`}
+                          </p>
+                        </div>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          onClick={() => priceId && setPendingRemoval({ name: addon.name, priceId, color: addon.color, Icon: addon.icon })}
+                          disabled={!priceId}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+      
+                  {/* Inactive addons — shown only when canPurchase */}
+                  {canPurchase && inactiveAddons.map((addon) => {
+                    const c = ADDON_COLOR_MAP[addon.color]
+                    const Icon = addon.icon
+                    const priceId = addonPriceIds[addon.priceIdEnv]
+                    const includedInPlan = addon.starterOnly && billingTier !== 'starter'
+      
+                    return (
+                      <div
+                        key={addon.key}
+                        className={cn(
+                          'flex w-full h-20 items-center gap-3 p-3 rounded-xl border-2 border-border bg-background',
+                          includedInPlan && 'opacity-60',
+                        )}
+                      >
+                        <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', c.badge)}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{addon.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {includedInPlan ? 'Incluso nel tuo piano' : addon.description}
+                          </p>
+                          {!includedInPlan && (
+                            <p className={cn('text-xs font-bold mt-0.5', c.text)}>
+                              {addon.priceMonth.toFixed(2).replace('.', ',')}/mese
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size={includedInPlan ? 'sm' : 'icon-sm'}
+                          variant="outline"
+                          className="shrink-0 ml-8"
+                          disabled={includedInPlan || !priceId}
+                          onClick={() =>
+                            !includedInPlan && priceId &&
+                            setPendingPurchase({
+                              name: addon.name,
+                              description: addon.description,
+                              priceMonth: addon.priceMonth,
+                              priceId,
+                              color: addon.color,
+                              Icon: addon.icon,
+                            })
+                          }
+                        >
+                          {includedInPlan ? 'Incluso' : <Plus className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <ScrollBar orientation='horizontal' />
+              </ScrollArea>
             )}
           </CardContent>
         )}

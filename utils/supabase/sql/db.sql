@@ -46,7 +46,7 @@ CREATE TABLE public.organizations (
   billing_tier text DEFAULT 'starter'::text,
   current_billing_cycle_start timestamp with time zone,
   usage_cap_whatsapp integer DEFAULT 400,
-  addons_config jsonb NOT NULL DEFAULT '{"extra_staff": 0, "extra_contacts_wa": 0, "extra_storage_mb": 0, "extra_locations": 0, "extra_kb_chars": 0}'::jsonb,
+  addons_config jsonb NOT NULL DEFAULT '{"extra_staff": 0, "extra_contacts_wa": 0, "extra_storage_mb": 0, "extra_locations": 0, "extra_kb_chars": 0, "extra_analytics": 0, "extra_connections": 0}'::jsonb,
   total_storage_used bigint NOT NULL DEFAULT 0,
   ux_settings jsonb NOT NULL DEFAULT '{"localization": {"timezone": "Europe/Rome", "language": "it", "currency": "eur"}, "notifications": {"personal_phone": "", "personal_email": "", "preferences": {"push_new_booking": true, "push_new_order": true, "email_plan_ending": true, "email_limit_reached": true, "email_monthly_recap": true}}}'::jsonb,
   CONSTRAINT organizations_pkey PRIMARY KEY (id),
@@ -57,7 +57,7 @@ CREATE TABLE public.profiles (
   id uuid NOT NULL,
   organization_id uuid,
   full_name text,
-  role text DEFAULT 'admin'::text CHECK (role = ANY (ARRAY['admin'::text, 'staff'::text])),
+  role text DEFAULT 'admin'::text CHECK (role = ANY (ARRAY['owner'::text, 'admin'::text, 'staff'::text])),
   created_at timestamp with time zone DEFAULT now(),
   email text,
   accessible_locations text[],
@@ -124,6 +124,7 @@ CREATE TABLE public.locations (
   business_connectors jsonb,  -- Encrypted BusinessConnectors JSON (AES-256-GCM), stored as text inside jsonb
   thefork_restaurant_id text, -- TheFork CustomerId — plain/unencrypted for fast webhook routing
   voice_otp_retry_count integer NOT NULL DEFAULT 0, -- Automatic retry attempts for Meta voice OTP transcription failures
+  waba_templates jsonb NOT NULL DEFAULT '[]'::jsonb, -- Custom WABA templates per location (10/30/50 per billing tier)
   CONSTRAINT locations_pkey PRIMARY KEY (id),
   CONSTRAINT locations_active_menu_id_fkey FOREIGN KEY (active_menu_id) REFERENCES public.menus(id),
   CONSTRAINT locations_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
@@ -420,7 +421,8 @@ CREATE TABLE public.notifications (
     'new_booking'::text,
     'new_customer'::text,
     'new_order'::text,
-    'whatsapp_limit_warning'::text
+    'whatsapp_limit_warning'::text,
+    'voice_otp_failed'::text
   ])),
   title text NOT NULL,
   body text,

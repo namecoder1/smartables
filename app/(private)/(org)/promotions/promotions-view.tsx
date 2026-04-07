@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,13 +12,9 @@ import {
   ChevronRight,
   Calendar,
   MapPin,
-  Globe,
   Trash2,
-  Pencil,
-  Eye,
   Bell,
   Repeat,
-  Zap,
 } from 'lucide-react'
 import { TbRosetteDiscount } from 'react-icons/tb'
 import { MdDiscount } from 'react-icons/md'
@@ -165,7 +160,7 @@ const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: 
       {/* Promotions Grid */}
       {promotions.length === 0 ? (
         <NoItems
-          icon={<TbRosetteDiscount size={28} />}
+          icon={<TbRosetteDiscount size={28} className='text-primary' />}
           title="Non hai ancora creato una promozione"
           description="Crea la tua prima promozione per attrarre clienti. Puoi scontare piatti, menu interi, il coperto e molto altro."
           button={

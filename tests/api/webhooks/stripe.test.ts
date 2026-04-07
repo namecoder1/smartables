@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+// Must mock env-check FIRST — assertEnv() is called at module top-level in the route
+vi.mock("@/lib/env-check", () => ({ assertEnv: vi.fn() }));
+vi.mock("@/lib/monitoring", () => ({
+  captureError: vi.fn(),
+  captureCritical: vi.fn(),
+  captureWarning: vi.fn(),
+}));
+
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue({
     get: vi.fn().mockReturnValue("t=123,v1=abc"),
@@ -43,6 +51,11 @@ vi.mock("@react-email/components", () => ({
 vi.mock("@/emails/payment-failed", () => ({ default: vi.fn() }));
 vi.mock("@/emails/account-suspended", () => ({ default: vi.fn() }));
 vi.mock("@/emails/subscription-expiring", () => ({ default: vi.fn() }));
+
+// Route uses `resend` from this module — wire to the same spy as the resend package mock
+vi.mock("@/utils/resend/client", () => ({
+  resend: { emails: { send: mockResendSend } },
+}));
 
 vi.mock("@/lib/plans", () => ({
   findPlanByPriceId: vi.fn().mockReturnValue({ id: "growth" }),

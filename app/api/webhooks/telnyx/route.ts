@@ -1,7 +1,10 @@
-import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { verifyTelnyxWebhook } from "@/lib/telnyx-verify";
+import { assertEnv } from "@/lib/env-check";
+import { captureError, captureWarning } from "@/lib/monitoring";
+
+assertEnv();
 import {
   handleRequirementGroupStatusUpdated,
   handleNumberOrderCompleted,
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
         organization_id: organizationId,
       });
     } catch (logError) {
-      console.error("[Telnyx Webhook] Error logging event:", logError);
+      captureWarning("[Telnyx Webhook] Failed to log webhook event to DB", { service: "supabase", flow: "telnyx_webhook_logging" });
     }
 
     // Route to handlers
@@ -115,8 +118,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    Sentry.captureException(error);
-    console.error("Error processing webhook:", error);
+    captureError(error, { service: "telnyx", flow: "webhook_handler" });
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

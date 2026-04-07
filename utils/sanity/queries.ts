@@ -2,7 +2,7 @@ import { sanityClient } from "./client";
 
 // Types
 export type SanityGuide = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   excerpt: string;
@@ -10,18 +10,18 @@ export type SanityGuide = {
   minutes: number;
   order: number;
   category: {
-    _id: string;
+    id: string;
     title: string;
     slug: string;
     description: string;
     order: number;
   };
-  tags: { _id: string; title: string; slug: string }[];
+  tags: { id: string; title: string; slug: string }[];
   content: any[];
 };
 
 export type GuidesByCategory = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   description: string;
@@ -35,7 +35,7 @@ export async function getGuidesGroupedByCategory(): Promise<
 > {
   const guides = await sanityClient.fetch<SanityGuide[]>(`
     *[_type == "guide"] | order(order asc) {
-      _id,
+      'id': _id,
       title,
       "slug": slug.current,
       excerpt,
@@ -43,14 +43,14 @@ export async function getGuidesGroupedByCategory(): Promise<
       minutes,
       order,
       category->{
-        _id,
+        'id': _id,
         title,
         "slug": slug.current,
         description,
         order
       },
       tags[]->{
-        _id,
+        'id': _id,
         title,
         "slug": slug.current
       }
@@ -62,7 +62,7 @@ export async function getGuidesGroupedByCategory(): Promise<
 
   for (const guide of guides) {
     if (!guide.category) continue;
-    const catId = guide.category._id;
+    const catId = guide.category.id;
 
     if (!categoryMap.has(catId)) {
       categoryMap.set(catId, {
@@ -172,7 +172,7 @@ export async function getSuggestedGuides(currentSlug: string) {
 export async function getFeaturedGuides(limit: number = 4) {
   return sanityClient.fetch<
     {
-      _id: string;
+      id: string;
       title: string;
       slug: string;
       icon: string;
@@ -203,7 +203,7 @@ export type SanityFaq = {
   question: string;
   answer: string;
   topic: string;
-  order: number;
+  icon: string;
 };
 
 export type FaqsByTopic = {
@@ -213,12 +213,26 @@ export type FaqsByTopic = {
 };
 
 const topicLabels: Record<string, string> = {
-  billing: "Fatturazione",
-  reservations: "Prenotazioni",
-  whatsapp: "WhatsApp & AI",
-  menus: "Menu",
-  settings: "Impostazioni",
-  general: "Generale",
+  landing: 'Landing',
+  general: 'Generale',
+  reservations: 'Prenotazioni',
+  menus: 'Menu',
+  clients: 'Clienti',
+  orders: 'Ordini',
+  inbox: 'Inbox',
+  analytics: 'Analitiche',
+  areas: 'Sale',
+  compliance: 'Modulistica',
+  connections: 'Connessioni',
+  whatsapp: 'WhatsApp',
+  ai: 'AI',
+  collaborators: 'Collaboratori',
+  promos: 'Promozioni',
+  locations: 'Sedo',
+  billing: 'Fatturazione',
+  limits: 'Limiti',
+  settings: 'Impostazioni',
+  organization: 'Organizzazione',
 };
 
 // Get FAQs filtered by topic
@@ -230,7 +244,7 @@ export async function getFaqsByTopic(topic: string): Promise<SanityFaq[]> {
       question,
       answer,
       topic,
-      order
+      icon
     }
   `,
     { topic },
@@ -245,7 +259,7 @@ export async function getAllFaqsGroupedByTopic(): Promise<FaqsByTopic[]> {
       question,
       answer,
       topic,
-      order
+      icon
     }
   `);
 
@@ -369,6 +383,17 @@ const ARTICLE_CARD_PROJECTION = `
   'image': image { 'url': asset->url, alt },
 `;
 
+export const mapArticleCategory = (cat: string) => {
+  return mappedCategories[cat as keyof typeof mappedCategories]
+}
+
+const mappedCategories = {
+  'tips': 'Tips & Tricks',
+  'news': 'News',
+  'ristorazione': 'Ristorazione',
+  'ai': 'AI & Automazione'
+}
+
 export async function getArticles(): Promise<SanityArticleCard[]> {
   return sanityClient.fetch(`
     *[_type == "article"] | order(featured desc, publishedAt desc) {
@@ -403,6 +428,53 @@ export async function getAdjacentArticles(slug: string): Promise<{
   };
 }
 
+// ─── CASE STUDy ────────────────────────────────────────────────────────────────────
+export type CaseStudy = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  publishedAt: string;
+  featured: boolean;
+  author: string;
+  authorRole: string;
+  image: { url: string; alt?: string } | null;
+  content: any[]
+}
+
+export async function getCaseStudies(): Promise<CaseStudy[]> {
+  return sanityClient.fetch(`
+    *[_type == "caseStudy" ] | order(publishedAt desc) {
+      'id': _id,
+      title,
+      'slug': slug.current,
+      excerpt,
+      publishedAt,
+      featured,
+      author,
+      authorRole,
+      'image': image { 'url': asset->url, alt }
+    }  
+  `)
+}
+
+export async function getCaseStudyBySlug(slug: string): Promise<CaseStudy | null> {
+  return sanityClient.fetch(`
+    *[_type == "caseStudy" && slug.current == $slug][0] {
+      'id': _id,
+      title,
+      'slug': slug.current,
+      excerpt,
+      publishedAt,
+      featured,
+      author,
+      authorRole,
+      'image': image { 'url': asset->url, alt },
+      content
+    }  
+  `, { slug })
+}
+
 // ─── DOCS ────────────────────────────────────────────────────────────────────
 
 export type DocChapter = {
@@ -412,7 +484,7 @@ export type DocChapter = {
 };
 
 export type DocTopic = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   excerpt: string;
@@ -429,7 +501,7 @@ export type DocTopic = {
 
 // Versione leggera usata nella sidebar (senza content)
 export type DocTopicNav = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   excerpt: string;
@@ -439,11 +511,13 @@ export type DocTopicNav = {
 };
 
 export type DocSection = {
-  _id: string;
+  id: string;
   title: string;
   slug: string;
   description: string;
   icon: string;
+  bgColor: string;
+  iconColor: string;
   order: number;
   topics: DocTopicNav[];
 };
@@ -452,14 +526,16 @@ export type DocSection = {
 export async function getDocNav(): Promise<DocSection[]> {
   return sanityClient.fetch<DocSection[]>(`
     *[_type == "docSection"] | order(order asc) {
-      _id,
+      'id': _id,
       title,
       "slug": slug.current,
       description,
       icon,
+      'bgColor': bgColor.hex,
+      'iconColor': iconColor.hex,
       order,
       "topics": *[_type == "docTopic" && references(^._id)] | order(order asc) {
-        _id,
+        'id': _id,
         title,
         "slug": slug.current,
         excerpt,
@@ -476,14 +552,26 @@ export async function getDocTopicBySlug(slug: string): Promise<DocTopic | null> 
   return sanityClient.fetch<DocTopic | null>(
     `
     *[_type == "docTopic" && slug.current == $slug][0] {
-      _id,
+      'id': _id,
       title,
       "slug": slug.current,
       excerpt,
       order,
-      content,
+      content[] {
+        ...,
+        image { "url": asset->url },
+        steps[] { ..., image { "url": asset->url } }
+      },
       "hasChapters": count(chapters) > 0,
-      chapters[] { title, "anchor": anchor.current, content },
+      chapters[] {
+        title,
+        "anchor": anchor.current,
+        content[] {
+          ...,
+          image { "url": asset->url },
+          steps[] { ..., image { "url": asset->url } }
+        }
+      },
       "section": section->{ _id, title, "slug": slug.current }
     }
   `,

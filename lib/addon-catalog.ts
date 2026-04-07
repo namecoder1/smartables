@@ -4,7 +4,7 @@
  * them in individual components (limits-view, addons-section, home-view, etc.)
  */
 
-import { Users, MessageCircle, HardDrive, MapPin, BrainCircuit, BarChart3 } from 'lucide-react'
+import { Users, MessageCircle, HardDrive, MapPin, BrainCircuit, BarChart3, Plug } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AddonConfig } from '@/types/general'
 
@@ -91,6 +91,17 @@ export const ADDON_CATALOG: readonly AddonCatalogEntry[] = [
     priceIdEnv: 'STRIPE_PRICE_ADDON_ANALYTICS',
     starterOnly: true,
   },
+  {
+    key: 'extra_connections',
+    name: 'Connection Pack',
+    description: 'Integrazione TheFork, Quandoo e OpenTable: ricevi prenotazioni esterne direttamente in Smartables',
+    unitLabel: 'connessione piattaforme',
+    icon: Plug,
+    color: 'teal',
+    priceMonth: 4.99,
+    priceIdEnv: 'STRIPE_PRICE_ADDON_CONNECTIONS',
+    starterOnly: true,
+  },
 ]
 
 export const ADDON_COLOR_MAP: Record<string, { bg: string; border: string; text: string; badge: string }> = {
@@ -100,4 +111,5 @@ export const ADDON_COLOR_MAP: Record<string, { bg: string; border: string; text:
   purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700' },
   violet: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', badge: 'bg-violet-100 text-violet-700' },
   indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700' },
+  teal:   { bg: 'bg-teal-50',  border: 'border-teal-200',   text: 'text-teal-700',   badge: 'bg-teal-100 text-teal-700' },
 }

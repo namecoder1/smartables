@@ -18,7 +18,7 @@ const NoItems = ({
   if (variant === 'children') {
     return (
       <div className="flex flex-col items-center justify-center p-8">
-        <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-full">
+        <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-4xl">
           {icon}
         </div>
         <h3 className="text-lg font-semibold mb-1">{title}</h3>
@@ -32,7 +32,7 @@ const NoItems = ({
 
   return (
     <div className="flex flex-col items-center rounded-3xl justify-center p-12 border-2 border-dashed bg-card min-h-100">
-      <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-full">
+      <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-4xl">
         {icon}
       </div>
       <h3 className="text-xl font-semibold mb-2">{title}</h3>

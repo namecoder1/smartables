@@ -670,6 +670,257 @@ export function ConnectionsSkeleton() {
   )
 }
 
+export function TemplateWizardSkeleton() {
+  const TypeCardSkeleton = () => (
+    <div className="flex flex-col border-2 bg-card rounded-2xl p-4 space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <Skeleton className="h-6 w-6 rounded" />
+        <Skeleton className="h-4 w-24 rounded-full" />
+      </div>
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-full" />
+      <Skeleton className="h-3 w-5/6" />
+    </div>
+  );
+
+  return (
+    <PageWrapper>
+      <div className="space-y-1">
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-3 w-14 mb-3" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 5 }).map((_, i) => <TypeCardSkeleton key={i} />)}
+          </div>
+        </div>
+        <div>
+          <Skeleton className="h-3 w-20 mb-3" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => <TypeCardSkeleton key={i} />)}
+          </div>
+        </div>
+      </div>
+    </PageWrapper>
+  );
+}
+
+export function TemplatesSkeleton() {
+  return (
+    <PageWrapper>
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+      </div>
+      <Skeleton className="h-24 rounded-3xl" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-48 rounded-2xl" />)}
+      </div>
+    </PageWrapper>
+  )
+}
+
+export function TemplateEditSkeleton() {
+  return (
+    <PageWrapper>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+          <div>
+            <Skeleton className="h-8 w-52 mb-1.5" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="hidden xl:flex items-center gap-2">
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 w-36" />
+        </div>
+      </div>
+
+      {/* Form Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Card 1: Nome e descrizione */}
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
+              <Skeleton className="h-5 w-40 mb-1.5" />
+              <Skeleton className="h-3.5 w-72" />
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-3 w-72" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-36" />
+                <Skeleton className="h-40 w-full rounded-xl" />
+              </div>
+            </div>
+          </SCard>
+
+          {/* Card 2: Tipo di sconto */}
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
+              <Skeleton className="h-5 w-32 mb-1.5" />
+              <Skeleton className="h-3.5 w-80" />
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-xl" />
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+          </SCard>
+
+          {/* Card 3: Dove si applica */}
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
+              <Skeleton className="h-5 w-36 mb-1.5" />
+              <Skeleton className="h-3.5 w-72" />
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <Skeleton className="h-6 w-10 rounded-full" />
+              </div>
+              <Skeleton className="h-px w-full" />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <Skeleton className="h-6 w-10 rounded-full" />
+              </div>
+            </div>
+          </SCard>
+
+          {/* Card 4: Cosa viene scontato */}
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
+              <Skeleton className="h-5 w-40 mb-1.5" />
+              <Skeleton className="h-3.5 w-80" />
+            </div>
+            <div className="p-6">
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </div>
+          </SCard>
+        </div>
+
+      {/* Right column */}
+      <div className="space-y-6">
+        {/* Card: Stato */}
+        <SCard className="p-0!">
+          <div className="p-6 pb-4 border-b-2 border-gray-100">
+            <Skeleton className="h-5 w-16 mb-1.5" />
+            <Skeleton className="h-3.5 w-52" />
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+              <Skeleton className="h-6 w-10 rounded-full shrink-0" />
+            </div>
+            <Skeleton className="h-px w-full" />
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+              <Skeleton className="h-6 w-10 rounded-full shrink-0" />
+            </div>
+            <Skeleton className="h-px w-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </div>
+        </SCard>
+
+        {/* Card: Periodo di validità */}
+        <SCard className="p-0!">
+          <div className="p-6 pb-4 border-b-2 border-gray-100">
+            <Skeleton className="h-5 w-36 mb-1.5" />
+            <Skeleton className="h-3.5 w-52" />
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+          </div>
+        </SCard>
+
+        {/* Card: Fedeltà cliente */}
+        <SCard className="p-0!">
+          <div className="p-6 pb-4 border-b-2 border-gray-100">
+            <Skeleton className="h-5 w-32 mb-1.5" />
+            <Skeleton className="h-3.5 w-52" />
+          </div>
+          <div className="p-6 space-y-1.5">
+            <Skeleton className="h-3.5 w-36" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        </SCard>
+
+        {/* Card: Notifiche */}
+        <SCard className="p-0!">
+          <div className="p-6 pb-4 border-b-2 border-gray-100">
+            <Skeleton className="h-5 w-24 mb-1.5" />
+            <Skeleton className="h-3.5 w-44" />
+          </div>
+          <div className="p-6 flex items-center justify-between">
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-52" />
+            </div>
+            <Skeleton className="h-6 w-10 rounded-full shrink-0" />
+          </div>
+        </SCard>
+      </div>
+    </div>
+    </PageWrapper>
+  )
+}
+
 export function ComplianceSkeleton() {
   return (
     <PageWrapper>
@@ -898,8 +1149,8 @@ export function PromotionEditSkeleton() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Card 1: Nome e descrizione */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-40 mb-1.5" />
               <Skeleton className="h-3.5 w-72" />
             </div>
@@ -922,8 +1173,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card 2: Tipo di sconto */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-32 mb-1.5" />
               <Skeleton className="h-3.5 w-80" />
             </div>
@@ -941,8 +1192,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card 3: Dove si applica */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-36 mb-1.5" />
               <Skeleton className="h-3.5 w-72" />
             </div>
@@ -966,8 +1217,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card 4: Cosa viene scontato */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-40 mb-1.5" />
               <Skeleton className="h-3.5 w-80" />
             </div>
@@ -980,8 +1231,8 @@ export function PromotionEditSkeleton() {
         {/* Right column */}
         <div className="space-y-6">
           {/* Card: Stato */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-16 mb-1.5" />
               <Skeleton className="h-3.5 w-52" />
             </div>
@@ -1010,8 +1261,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card: Periodo di validità */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-36 mb-1.5" />
               <Skeleton className="h-3.5 w-52" />
             </div>
@@ -1040,8 +1291,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card: Fedeltà cliente */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-32 mb-1.5" />
               <Skeleton className="h-3.5 w-52" />
             </div>
@@ -1052,8 +1303,8 @@ export function PromotionEditSkeleton() {
           </SCard>
 
           {/* Card: Notifiche */}
-          <SCard className="p-0! rounded-xl">
-            <div className="p-6 pb-4 border-b border-gray-100">
+          <SCard className="p-0!">
+            <div className="p-6 pb-4 border-b-2 border-gray-100">
               <Skeleton className="h-5 w-24 mb-1.5" />
               <Skeleton className="h-3.5 w-44" />
             </div>
@@ -1124,8 +1375,7 @@ export function ActivitiesManagementSkeleton() {
         </div>
       </div>
       <SkeletonOverviewCards count={3} />
-      <SCard className='flex items-start gap-3 bg-transparent! border-border!'>
-        <Skeleton className='w-6 h-6' />
+      <SCard className='flex items-start bg-card! gap-3 border-2 border-dashed border-border!'>
         <div className='space-y-1'>
           <Skeleton className='h-6 w-40' />
           <Skeleton className='h-5 w-100' />
@@ -1133,13 +1383,13 @@ export function ActivitiesManagementSkeleton() {
       </SCard>
       {/* Location cards */}
       <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <SCard key={i} className="flex flex-col gap-4 ">
-            <div className='flex items-center justify-between'>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SCard key={i} className="flex flex-col gap-4 px-0! pt-0!">
+            <div className='flex items-center justify-between border-b-2 p-5'>
               <Skeleton className="h-8 w-32" />
               <Skeleton className="h-8 w-8" />
             </div>
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-3 px-5">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className='flex items-center gap-3'>
                   <Skeleton className='h-7 w-7' />
@@ -1262,51 +1512,61 @@ export function LimitsSkeleton() {
         </div>
         <Skeleton className='h-8 w-20' />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <SCard key={i}>
-            <div className="flex items-center gap-3 mb-3">
-              <Skeleton className="h-8 w-8" />
+          <SCard key={i} className='px-0!'>
+            <div className="flex items-center gap-3 mb-3 border-b-2 px-4 pb-4">
               <Skeleton className="h-4 w-40" />
             </div>
-            <div className='flex items-end justify-between mb-3'>
+            <div className='flex items-end justify-between mb-3 px-4 mt-5'>
               <Skeleton className='h-8 w-20' />
               <Skeleton className='h-3 w-16' />
             </div>
-            <Skeleton className="h-2.5 w-full rounded-full" />
-            <Skeleton className="h-3 mt-3 w-20" />
+            <div className='px-4'>
+              <Skeleton className="h-2.5 w-full rounded-full" />
+              <Skeleton className="h-3 mt-3 w-20" />
+            </div>
           </SCard>
         ))}
       </div>
-      {/* Addon cards */}
-      <SCard>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-3'>
-            <Skeleton className='h-8 w-8' />
+      {/* Analytics + Connections */}
+      <div className='grid md:grid-cols-2 gap-6'>
+        <SCard className='px-0! py-5!'>
+          <div className='flex items-center justify-between border-b-2 px-4 pb-4'>
             <Skeleton className='h-5 w-32' />
+            <Skeleton className='w-20 h-6' />
           </div>
+          <div className='px-4 mt-4 flex items-center gap-2'>
+            <Skeleton className='w-10 h-10' />
+            <Skeleton className='w-32 h-9' />
+          </div>
+        </SCard>
+        <SCard className='px-0! py-5!'>
+          <div className='flex items-center justify-between border-b-2 px-4 pb-4'>
+            <Skeleton className='h-5 w-32' />
+            <Skeleton className='w-20 h-6' />
+          </div>
+          <div className='grid grid-cols-3 divide-x-2 gap-3 mt-4'>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className='px-4 flex items-center justify-between mt-4'>
+                <Skeleton className='h-5 w-32' />
+              </div>
+            ))}
+          </div>
+        </SCard>
+      </div>
+      <SCard className='p-0!'>
+        <div className='flex items-center gap-3 p-5 border-b-2'>
           <Skeleton className='w-20 h-6' />
         </div>
-        <Skeleton className='w-32 h-9 mt-4 mb-2' />
-        <Skeleton className='w-100 h-5' />
-      </SCard>
-      <SCard className='p-0!'>
-        <div className='flex items-center gap-3 p-5'>
-          <Skeleton className='w-8 h-8' />
-          <div className='space-y-2'>
-            <Skeleton className='w-20 h-6' />
-            <Skeleton className='w-60 h-4.5' />
-          </div>
-        </div>
-        <Separator />
-        <div className='p-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-3'>
-          {Array.from({ length: 6}).map((_, i) => (
+        <div className='p-5 grid grid-cols-5 gap-4'>
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className='flex items-center justify-between border-gray-100 border-2 p-3 rounded-2xl'>
               <div className='flex items-center gap-3'>
                 <Skeleton className='h-8 w-8' />
                 <div className='space-y-2'>
                   <Skeleton className='h-4 w-32' />
-                  <Skeleton className='h-3 w-40 sm:w-32 md:w-56' />
+                  <Skeleton className='h-3 w-40 sm:w-32' />
                   <Skeleton className='h-2 w-20' />
                 </div>
               </div>

@@ -1,22 +1,23 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Building2, Users, CreditCard, MessageSquare, HardDrive,
-  Calendar, CheckCircle2, XCircle, AlertTriangle, Phone,
-  BadgeCheck, Clock, ArrowLeft, RotateCcw, Zap,
+  AlertTriangle, Phone, BadgeCheck, ArrowLeft, RotateCcw,
+  CheckCircle2, XCircle, Plug,
 } from "lucide-react";
 import Link from "next/link";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { adminResetWhatsappUsage, adminSetBillingTier } from "@/app/actions/admin-orgs";
 import { deleteLocationAction, syncTelnyxStatus } from "@/app/actions/admin-automation";
+import { decryptConnectors, type BusinessConnectors } from "@/lib/business-connectors";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const TIER_PRICES: Record<string, number> = { starter: 79, growth: 99, business: 199 };
+const TIER_PRICES: Record<string, number> = { starter: 59, growth: 129, business: 229 };
 
 const STRIPE_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   active: { label: "Attivo", color: "text-green-700", bg: "bg-green-100" },
@@ -91,6 +92,21 @@ export default async function OrgDrilldownPage({ params }: { params: Promise<{ i
 
   const limits = (plan?.limits ?? {}) as Record<string, number>;
   const addons = org.addons_config ?? {};
+
+  // ── Decrypt connections per location ───────────────────────────────────────
+  type LocationConnections = {
+    locationId: string;
+    locationName: string;
+    connectors: BusinessConnectors | null;
+  };
+
+  const locationConnections: LocationConnections[] = (locations ?? []).map((loc) => {
+    let connectors: BusinessConnectors | null = null;
+    if (loc.business_connectors) {
+      try { connectors = decryptConnectors(loc.business_connectors as string); } catch { /* encrypted with different key or corrupted */ }
+    }
+    return { locationId: loc.id, locationName: loc.name, connectors };
+  });
 
   // Usage calculations
   const { count: staffCount } = await supabase
@@ -175,7 +191,7 @@ export default async function OrgDrilldownPage({ params }: { params: Promise<{ i
 
           {/* Billing info */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <CreditCard className="h-4 w-4" /> Fatturazione
               </CardTitle>
@@ -362,15 +378,74 @@ export default async function OrgDrilldownPage({ params }: { params: Promise<{ i
                 <span className="text-muted-foreground">Telnyx Acc.</span>
                 <span className="font-mono text-xs truncate max-w-28">{org.telnyx_managed_account_id ?? "—"}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-start">
                 <span className="text-muted-foreground">Addons</span>
-                <span className="text-xs">
-                  {addons.extra_staff ? `+${addons.extra_staff} staff` : ""}
-                  {addons.extra_contacts_wa ? ` +${addons.extra_contacts_wa} WA` : ""}
-                  {addons.extra_storage_mb ? ` +${addons.extra_storage_mb}MB` : ""}
-                  {!addons.extra_staff && !addons.extra_contacts_wa && !addons.extra_storage_mb ? "Nessuno" : ""}
+                <span className="text-xs text-right space-y-0.5">
+                  {addons.extra_staff        > 0 && <p>+{addons.extra_staff} staff</p>}
+                  {addons.extra_contacts_wa  > 0 && <p>+{addons.extra_contacts_wa} WA/mese</p>}
+                  {addons.extra_storage_mb   > 0 && <p>+{addons.extra_storage_mb} MB</p>}
+                  {addons.extra_locations    > 0 && <p>+{addons.extra_locations} sede</p>}
+                  {addons.extra_kb_chars     > 0 && <p>+{addons.extra_kb_chars} chars KB</p>}
+                  {addons.extra_analytics    > 0 && <p>Analytics Pro ✓</p>}
+                  {addons.extra_connections  > 0 && <p>Connection Pack ✓</p>}
+                  {!addons.extra_staff && !addons.extra_contacts_wa && !addons.extra_storage_mb
+                   && !addons.extra_locations && !addons.extra_kb_chars
+                   && !addons.extra_analytics && !addons.extra_connections
+                   && <p className="text-muted-foreground">Nessuno</p>}
                 </span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Connections */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Plug className="h-4 w-4" /> Connessioni attive
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {locationConnections.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nessuna sede</p>
+              )}
+              {locationConnections.map(({ locationId, locationName, connectors }) => {
+                const items = [
+                  { label: "Google Calendar", active: !!connectors?.google_calendar_access_token },
+                  { label: "Google Reviews",  active: !!connectors?.google_review_url },
+                  { label: "TheFork",         active: !!connectors?.thefork_api_key || !!connectors?.thefork_restaurant_id },
+                  { label: "Quandoo",         active: !!connectors?.quandoo_api_key },
+                  { label: "OpenTable",       active: !!connectors?.opentable_client_id },
+                ];
+                const activeCount = items.filter((i) => i.active).length;
+                return (
+                  <div key={locationId}>
+                    {locationConnections.length > 1 && (
+                      <p className="text-xs font-medium text-muted-foreground mb-1">{locationName}</p>
+                    )}
+                    <div className="space-y-0.5">
+                      {items.map(({ label, active }) => (
+                        <div key={label} className="flex items-center justify-between text-xs">
+                          <span className={active ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+                          {active
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
+                          }
+                        </div>
+                      ))}
+                    </div>
+                    {connectors === null && (
+                      <p className="text-[10px] text-muted-foreground mt-1 italic">
+                        {(locations ?? []).find(l => l.id === locationId)?.business_connectors
+                          ? "Impossibile decriptare (chiave mancante?)"
+                          : "Nessun connettore configurato"}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {activeCount}/{items.length} attivi
+                    </p>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 

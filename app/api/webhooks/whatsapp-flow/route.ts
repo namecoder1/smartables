@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { decryptFlowRequest, encryptFlowResponse } from "@/lib/whatsapp-crypto";
 import { getAvailableDates, getAvailableTimes } from "@/lib/whatsapp-flow";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { captureError, captureWarning } from "@/lib/monitoring";
+import { checkFlowRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const { success: rateLimitOk } = await checkFlowRateLimit(ip);
+  if (!rateLimitOk) {
+    return new NextResponse("Too Many Requests", { status: 429 });
+  }
+
   try {
     const body = await req.json();
 
@@ -12,7 +20,7 @@ export async function POST(req: Request) {
 
     const privateKey = process.env.WHATSAPP_PRIVATE_KEY;
     if (!privateKey) {
-      console.error("Missing WHATSAPP_PRIVATE_KEY in environment");
+      captureError(new Error("Missing WHATSAPP_PRIVATE_KEY in environment"), { service: "whatsapp", flow: "whatsapp_flow_webhook" });
       return new NextResponse("Internal Server Error", { status: 500 });
     }
 
@@ -29,7 +37,7 @@ export async function POST(req: Request) {
       aesKeyBuffer = decrypted.aesKeyBuffer;
       initialVectorBuffer = decrypted.initialVectorBuffer;
     } catch (decryptError) {
-      console.error("[WhatsApp Flow] Decryption failed:", decryptError);
+      captureError(decryptError, { service: "whatsapp", flow: "whatsapp_flow_decrypt" });
       return new NextResponse("Decryption failed", { status: 400 });
     }
 
@@ -223,7 +231,7 @@ Altro: ${extra_notes}`;
         };
       }
     } else {
-      console.warn(`[WhatsApp Flow] Unhandled action: ${action}`);
+      captureWarning(`[WhatsApp Flow] Unhandled action: ${action}`, { service: "whatsapp", flow: "whatsapp_flow_webhook" });
       return new NextResponse("Unhandled action", { status: 400 });
     }
 
@@ -239,7 +247,7 @@ Altro: ${extra_notes}`;
       headers: { "Content-Type": "text/plain" },
     });
   } catch (err: any) {
-    console.error("[WhatsApp Flow] Error handling webhook", err);
+    captureError(err, { service: "whatsapp", flow: "whatsapp_flow_webhook" });
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

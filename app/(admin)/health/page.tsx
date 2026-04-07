@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Activity, CheckCircle2, XCircle, AlertTriangle, MessageSquare,
-  Phone, Zap, Database, Clock, ArrowRight,
+  Phone, Zap, Clock, ArrowRight, BugPlay, ShieldAlert,
+  Bot, Plug2, Smartphone,
 } from "lucide-react";
 import Link from "next/link";
-import { format, formatDistanceToNow, subHours, subDays } from "date-fns";
+import { formatDistanceToNow, subHours, subDays } from "date-fns";
 import { it } from "date-fns/locale";
+import GlitchTipWidget from "@/components/admin/glitchtip-widget";
 
 function StatusDot({ ok }: { ok: boolean }) {
   return (
@@ -31,6 +33,38 @@ function HealthRow({
   );
 }
 
+// ── Trigger.dev types ─────────────────────────────────────────────────────────
+
+type TriggerRun = {
+  id: string;
+  status: string;
+  taskIdentifier: string;
+  createdAt: string;
+  finishedAt?: string | null;
+  error?: { message?: string } | null;
+};
+
+async function fetchTriggerRuns(): Promise<TriggerRun[]> {
+  const token = process.env.TRIGGER_SECRET_KEY;
+  if (!token) return [];
+  try {
+    const res = await fetch(
+      "https://api.trigger.dev/api/v1/runs?filter[status]=FAILED,CRASHED&page[size]=10",
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        next: { revalidate: 60 },
+      },
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data ?? []) as TriggerRun[];
+  } catch {
+    return [];
+  }
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default async function HealthPage() {
   const supabase = createAdminClient();
   const last24h = subHours(new Date(), 24).toISOString();
@@ -46,6 +80,12 @@ export default async function HealthPage() {
     { data: waHeavyOrgs },
     { data: stuckLocations },
     { data: recentTransactions },
+    triggerFailedRuns,
+    { data: waMsgs7d },
+    { data: waBotBookings },
+    { data: lastTheforkBooking },
+    { data: lastTelnyxWebhook },
+    { data: lastStripeTransaction },
   ] = await Promise.all([
     // WA messages in last 24h
     supabase
@@ -100,6 +140,38 @@ export default async function HealthPage() {
       .select("id, type, status, amount, created_at")
       .order("created_at", { ascending: false })
       .limit(5),
+    // Trigger.dev failed runs
+    fetchTriggerRuns(),
+    // Bot performance: WA messages last 7d
+    supabase
+      .from("whatsapp_messages")
+      .select("id, direction, status, created_at")
+      .gte("created_at", last7d),
+    // WA bookings (source=whatsapp_auto) last 7d — proxy for bot conversions
+    supabase
+      .from("bookings")
+      .select("id, source, created_at")
+      .eq("source", "whatsapp_auto")
+      .gte("created_at", last7d),
+    // Integration liveness: last TheFork booking
+    supabase
+      .from("bookings")
+      .select("id, created_at")
+      .eq("source", "thefork")
+      .order("created_at", { ascending: false })
+      .limit(1),
+    // Integration liveness: last Telnyx webhook
+    supabase
+      .from("telnyx_webhook_logs")
+      .select("id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1),
+    // Integration liveness: last Stripe transaction
+    supabase
+      .from("transactions")
+      .select("id, created_at, status")
+      .order("created_at", { ascending: false })
+      .limit(1),
   ]);
 
   // Compute WA stats
@@ -123,6 +195,22 @@ export default async function HealthPage() {
   (recentBookings ?? []).forEach((b) => {
     bookingsBySource[b.source] = (bookingsBySource[b.source] ?? 0) + 1;
   });
+
+  // ── Bot performance (7d) ────────────────────────────────────────────────
+  const botInbound  = (waMsgs7d ?? []).filter((m) => m.direction === "inbound").length;
+  const botReplies  = (waMsgs7d ?? []).filter((m) => m.direction === "outbound_bot").length;
+  const botCoverage = botInbound > 0 ? Math.round((botReplies / botInbound) * 100) : 100;
+  const botConversions = waBotBookings?.length ?? 0;
+
+  // ── Integration liveness ─────────────────────────────────────────────────
+  const lastWaMsg      = recentWaMsgs?.[0]?.created_at ?? null;
+  const lastTelnyxEvt  = lastTelnyxWebhook?.[0]?.created_at ?? null;
+  const lastTheforkEvt = lastTheforkBooking?.[0]?.created_at ?? null;
+  const lastStripeEvt  = lastStripeTransaction?.[0]?.created_at ?? null;
+  const hoursAgo = (iso: string | null) => {
+    if (!iso) return null;
+    return Math.round((Date.now() - new Date(iso).getTime()) / 3_600_000);
+  };
 
   // Overall health
   const criticalIssues = [
@@ -370,6 +458,140 @@ export default async function HealthPage() {
                 Gestisci feedback <ArrowRight className="h-3 w-3" />
               </Link>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Trigger.dev — failed runs */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BugPlay className="h-4 w-4 text-purple-500" />
+              Trigger.dev — run falliti ({triggerFailedRuns.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {triggerFailedRuns.length === 0 ? (
+              <div className="flex items-center gap-2 text-green-700 text-sm py-2">
+                <CheckCircle2 className="h-4 w-4" /> Nessun job fallito
+              </div>
+            ) : (
+              triggerFailedRuns.map((run) => (
+                <div key={run.id} className="flex items-start justify-between text-xs border-b last:border-0 pb-2 gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium font-mono">{run.taskIdentifier}</p>
+                    {run.error?.message && (
+                      <p className="text-muted-foreground line-clamp-1 mt-0.5">{run.error.message}</p>
+                    )}
+                    <p className="text-muted-foreground mt-0.5">
+                      {formatDistanceToNow(new Date(run.createdAt), { addSuffix: true, locale: it })}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className={`text-[10px] shrink-0 ${
+                    run.status === "CRASHED" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                  }`}>
+                    {run.status}
+                  </Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* GlitchTip — unresolved errors */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-rose-500" /> GlitchTip — errori irrisolti
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GlitchTipWidget />
+          </CardContent>
+        </Card>
+
+        {/* Bot AI performance (7d) */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4 text-violet-500" /> Bot AI (7 giorni)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <HealthRow
+              label="Messaggi inbound"
+              ok={true}
+              detail={`${botInbound}`}
+            />
+            <HealthRow
+              label="Risposte bot"
+              ok={botCoverage >= 80}
+              detail={`${botReplies} (${botCoverage}% coverage)`}
+            />
+            <HealthRow
+              label="Prenotazioni via WA bot"
+              ok={true}
+              detail={`${botConversions} conversioni`}
+            />
+            {botCoverage < 80 && botInbound > 0 && (
+              <p className="text-xs text-amber-600 pt-1">
+                Coverage &lt;80%: il bot potrebbe non rispondere a tutti i messaggi
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Integration liveness */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plug2 className="h-4 w-4 text-cyan-500" /> Integration liveness
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {(
+              [
+                { label: "WhatsApp (ultimo msg)",    hours: hoursAgo(lastWaMsg),      threshold: 48 },
+                { label: "Telnyx (ultimo webhook)",  hours: hoursAgo(lastTelnyxEvt),  threshold: 72 },
+                { label: "TheFork (ultima booking)", hours: hoursAgo(lastTheforkEvt), threshold: 168 },
+                { label: "Stripe (ultima tx)",       hours: hoursAgo(lastStripeEvt),  threshold: 168 },
+              ] as const
+            ).map(({ label, hours, threshold }) => (
+              <HealthRow
+                key={label}
+                label={label}
+                ok={hours === null || hours <= threshold}
+                detail={
+                  hours === null
+                    ? "Nessun evento registrato"
+                    : hours < 1
+                    ? "< 1h fa"
+                    : hours < 24
+                    ? `${hours}h fa`
+                    : `${Math.floor(hours / 24)}g fa`
+                }
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Mobile App Monitor — placeholder */}
+        <Card className="border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-muted-foreground">
+              <Smartphone className="h-4 w-4" /> App Mobile — In sviluppo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground text-sm">Monitor pianificato (Expo + React Native):</p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>DAU / MAU (utenti attivi giornalieri / mensili)</li>
+              <li>Distribuzione versione app installata</li>
+              <li>Push notification delivery rate</li>
+              <li>Crash reports via GlitchTip (React Native Sentry SDK)</li>
+              <li>Latenza API da client mobile (p50 / p95)</li>
+              <li>Sessioni per piano (Starter / Growth / Business)</li>
+            </ul>
+            <p className="pt-1 italic">Attivare quando l&apos;app Expo viene rilasciata.</p>
           </CardContent>
         </Card>
 

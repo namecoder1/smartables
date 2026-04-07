@@ -27,7 +27,8 @@ const PasswordStrength = ({
   required,
   value,
   onChange,
-  placeholder
+  placeholder,
+  'data-testid': dataTestId,
 }: {
   id: string
   name: string
@@ -35,6 +36,7 @@ const PasswordStrength = ({
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   placeholder?: string
+  'data-testid'?: string
 }) => {
   const [isVisible, setIsVisible] = useState(false)
 
@@ -80,6 +82,7 @@ const PasswordStrength = ({
           value={value}
           onChange={onChange}
           className='pr-9'
+          data-testid={dataTestId}
         />
         <Button
           variant='ghost'

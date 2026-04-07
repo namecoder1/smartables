@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { captureWarning } from "@/lib/monitoring";
 
 type StatusObject = {
   id: string;
@@ -12,7 +13,7 @@ export async function handleStatusUpdates(
   statuses: StatusObject[],
 ) {
   for (const statusObj of statuses) {
-    await supabase
+    const { error } = await supabase
       .from("whatsapp_messages")
       .update({
         status: statusObj.status,
@@ -22,6 +23,10 @@ export async function handleStatusUpdates(
         updated_at: new Date().toISOString(),
       })
       .eq("meta_message_id", statusObj.id);
+
+    if (error) {
+      captureWarning("Failed to update whatsapp_message status", { service: "supabase", flow: "message_status_sync", metaMessageId: statusObj.id, status: statusObj.status });
+    }
   }
 
   return new NextResponse("EVENT_RECEIVED", { status: 200 });

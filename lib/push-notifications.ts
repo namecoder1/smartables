@@ -48,6 +48,6 @@ export async function sendPushToOrganization(
       body: JSON.stringify(messages),
     });
   } catch (err) {
-    console.error("[sendPushToOrganization] Failed:", err);
+    // Log error ?
   }
 }

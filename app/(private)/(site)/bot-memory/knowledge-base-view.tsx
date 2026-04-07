@@ -13,6 +13,7 @@ import { getKnowledgeBase, createKnowledgeBaseEntry, updateKnowledgeBaseEntry, t
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
+import ConfirmDialog from '@/components/utility/confirm-dialog'
 import NoItems from '@/components/utility/no-items'
 import OverviewCards from '@/components/private/overview-cards'
 import PageWrapper from '@/components/private/page-wrapper'
@@ -52,6 +53,7 @@ export default function KnowledgeBaseView({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<KBEntry | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Form State
   const [title, setTitle] = useState('')
@@ -128,15 +130,16 @@ export default function KnowledgeBaseView({
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Sei sicuro di voler eliminare definitivamente questa regola?')) return
-    const res = await deleteKnowledgeBaseEntry(id)
+  const handleDelete = async () => {
+    if (!deletingId) return
+    const res = await deleteKnowledgeBaseEntry(deletingId)
     if (res.success) {
-      setEntries(prev => prev.filter(e => e.id !== id))
+      setEntries(prev => prev.filter(e => e.id !== deletingId))
       toast.success('Eliminato', { description: 'La regola è stata eliminata dalla memoria del bot.' })
     } else {
       toast.error('Errore', { description: 'Impossibile eliminare la regola.' })
     }
+    setDeletingId(null)
   }
 
   return (
@@ -199,7 +202,7 @@ export default function KnowledgeBaseView({
           <div className="flex justify-center p-12"><Loader2 className="animate-spin text-muted-foreground h-8 w-8" /></div>
         ) : entries.length === 0 ? (
           <NoItems
-            icon={<CircleQuestionMark size={24} />}
+            icon={<CircleQuestionMark size={28} className='text-primary' />}
             title='Nessuna regola trovata'
             description="L'assistente utilizzerà solo le informazioni di base del locale. Aggiungi regole per personalizzare le sue risposte."
             button={
@@ -230,7 +233,7 @@ export default function KnowledgeBaseView({
                     <Button variant="outline" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted" onClick={() => handleOpenDialog(entry)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(entry.id)}>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setDeletingId(entry.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -239,6 +242,17 @@ export default function KnowledgeBaseView({
             ))}
           </div>
         )}
+
+        <ConfirmDialog
+          open={!!deletingId}
+          onOpenChange={(open) => { if (!open) setDeletingId(null) }}
+          title="Elimina Regola"
+          description="Sei sicuro di voler eliminare definitivamente questa regola? L'operazione non è reversibile."
+          confirmLabel="Elimina"
+          cancelLabel="Annulla"
+          variant="destructive"
+          onConfirm={handleDelete}
+        />
 
         {/* Dialog for Add/Edit */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

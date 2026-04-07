@@ -10,6 +10,7 @@ import { sendBookingPush } from "@/lib/booking-notifications";
 import { validateBookingFields, validateGuestFields } from "@/lib/validators/booking";
 import type { CreateBookingState } from "@/types/general";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { captureWarning } from "@/lib/monitoring";
 
 export async function createBooking(
   prevState: CreateBookingState,
@@ -140,6 +141,7 @@ export async function createBooking(
           });
         } catch (triggerErr) {
           // Non-blocking: log but don't fail the booking creation
+          captureWarning("Failed to trigger verify-booking task", { service: "trigger", flow: "booking_creation", bookingId: newBooking?.id, locationId: locationId ?? undefined });
           console.error("[createBooking] Failed to trigger verify-booking:", triggerErr);
         }
       }
@@ -155,6 +157,7 @@ export async function createBooking(
           bookingTime,
         });
       } catch (triggerErr) {
+        captureWarning("Failed to trigger request-review task", { service: "trigger", flow: "booking_creation", bookingId: newBooking?.id, locationId: locationId ?? undefined });
         console.error("[createBooking] Failed to trigger request-review:", triggerErr);
       }
     }
@@ -296,7 +299,10 @@ function triggerGcalSync(bookingId: string, locationId: string) {
         locationId,
       })
     ))
-    .catch((e) => console.error("[GCal] triggerGcalSync failed:", e));
+    .catch((e) => {
+      captureWarning("Failed to dispatch GCal sync task", { service: "trigger", flow: "gcal_sync", bookingId, locationId });
+      console.error("[GCal] triggerGcalSync failed:", e);
+    });
 }
 
 function triggerGcalDelete(locationId: string, googleEventId: string, bookingId?: string) {
@@ -309,7 +315,10 @@ function triggerGcalDelete(locationId: string, googleEventId: string, bookingId?
         bookingId,
       })
     ))
-    .catch((e) => console.error("[GCal] triggerGcalDelete failed:", e));
+    .catch((e) => {
+      captureWarning("Failed to dispatch GCal delete task", { service: "trigger", flow: "gcal_sync_delete", locationId, googleEventId, bookingId });
+      console.error("[GCal] triggerGcalDelete failed:", e);
+    });
 }
 
 // Helpers

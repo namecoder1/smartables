@@ -10,6 +10,9 @@ import { isMenuActive, isMenuAvailableAtTime } from "@/lib/menu-helpers";
 import { PATHS, dynamicPath } from "@/lib/revalidation-paths";
 import { createNotification } from "@/lib/notifications";
 import { sendPushToOrganization } from "@/lib/push-notifications";
+import { headers } from "next/headers";
+import { checkOrderRateLimit } from "@/lib/ratelimit";
+import { CreateOrderSchema } from "@/lib/validators/order";
 
 interface MenuLocation {
   menu_id: string;
@@ -129,6 +132,15 @@ interface CreateOrderInput {
 }
 
 export async function createOrder(data: CreateOrderInput) {
+  const parsed = CreateOrderSchema.safeParse(data);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dati ordine non validi.");
+  }
+
+  const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+  const { success: rateLimitOk } = await checkOrderRateLimit(ip);
+  if (!rateLimitOk) return fail("Troppe richieste. Riprova tra qualche minuto.");
+
   const supabase = await createClient();
 
   // 1. Check for Active Booking on this Table

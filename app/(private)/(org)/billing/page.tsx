@@ -89,6 +89,7 @@ export default async function BillingPage({
   }
 
   const currentPlan = PLANS.find(p => p.priceIdMonth === org?.stripe_price_id || p.priceIdYear === org?.stripe_price_id)
+    ?? PLANS.find(p => p.id === org?.billing_tier)
   const isYearlyActive = currentPlan?.priceIdYear === org?.stripe_price_id
   const currentPrice = isYearlyActive ? currentPlan?.priceYear : currentPlan?.priceMonth
   const currentPeriod = isYearlyActive ? '/anno' : '/mese'
@@ -158,31 +159,7 @@ export default async function BillingPage({
             <Card className="border-2 shadow-sm py-0 gap-0 overflow-hidden">
               {/* Card header */}
               <div className="bg-muted/20 border-b-2 px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">Piano Attuale</p>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold tracking-tight">{currentPlan?.name || 'Free'}</h2>
-                      <Badge className={cn('text-xs', tierBadge.className)}>
-                        {tierBadge.label}
-                      </Badge>
-                      {isCanceling && (
-                        <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-200 border gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          In scadenza
-                        </Badge>
-                      )}
-                      {hasActiveSubscription && !isCanceling && (
-                        <Badge className="text-xs bg-green-100 text-green-700 border-green-200 border">
-                          Attivo
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <h2 className="text-xl font-bold tracking-tight">{currentPlan?.name || 'Free'}</h2>
                 <form action={createStripePortalSession}>
                   <Button size="sm" variant="outline" className="shadow-sm gap-2 shrink-0">
                     <CreditCard className="h-4 w-4" />

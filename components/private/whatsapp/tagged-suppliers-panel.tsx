@@ -56,7 +56,7 @@ export function TaggedSuppliersPanel({ locationId }: { locationId: string }) {
       {contacts.length === 0 ? (
         <NoItems 
           variant="children"
-          icon={<Package className="h-8 w-8 text-primary" />}
+          icon={<Package size={28} className='text-primary' />}
           title="Nessun fornitore salvato"
           description="Quando un chiamante clicca 'Sono un fornitore' sul messaggio WhatsApp, apparirà qui."
         />

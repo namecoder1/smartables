@@ -1,19 +1,19 @@
-import * as Sentry from "@sentry/nextjs";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { assertEnv } from "@/lib/env-check";
+
+assertEnv();
 import { stripe } from "@/utils/stripe/client";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { findPlanByPriceId } from "@/lib/plans";
 import { computeAddonConfig, getAddonPriceMap } from "@/lib/addons";
 import Stripe from "stripe";
-import { Resend } from "resend";
+import { resend } from "@/utils/resend/client";
 import { render } from "@react-email/components";
 import PaymentFailedEmail from "@/emails/payment-failed";
 import AccountSuspendedEmail from "@/emails/account-suspended";
 import SubscriptionExpiringEmail from "@/emails/subscription-expiring";
 import { captureError, captureCritical, captureWarning } from "@/lib/monitoring";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getBillingEmailForSubscription(
   supabase: ReturnType<typeof createAdminClient>,
@@ -100,11 +100,7 @@ export async function POST(req: Request) {
         : process.env.STRIPE_WEBHOOK_KEY_TEST!,
     );
   } catch (error) {
-    console.error(
-      `Webhook Error: ${
-        error instanceof Error ? error.message : "Unknown Error"
-      }`,
-    );
+    captureError(error, { service: "stripe", flow: "webhook_signature_validation" });
     return new NextResponse(
       `Webhook Error: ${
         error instanceof Error ? error.message : "Unknown Error"
@@ -166,11 +162,7 @@ export async function POST(req: Request) {
           .eq("id", organizationId);
 
         if (updateError) {
-          Sentry.captureException(updateError, { extra: { organizationId, event: "checkout.session.completed" } });
-          console.error(
-            "Error updating organization subscription:",
-            updateError,
-          );
+          captureCritical(updateError, { service: "stripe", flow: "checkout_subscription_update", organizationId });
           return new NextResponse("Error updating organization", {
             status: 500,
           });
@@ -259,8 +251,7 @@ export async function POST(req: Request) {
       .eq("stripe_subscription_id", subscription.id);
 
     if (updateError) {
-      Sentry.captureException(updateError, { extra: { subscriptionId: subscription.id, event: event.type } });
-      console.error("Error syncing subscription status:", updateError);
+      captureCritical(updateError, { service: "stripe", flow: "subscription_status_sync", stripeSubscriptionId: subscription.id });
       return new NextResponse("Error syncing subscription", { status: 500 });
     }
 
@@ -283,7 +274,6 @@ export async function POST(req: Request) {
           flow: "subscription_status_email",
           stripeSubscriptionId: subscription.id,
         });
-        console.error("[stripe webhook] Failed to send account-suspended email:", emailErr);
       }
     }
 
@@ -309,7 +299,6 @@ export async function POST(req: Request) {
           flow: "subscription_status_email",
           stripeSubscriptionId: subscription.id,
         });
-        console.error("[stripe webhook] Failed to send subscription-expiring email:", emailErr);
       }
     }
   }
@@ -332,7 +321,6 @@ export async function POST(req: Request) {
           stripeSubscriptionId: subscriptionId,
           stripeInvoiceId: invoice.id,
         });
-        console.error("Error finding organization for invoice:", orgError);
       } else {
         // Reset monthly usage counters
         // NOTE: invoice.period_start/end refers to the invoice billing period (today),
@@ -397,7 +385,6 @@ export async function POST(req: Request) {
         flow: "payment_failed_email",
         stripeInvoiceId: invoice.id,
       });
-      console.error("[stripe webhook] Failed to send payment-failed email:", emailErr);
     }
   }
 
@@ -423,7 +410,6 @@ export async function POST(req: Request) {
           stripeCustomerId: customerId,
           stripeChargeId: charge.id,
         });
-        console.error("Error finding organization for refund:", orgError);
         return new NextResponse("Organization not found for refund", {
           status: 500,
         });
@@ -468,10 +454,6 @@ export async function POST(req: Request) {
             stripeSubscriptionId: org.stripe_subscription_id,
             stripeChargeId: charge.id,
           });
-          console.error(
-            "[charge.refunded] Subscription cancel failed (may already be canceled):",
-            cancelError,
-          );
         }
       }
 
@@ -493,10 +475,6 @@ export async function POST(req: Request) {
           organizationId: org.id,
           stripeChargeId: charge.id,
         });
-        console.error(
-          "[charge.refunded] Error updating organization:",
-          updateError,
-        );
         return new NextResponse("Error updating organization after refund", {
           status: 500,
         });
@@ -563,7 +541,7 @@ async function getDateFromSubscription(
           }
         }
       } catch (e) {
-        console.error("Error fetching latest invoice:", e);
+        captureWarning("Error fetching latest invoice for subscription period dates", { service: "stripe", flow: "subscription_period_sync" });
       }
     }
   }
@@ -576,12 +554,6 @@ async function getDateFromSubscription(
       stripeSubscriptionId: subscription.id,
       missingKey: key,
     });
-    console.warn(
-      `Date value missing for key "${key}". Subscription keys:`,
-      Object.keys(subscription),
-      `Items period:`,
-      (subscription.items?.data?.[0] as unknown as { period?: unknown })?.period,
-    );
     return new Date().toISOString(); // Fallback
   }
 

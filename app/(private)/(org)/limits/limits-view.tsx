@@ -1,13 +1,9 @@
 'use client'
 
-import React from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Users, MessageCircle, HardDrive, LayoutGrid, UtensilsCrossed,
-  MapPin, ArrowRight, TrendingUp, Plus, BrainCircuit, BarChart3,
-} from 'lucide-react'
+import { ArrowRight, TrendingUp, Plus, Lock, Check, Crown, Puzzle } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import type { AddonConfig, PlanLimits } from '@/types/general'
@@ -16,6 +12,11 @@ import { BASE_KB_CHARS_BY_TIER, DEFAULT_BASE_KB_CHARS } from '@/lib/addons'
 import { FaqContent } from '@/components/private/faq-section'
 import { SanityFaq } from '@/utils/sanity/queries'
 import AddonsSection from '@/app/(private)/(org)/billing/addons-section'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,6 @@ function pct(used: number, total: number): number {
 // ── LimitCard ─────────────────────────────────────────────────────────────────
 
 type LimitCardItem = {
-  icon: React.ReactNode
   label: string
   usedLabel: string
   baseLimit: number
@@ -58,7 +58,6 @@ type LimitCardItem = {
 
 type SingleLimitCardProps = {
   variant?: 'default'
-  icon: React.ReactNode
   label: string
   usedLabel: string
   baseLimit: number
@@ -66,13 +65,14 @@ type SingleLimitCardProps = {
   usedPct: number
   isUnlimited?: boolean
   addonUnit?: string
+  tooltipText: string
 }
 
 type DoubleLimitCardProps = {
   variant: 'double'
-  icon: React.ReactNode
   label: string
   items: [LimitCardItem, LimitCardItem]
+  tooltipText: string
 }
 
 type LimitCardProps = SingleLimitCardProps | DoubleLimitCardProps
@@ -138,16 +138,20 @@ function LimitCardRow({ item }: { item: LimitCardItem }) {
 
 function LimitCard(props: LimitCardProps) {
   if (props.variant === 'double') {
-    const { icon, label, items } = props
+    const { label, items, tooltipText } = props
     return (
-      <Card className="border-2 py-0 shadow-sm">
+      <Card className="border-2 py-0 gap-0 shadow-sm">
+        <CardHeader className='border-b-2 flex items-center p-4'>
+          <Tooltip>
+            <TooltipTrigger>
+              <h3 className="font-bold text-md tracking-tight">{label}</h3>
+            </TooltipTrigger>
+            <TooltipContent side='right'>
+              <p>{tooltipText}</p>
+            </TooltipContent>
+          </Tooltip>
+        </CardHeader>
         <CardContent className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-              {icon}
-            </div>
-            <span className="font-semibold text-sm">{label}</span>
-          </div>
           <div className="grid grid-cols-2 gap-4">
             {items.map((item, i) => (
               <LimitCardRow key={i} item={item} />
@@ -158,7 +162,7 @@ function LimitCard(props: LimitCardProps) {
     )
   }
 
-  const { icon, label, usedLabel, baseLimit, addonExtra, usedPct, isUnlimited, addonUnit } = props
+  const { label, usedLabel, baseLimit, addonExtra, usedPct, isUnlimited, addonUnit, tooltipText } = props
   const total = baseLimit + addonExtra
   const hasAddon = addonExtra > 0
   const isWarning = usedPct >= 80 && usedPct < 100
@@ -166,21 +170,23 @@ function LimitCard(props: LimitCardProps) {
   const barColor = isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-primary'
 
   return (
-    <Card className="border-2 py-0 shadow-sm">
+    <Card className="border-2 py-0 shadow-sm gap-0">
+      <CardHeader className="flex items-center justify-between border-b-2 p-4">
+        <Tooltip>
+          <TooltipTrigger>
+            <h3 className="font-bold text-md tracking-tight">{label}</h3>
+          </TooltipTrigger>
+          <TooltipContent side='right'>
+            <p>{tooltipText}</p>
+          </TooltipContent>
+        </Tooltip>
+        {hasAddon && (
+          <Badge className="text-xs bg-violet-100 text-violet-700 border-violet-200 border">
+            +{addonExtra} {addonUnit ?? 'extra'}
+          </Badge>
+        )}
+      </CardHeader>
       <CardContent className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-              {icon}
-            </div>
-            <span className="font-semibold text-sm">{label}</span>
-          </div>
-          {hasAddon && (
-            <Badge className="text-xs bg-violet-100 text-violet-700 border-violet-200 border">
-              +{addonExtra} {addonUnit ?? 'extra'}
-            </Badge>
-          )}
-        </div>
 
         {isUnlimited ? (
           <div>
@@ -385,9 +391,8 @@ export default function LimitsView({
       )}
 
       {/* Limit cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
         <LimitCard
-          icon={<Users className="h-4 w-4" />}
           label="Account Staff"
           usedLabel={isUnlimitedStaff ? `${usage.staff}` : `${usage.staff} / ${totalStaff}`}
           baseLimit={limits?.max_staff ?? 5}
@@ -395,35 +400,34 @@ export default function LimitsView({
           usedPct={isUnlimitedStaff ? 0 : pct(usage.staff, totalStaff)}
           isUnlimited={isUnlimitedStaff}
           addonUnit="staff"
+          tooltipText='Indica quanti account sono disponibili nel tuo piano'
         />
 
         <LimitCard
-          icon={<MessageCircle className="h-4 w-4" />}
           label="Contatti Automatizzati AI"
           usedLabel={`${usage.contactsWa} / ${totalWa}`}
           baseLimit={limits?.wa_contacts ?? 400}
           addonExtra={addonsConfig.extra_contacts_wa}
           usedPct={pct(usage.contactsWa, totalWa)}
           addonUnit="contatti"
+          tooltipText='Indica il numero di contatti WhatsApp che possono essere gestiti con funzionalità AI come Smart Reply e Bot AI.'
         />
 
         <LimitCard
-          icon={<HardDrive className="h-4 w-4" />}
           label="Storage Globale"
           usedLabel={`${formatStorage(usage.storageBytes)} / ${totalStorage >= 1024 ? `${(totalStorage / 1024).toFixed(1)} GB` : `${totalStorage} MB`}`}
           baseLimit={limits?.storage_mb ?? 300}
           addonExtra={addonsConfig.extra_storage_mb}
           usedPct={pct(storageMbUsed, totalStorage)}
           addonUnit="MB"
+          tooltipText='Indica la quantità totale di spazio di archiviazione disponibile per media e file'
         />
 
         <LimitCard
           variant="double"
-          icon={<LayoutGrid className="h-4 w-4" />}
           label="Layout Ristorante"
           items={[
             {
-              icon: <LayoutGrid className="h-3.5 w-3.5" />,
               label: "Mappe Tavoli",
               usedLabel: `${usage.zones} / ${totalZones}`,
               baseLimit: totalZones,
@@ -431,7 +435,6 @@ export default function LimitsView({
               usedPct: pct(usage.zones, totalZones),
             },
             {
-              icon: <UtensilsCrossed className="h-3.5 w-3.5" />,
               label: "Menu Digitali",
               usedLabel: `${usage.menus} / ${totalMenus}`,
               baseLimit: totalMenus,
@@ -439,61 +442,124 @@ export default function LimitsView({
               usedPct: pct(usage.menus, totalMenus),
             },
           ]}
+          tooltipText='Traccia i limiti di mappe e menù massimi che puoi creare'
         />
 
         <LimitCard
-          icon={<MapPin className="h-4 w-4" />}
           label="Sedi"
           usedLabel={`${usage.locations} / ${totalLocations}`}
           baseLimit={limits?.max_locations ?? 1}
           addonExtra={addonsConfig.extra_locations}
           usedPct={pct(usage.locations, totalLocations)}
           addonUnit="sedi"
+          tooltipText='Indica il numero massimo di sedi che puoi creare'
+
         />
 
         <LimitCard
-          icon={<BrainCircuit className="h-4 w-4" />}
           label="Memoria Bot AI"
           usedLabel={`${usage.kbChars.toLocaleString('it-IT')} / ${totalKbChars >= 1000 ? `${(totalKbChars / 1000).toFixed(0)}k` : totalKbChars} car.`}
           baseLimit={baseKbChars}
           addonExtra={addonsConfig.extra_kb_chars}
           usedPct={pct(usage.kbChars, totalKbChars)}
           addonUnit="caratteri"
+          tooltipText='Indica la quantità di testo che puoi caricare per addestrare il Bot AI. Utile per documenti, FAQ e conoscenza specifica del ristorante.'
         />
 
       </div>
-      {/* Analytics Feature Card */}
+      {/* Analytics + Connections feature cards */}
       {(() => {
         const hasAdvanced = (addonsConfig.extra_analytics ?? 0) > 0 || billingTier === 'growth' || billingTier === 'business'
+
+        const hasAddon = (addonsConfig.extra_connections ?? 0) > 0
+        const isGrowth = billingTier === 'growth'
+        const isBusiness = billingTier === 'business'
+        const hasConnections = hasAddon || isGrowth || isBusiness
+
+        // Platforms unlocked per tier/addon
+        const platforms = [
+          { name: 'TheFork',   unlocked: isGrowth || isBusiness || hasAddon },
+          { name: 'Quandoo',   unlocked: isGrowth || isBusiness || hasAddon },
+          { name: 'OpenTable', unlocked: isBusiness || hasAddon },
+        ]
+
         return (
-          <Card className="border-2 py-0 shadow-sm w-full">
-            <CardContent className="p-5 space-y-3 justify-between flex-col">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-                    <BarChart3 className="h-4 w-4" />
-                  </div>
-                  <span className="font-semibold text-sm">Analitiche</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-2 py-0 shadow-sm pt-0 justify-between gap-0">
+              <CardHeader className='p-4 border-b-2 flex flex-wrap flex-row items-center justify-between w-full gap-4'>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <h3 className="font-bold text-md tracking-tight">Analitiche</h3>
+                  </TooltipTrigger>
+                  <TooltipContent side='right'>
+                    <p>Indica la completezza delle analitiche visualizzabili</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Badge className='text-xs border bg-green-100 text-green-700 border-green-200'>
+                  Incluse
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3 p-4">
+                <div className='flex items-center gap-2'>
+                  {hasAdvanced ?
+                  <Crown className="h-6 w-6 text-yellow-500" /> :
+                  <Puzzle className="h-6 w-6 text-muted-foreground" />
+                  }
+                  <p className="text-xl font-bold">{hasAdvanced ? 'Avanzate' : 'Basic'}</p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 py-0 shadow-sm pt-0 justify-between gap-0">
+              <CardHeader className='p-4 border-b-2 flex flex-wrap flex-row items-center justify-between w-full gap-4'>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <h3 className="font-bold text-md tracking-tight">Connessioni</h3>
+                  </TooltipTrigger>
+                  <TooltipContent side='right'>
+                    <p>Mostra le piattaforme a cui puoi connetterti</p>
+                  </TooltipContent>
+                </Tooltip>
                 <Badge className={cn(
                   'text-xs border',
-                  hasAdvanced
+                  hasConnections
                     ? 'bg-green-100 text-green-700 border-green-200'
                     : 'bg-muted text-muted-foreground border-border'
                 )}>
-                  {hasAdvanced ? 'Avanzate' : 'Basic'}
+                  {hasConnections ? (hasAddon ? 'Add-on attivo' : 'Incluse') : 'Non attive'}
                 </Badge>
-              </div>
-              <div className='mt-auto!'>
-                <p className="text-2xl font-bold">{hasAdvanced ? 'Avanzate' : 'Basic'}</p>
-                <p className="text-xs text-muted-foreground">
-                  {hasAdvanced
-                    ? 'Confronto periodi, orari di punta e analitiche WhatsApp avanzate'
-                    : 'Panoramica base delle prenotazioni e statistiche'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                {hasConnections ? (
+                  <div className="grid grid-cols-3 divide-x-2 items-center justify-between">
+                    {platforms.map(({ name, unlocked }) => (
+                      <div key={name} className="flex items-center justify-center gap-2">
+                        <div className={cn(
+                          'h-6 w-6 rounded-md border flex items-center justify-center shrink-0',
+                          unlocked ? 'bg-green-100 border-green-200' : 'bg-muted border-neutral-200',
+                        )}>
+                          {unlocked
+                            ? <Check className="h-2.5 w-2.5 text-green-600" />
+                            : <Lock className="h-2.5 w-2.5 text-muted-foreground" />
+                          }
+                        </div>
+                        <span className={cn('text-sm font-semibold', unlocked ? 'text-foreground' : 'text-muted-foreground line-through')}>
+                          {name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-2xl font-bold text-muted-foreground">—</p>
+                    <p className="text-xs text-muted-foreground">
+                      Disponibile con Connection Pack o piano Growth+
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )
       })()}
 

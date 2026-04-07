@@ -11,6 +11,8 @@
  *   if (err) return fail(err);
  */
 
+import { z } from "zod";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface BookingFields {
@@ -32,6 +34,27 @@ export interface PublicBookingFields {
   date: string;
   time: string;
 }
+
+// ─── Zod Schemas ─────────────────────────────────────────────────────────────
+
+export const PublicBookingSchema = z.object({
+  locationId: z.string().min(1, "ID sede mancante"),
+  organizationId: z.string().min(1, "ID organizzazione mancante"),
+  guestName: z
+    .string()
+    .min(2, "Nome troppo corto (min 2 caratteri)")
+    .max(100, "Nome troppo lungo (max 100 caratteri)"),
+  guestPhone: z
+    .string()
+    .min(7, "Numero di telefono non valido")
+    .max(25, "Numero di telefono non valido"),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato data non valido (atteso YYYY-MM-DD)"),
+  time: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Formato orario non valido (atteso HH:mm)"),
+});
 
 // ─── Validators ──────────────────────────────────────────────────────────────
 
@@ -65,19 +88,13 @@ export function validateGuestFields({
 }
 
 /**
- * Validates all required fields for a public (external) booking form.
+ * Validates all required fields for a public (external) booking form using Zod.
  * Returns an Italian-language error string, or `null` if valid.
  */
-export function validatePublicBookingFields({
-  locationId,
-  organizationId,
-  guestName,
-  guestPhone,
-  date,
-  time,
-}: PublicBookingFields): string | null {
-  if (!locationId || !organizationId || !guestName || !guestPhone || !date || !time) {
-    return "Compila tutti i campi obbligatori.";
+export function validatePublicBookingFields(fields: PublicBookingFields): string | null {
+  const result = PublicBookingSchema.safeParse(fields);
+  if (!result.success) {
+    return result.error.issues[0]?.message ?? "Dati non validi.";
   }
   return null;
 }

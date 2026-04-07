@@ -1,13 +1,49 @@
-import * as Sentry from "@sentry/nextjs";
+import { createHmac, timingSafeEqual } from "crypto";
+import { assertEnv } from "@/lib/env-check";
+
+assertEnv();
 import { NextRequest, NextResponse } from "next/server";
 import { WhatsAppWebhookPayload } from "@/lib/whatsapp";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { handleStatusUpdates } from "./_handlers/status";
+import { captureError, captureWarning } from "@/lib/monitoring";
 import {
   handleButtonClick,
   handleFlowCompletion,
   handleTextMessage,
 } from "./_handlers/messages";
+
+/**
+ * Verifies the X-Hub-Signature-256 header sent by Meta on every webhook event.
+ * Meta signs the raw body with HMAC-SHA256 using the Facebook App Secret.
+ * Uses timingSafeEqual to prevent timing-attack leakage.
+ *
+ * Returns true if verification passes or if META_APP_SECRET is not configured
+ * (allows gradual rollout; logs a warning so we notice it in GlitchTip).
+ */
+function verifyMetaSignature(rawBody: string, signature: string | null): boolean {
+  const appSecret = process.env.META_APP_SECRET;
+
+  if (!appSecret) {
+    // Non-blocking in dev/staging, but always visible in monitoring
+    captureWarning("META_APP_SECRET not configured — Meta webhook signature verification skipped", {
+      service: "whatsapp",
+      flow: "webhook_signature_validation",
+    });
+    return true;
+  }
+
+  if (!signature) return false;
+
+  const expected = "sha256=" + createHmac("sha256", appSecret).update(rawBody).digest("hex");
+
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    // Buffers of different length — timingSafeEqual throws, means mismatch
+    return false;
+  }
+}
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -30,7 +66,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: WhatsAppWebhookPayload = await req.json();
+    // Verify Meta signature before parsing body
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-hub-signature-256");
+
+    if (!verifyMetaSignature(rawBody, signature)) {
+      captureWarning("Meta webhook signature verification failed — request rejected", {
+        service: "whatsapp",
+        flow: "webhook_signature_validation",
+      });
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+
+    const body: WhatsAppWebhookPayload = JSON.parse(rawBody);
 
     if (
       body.entry &&
@@ -84,8 +132,7 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse("EVENT_RECEIVED", { status: 200 });
   } catch (error) {
-    Sentry.captureException(error);
-    console.error("Error processing webhook:", error);
+    captureError(error, { service: "whatsapp", flow: "webhook_handler" });
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

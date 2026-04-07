@@ -11,6 +11,7 @@ import {
   requestVerificationCode,
 } from "@/lib/whatsapp-registration";
 import { revalidatePath } from "next/cache";
+import { captureError } from "@/lib/monitoring";
 
 /**
  * Syncs the real Telnyx status (requirement group + number) for a location.
@@ -64,6 +65,7 @@ export async function syncTelnyxStatus(locationId: string) {
           results.push(`Req Group: già in sync (${telnyxStatus})`);
         }
       } catch (e: any) {
+        captureError(e, { service: "telnyx", flow: "sync_telnyx_status_req_group", locationId });
         results.push(`Req Group error: ${e.message}`);
       }
     } else {
@@ -111,6 +113,7 @@ export async function syncTelnyxStatus(locationId: string) {
           results.push("Numero non trovato tra owned numbers Telnyx");
         }
       } catch (e: any) {
+        captureError(e, { service: "telnyx", flow: "sync_telnyx_status_owned_numbers", locationId });
         results.push(`Owned numbers error: ${e.message}`);
       }
     }
@@ -118,6 +121,7 @@ export async function syncTelnyxStatus(locationId: string) {
     revalidatePath("/manage");
     return { success: true, message: results.join("\n") };
   } catch (error: any) {
+    captureError(error, { service: "telnyx", flow: "sync_telnyx_status", locationId });
     console.error("[Admin] Sync Error:", error);
     return { success: false, message: error.message };
   }
@@ -150,6 +154,7 @@ export async function manualPurchaseNumber(
     revalidatePath("/manage");
     return { success: true, message: "Number purchased successfully" };
   } catch (error: any) {
+    captureError(error, { service: "telnyx", flow: "manual_purchase_number", locationId });
     console.error("[Admin] Purchase Error:", error);
     return { success: false, message: error.message };
   }
@@ -193,6 +198,7 @@ export async function manualMetaRegistration(locationId: string) {
     revalidatePath("/manage");
     return { success: true, message: "Added to Meta WABA", metaPhoneId };
   } catch (error: any) {
+    captureError(error, { service: "whatsapp", flow: "manual_meta_registration", locationId });
     console.error("[Admin] Meta Add Error:", error);
     return { success: false, message: error.message };
   }
@@ -223,6 +229,7 @@ export async function manualVoiceVerification(locationId: string) {
     revalidatePath("/manage");
     return { success: true, message: "Voice Verification Requested" };
   } catch (error: any) {
+    captureError(error, { service: "whatsapp", flow: "manual_voice_verification", locationId });
     console.error("[Admin] Verify Error:", error);
     return { success: false, message: error.message };
   }

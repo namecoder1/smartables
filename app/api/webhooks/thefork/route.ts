@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { decryptConnectors } from "@/lib/business-connectors";
 import { handleTheForkReservation } from "./_handlers/reservation";
+import { captureError } from "@/lib/monitoring";
 
 // ── JWT verification ──────────────────────────────────────────────────────────
 // TheFork signs webhooks with HS256 JWT using the oauthClientSecret we provided.
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
       payload,
     );
   } catch (err) {
-    console.error("[TheFork webhook] Handler error:", err);
+    captureError(err, { service: "telnyx", flow: "thefork_reservation_handler", locationId: location.id, organizationId: location.organization_id });
     // Return 500 so TheFork retries
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

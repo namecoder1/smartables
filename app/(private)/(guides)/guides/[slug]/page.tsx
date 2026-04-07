@@ -154,7 +154,7 @@ export default async function GuidePage({ params }: Props) {
 
   const Icon = getGuideIcon(guide.icon)
   const [{ prev, next }, suggestedGuides] = await Promise.all([
-    getAdjacentGuides(slug, guide.category._id),
+    getAdjacentGuides(slug, guide.category.id),
     getSuggestedGuides(slug),
   ])
   const { intro, sections } = groupContentBySections(guide.content)

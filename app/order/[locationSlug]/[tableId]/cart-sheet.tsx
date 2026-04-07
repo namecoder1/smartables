@@ -65,7 +65,7 @@ export function CartSheet({
         <ScrollArea className="flex-1 max-h-[280px] bg-slate-50/50">
           <div className="px-5 py-6 space-y-4">
             {items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4" data-testid="cart-empty">
                 <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-2">
                   <ShoppingCart className="w-8 h-8 text-slate-300" />
                 </div>
@@ -83,6 +83,7 @@ export function CartSheet({
               items.map(item => (
                 <div
                   key={item.id}
+                  data-testid={`cart-item-${item.id}`}
                   className="group bg-white rounded-2xl p-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] border border-slate-100 flex gap-4 transition-all hover:shadow-md"
                 >
                   {/* Image Thumbnail (if available) */}
@@ -118,6 +119,7 @@ export function CartSheet({
                       <Button
                         variant="ghost"
                         size="icon"
+                        data-testid={`cart-remove-${item.id}`}
                         className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full -ml-2"
                         onClick={() => onRemoveItem(item.id)}
                       >
@@ -129,6 +131,7 @@ export function CartSheet({
                         <Button
                           variant="ghost"
                           size="icon"
+                          data-testid={`cart-minus-${item.id}`}
                           className="h-7 w-7 rounded-full bg-white shadow-sm hover:shadow text-slate-700 active:scale-90 transition-all"
                           onClick={() => {
                             if (item.quantity === 1) onRemoveItem(item.id);
@@ -137,12 +140,13 @@ export function CartSheet({
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </Button>
-                        <span className="w-8 text-center text-sm font-bold text-slate-800 tabular-nums">
+                        <span data-testid={`cart-qty-${item.id}`} className="w-8 text-center text-sm font-bold text-slate-800 tabular-nums">
                           {item.quantity}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
+                          data-testid={`cart-plus-${item.id}`}
                           className="h-7 w-7 rounded-full text-white shadow-sm hover:opacity-90 active:scale-90 transition-all"
                           style={{ backgroundColor: primaryColor }}
                           onClick={() => onUpdateQuantity(item.id, 1)}
@@ -167,10 +171,11 @@ export function CartSheet({
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-slate-500 text-sm">Totale ({items.reduce((acc, i) => acc + i.quantity, 0)} articoli)</span>
-                <span className="text-xl font-bold text-slate-900">€{total.toFixed(2)}</span>
+                <span data-testid="cart-total" className="text-xl font-bold text-slate-900">€{total.toFixed(2)}</span>
               </div>
 
               <Button
+                data-testid="cart-place-order"
                 className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-slate-200 active:scale-[0.98] transition-all"
                 onClick={onPlaceOrder}
                 disabled={isOrdering}

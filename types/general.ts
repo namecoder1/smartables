@@ -1,3 +1,70 @@
+// -- WABA Template Types --
+
+export type WabaTemplateStatus =
+  | 'DRAFT'       // created locally, not yet submitted to Meta
+  | 'PENDING'     // submitted to Meta, awaiting review
+  | 'APPROVED'    // approved by Meta, ready to use
+  | 'REJECTED'    // rejected by Meta (see rejection_reason)
+  | 'PAUSED'      // temporarily paused by Meta due to quality issues
+  | 'DISABLED';   // permanently disabled by Meta
+
+/** Purpose/context of the template — drives structure, required buttons, Meta category. */
+export type WabaTemplateType =
+  | 'recovery_open'     // replaces missed_call_open per-location when APPROVED
+  | 'recovery_closed'   // replaces missed_call_closed per-location when APPROVED
+  | 'booking_reminder'  // future: per-location override of verify_booking (Trigger.dev task)
+  | 'service_update'    // UTILITY, free structure (LLM gate active)
+  | 'promotion'         // MARKETING (€0.0572/conv IT), no LLM gate
+  | 'news'              // MARKETING (€0.0572/conv IT), no LLM gate
+  | 'custom';           // UTILITY, free structure (LLM gate active)
+
+export type WabaTemplateCategory = 'UTILITY' | 'MARKETING';
+
+/**
+ * Semantic role — stored locally in JSONB, never sent to Meta.
+ * Used by call.ts to inject canonical payloads at send time, preserving
+ * handleButtonClick logic regardless of the button display text.
+ */
+export type ButtonSemanticRole =
+  | 'supplier_flag'      // QUICK_REPLY → injects payload "fornitore"
+  | 'callback_request'   // QUICK_REPLY → injects payload "richiama"
+  | 'booking_flow'       // FLOW button → opens prenotazione_tavolo_v1
+  | 'menu_link'          // QUICK_REPLY → injects payload "menu"
+  | 'booking_confirm'    // QUICK_REPLY → injects payload "confermo"    (booking_reminder)
+  | 'booking_cancel'     // QUICK_REPLY → injects payload "annulla prenotazione"
+  | 'custom';            // no special runtime behavior
+
+export type WabaTemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE' | 'FLOW';
+
+export type WabaTemplateButton =
+  | { type: 'QUICK_REPLY'; text: string; semantic_role?: ButtonSemanticRole }
+  | { type: 'URL'; text: string; url: string; example?: string[]; semantic_role?: ButtonSemanticRole }
+  | { type: 'PHONE_NUMBER'; text: string; phone_number: string; semantic_role?: ButtonSemanticRole }
+  | { type: 'COPY_CODE'; example: string; semantic_role?: ButtonSemanticRole }
+  | { type: 'FLOW'; text: string; semantic_role: 'booking_flow' };  // flow_id injected at send time from env
+
+export type WabaTemplateComponent =
+  | { type: 'HEADER'; format: 'TEXT'; text: string }                             // max 60 chars
+  | { type: 'BODY'; text: string; example?: { body_text: string[][] } }          // max 768 chars; example.body_text[0] = sample values for {{N}}
+  | { type: 'FOOTER'; text: string }                                              // max 60 chars
+  | { type: 'BUTTONS'; buttons: WabaTemplateButton[] };                           // max 3 buttons
+
+export type WabaTemplate = {
+  id: string;                            // client-generated UUID
+  name: string;                          // snake_case, unique per WABA, used in Meta API calls
+  display_name: string;                  // human-readable label in the dashboard
+  template_type: WabaTemplateType;       // purpose/context — drives structure and required buttons
+  meta_template_id: string | null;       // assigned by Meta after submission
+  meta_status: WabaTemplateStatus;
+  rejection_reason: string | null;       // populated when meta_status = 'REJECTED'
+  language: string;                      // e.g. 'it', 'en'
+  category: WabaTemplateCategory;        // UTILITY or MARKETING — derived from template_type
+  components: WabaTemplateComponent[];
+  created_at: string;
+  updated_at: string;
+  last_synced_at: string | null;         // last time we polled/received status from Meta
+};
+
 // -- Main DB Types --
 
 export type NotificationType = 'new_booking' | 'new_customer' | 'new_order' | 'whatsapp_limit_warning' | 'voice_otp_failed';
@@ -149,6 +216,7 @@ export type Location = {
   business_connectors?: string | null; // Encrypted BusinessConnectors JSON (AES-256-GCM)
   thefork_restaurant_id?: string | null;
   voice_otp_retry_count?: number;
+  waba_templates: WabaTemplate[];      // Custom WABA templates for this location (10/30/50 per tier)
 };
 
 export type MenuLocation = {
@@ -201,6 +269,7 @@ export type AddonConfig = {
   extra_locations: number;
   extra_kb_chars: number;
   extra_analytics: number;
+  extra_connections: number;
 };
 
 export type PlanLimits = {
@@ -271,7 +340,7 @@ export type Profile = {
   id: string;
   organization_id: string;
   full_name: string;
-  role: string;
+  role: "owner" | "admin" | "staff";
   created_at: string;
   email: string;
   accessible_locations: string[] | null;

@@ -41,7 +41,7 @@ const ClientsTable = ({
     return (
       <NoItems
         variant='children'
-        icon={<CircleQuestionMark className="w-6 h-6 text-foreground" />}
+        icon={<CircleQuestionMark size={28} className='text-primary' />}
         title="Nessun cliente"
         description="Non ci sono clienti registrati per questa sede."
       />

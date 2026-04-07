@@ -76,7 +76,7 @@ const PLANS = [
       process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS_YEAR ||
       "price_1SusBKDmWHgnXPDyyetBeNzy",
     limits: {
-      max_locations: 5,
+      max_locations: 10,
       max_staff: 9999,
       monthly_reservations: 3000,
       whatsapp_conversation_limit: 1000,

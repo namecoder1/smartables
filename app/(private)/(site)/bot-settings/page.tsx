@@ -4,7 +4,7 @@ import { getFaqsByTopic } from '@/utils/sanity/queries'
 import BotView from './bot-view'
 
 export const metadata: Metadata = {
-  title: "Gestione WhatsApp",
+  title: "Impostazioni Bot",
   description: "Gestisci il profilo WhatsApp, le richieste di richiamata e i contatti automatici.",
 }
 

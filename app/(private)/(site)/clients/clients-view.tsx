@@ -247,8 +247,8 @@ const ClientsView = ({
       </div>
 
 
-          <Card className='pt-0 gap-0'>
-            <CardHeader className="border-b-2 py-5 gap-x-10 gap-y-3 flex flex-wrap items-center justify-between">
+          <Card className='py-0 gap-0'>
+            <CardHeader className="border-b-2 p-5 gap-x-10 gap-y-3 flex flex-wrap items-center justify-between">
               <CardTitle className="text-lg font-bold tracking-tight">
                 Lista Clienti
               </CardTitle>
@@ -262,7 +262,7 @@ const ClientsView = ({
                 />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-0!'>
               <div className="w-full">
                 <ClientsTable
                   data={filteredData}

@@ -1,9 +1,5 @@
-import React from 'react'
+import { ReactNode } from 'react'
 
-const DocsLayout = () => {
-  return (
-    <div>DocsLayout</div>
-  )
+export default function DocsLayout({ children }: { children: ReactNode }) {
+  return <>{children}</>
 }
-
-export default DocsLayout

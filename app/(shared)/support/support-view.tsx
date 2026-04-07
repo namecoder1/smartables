@@ -1,20 +1,28 @@
 'use client'
 
 import Link from 'next/link'
-import { Search, Book, User, CreditCard, MessageCircle, Mail, ArrowRight, Phone, Clock, Shield, Zap, HelpCircle, FileText, Settings, Smartphone } from 'lucide-react'
+import { Search, Book, User, CreditCard, MessageCircle, Mail, ArrowRight, Phone, Clock, Shield, Zap, FileText, Settings, Smartphone, Dot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { motion } from 'framer-motion'
+import { mapArticleCategory, SanityArticleCard } from '@/utils/sanity/queries'
+import { getDocSectionIcon } from '@/utils/sanity/icons'
 
-const SupportView = () => {
+const SupportView = ({
+  articles,
+  sections
+} : {
+  articles: SanityArticleCard[],
+  sections: any[]
+}) => {
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans">
       <Hero />
       <StatsSection />
-      <HelpTopics />
-      <PopularArticlesSection />
+      <HelpSections sections={sections} />
+      <PopularArticlesSection articles={articles} />
       <ContactSection />
       <FAQSection />
       <CTASection />
@@ -107,60 +115,11 @@ const StatsSection = () => {
   )
 }
 
-const HelpTopics = () => {
-  const topics = [
-    {
-      icon: Book,
-      color: "blue",
-      title: "Primi passi",
-      description: "Tutto ciò che serve per configurare il tuo ristorante.",
-      items: ["Configurazione account", "Importazione menu", "Setup stampanti", "Prima prenotazione"]
-    },
-    {
-      icon: User,
-      color: "green",
-      title: "Account & Team",
-      description: "Gestisci permessi, utenti e impostazioni profilo.",
-      items: ["Aggiungi collaboratori", "Permessi e ruoli", "Sicurezza account", "Multi-sede"]
-    },
-    {
-      icon: CreditCard,
-      color: "purple",
-      title: "Fatturazione",
-      description: "Gestisci abbonamenti, metodi di pagamento e fatture.",
-      items: ["Storico fatture", "Modifica pagamento", "Piani e upgrade", "Disdetta"]
-    },
-    {
-      icon: Smartphone,
-      color: "orange",
-      title: "App Mobile",
-      description: "Guida completa all'utilizzo dell'app per lo staff.",
-      items: ["Download app", "Notifiche push", "Gestione ordini", "Sincronizzazione"]
-    },
-    {
-      icon: MessageCircle,
-      color: "teal",
-      title: "WhatsApp Bot",
-      description: "Configura e ottimizza il tuo assistente WhatsApp.",
-      items: ["Attivazione bot", "Risposte automatiche", "Prenotazioni via chat", "Statistiche"]
-    },
-    {
-      icon: Settings,
-      color: "gray",
-      title: "Impostazioni",
-      description: "Personalizza ogni aspetto della tua piattaforma.",
-      items: ["Orari apertura", "Gestione tavoli", "Notifiche email", "Integrazioni"]
-    }
-  ]
-
-  const colorClasses: Record<string, { bg: string; text: string, border: string }> = {
-    blue: { bg: "bg-blue-100", text: "text-blue-600", border: 'border-blue-300/60' },
-    green: { bg: "bg-green-100", text: "text-green-600", border: 'border-green-300/60' },
-    purple: { bg: "bg-purple-100", text: "text-purple-600", border: 'border-purple-300/60' },
-    orange: { bg: "bg-orange-100", text: "text-orange-600", border: 'border-orange-300/60' },
-    teal: { bg: "bg-teal-100", text: "text-teal-600", border: 'border-teal-300/60' },
-    gray: { bg: "bg-gray-100", text: "text-gray-600", border: 'border-gray-300/60' },
-  }
+const HelpSections = ({
+  sections
+} : {
+  sections: any[]
+}) => {
 
   return (
     <section className="py-20 bg-white">
@@ -179,52 +138,48 @@ const HelpTopics = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {topics.map((topic, index) => (
+          {sections.map((section) => {
+            const IconComponent = getDocSectionIcon(section.icon)
+            return (
             <motion.div
-              key={index}
+              key={section.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
+              transition={{ duration: 0.4, delay: section.id * 0.1 }}
             >
               <Card className="hover:shadow-md transition-shadow border-gray-200 cursor-pointer group h-full bg-neutral-50">
                 <CardHeader className='flex gap-4 flex-row items-start'>
-                  <div className={`w-12 h-12 ${colorClasses[topic.color].bg} border-2 ${colorClasses[topic.color].border} flex items-center justify-center rounded-xl mb-4 group-hover:scale-110 transition-transform`}>
-                    <topic.icon className={`w-6 h-6 ${colorClasses[topic.color].text}`} />
+                  <div style={{ backgroundColor: section.bgColor}} className={`w-12 h-12 flex items-center justify-center rounded-xl mb-4 group-hover:scale-110 transition-transform`}>
+                    <IconComponent color={section.iconColor} className="w-6 h-6" />
                   </div>
                   <div className=' flex-1 space-y-2'>
-                    <CardTitle className="text-gray-900">{topic.title}</CardTitle>
-                    <CardDescription className="text-gray-500">{topic.description}</CardDescription>
+                    <CardTitle className="text-gray-900">{section.title}</CardTitle>
+                    <CardDescription className="text-gray-500">{section.description}</CardDescription>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 text-sm text-gray-600">
-                    {topic.items.map((item, i) => (
-                      <li key={i} className="hover:text-primary transition-colors flex items-center gap-2">
-                        <ArrowRight className="w-3 h-3" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                <CardContent className='flex flex-col gap-1'>
+                  {section.topics.map((topic: any) => (
+                    <Link className='flex items-center gap-1 hover:text-primary' href={`/docs/${section.slug}/${topic.slug}`} key={topic.id}>
+                      <Dot /><p>{topic.title}</p>
+                    </Link>
+                  ))}
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
   )
 }
 
-const PopularArticlesSection = () => {
-  const articles = [
-    { title: "Come configurare il menu digitale", category: "Primi passi", readTime: "3 min" },
-    { title: "Gestire le prenotazioni dal pannello", category: "Prenotazioni", readTime: "5 min" },
-    { title: "Attivare il bot WhatsApp", category: "WhatsApp", readTime: "4 min" },
-    { title: "Aggiungere un nuovo membro del team", category: "Team", readTime: "2 min" },
-    { title: "Scaricare le fatture mensili", category: "Fatturazione", readTime: "2 min" },
-    { title: "Configurare le notifiche email", category: "Impostazioni", readTime: "3 min" },
-  ]
+const PopularArticlesSection = ({
+  articles
+} : {
+  articles: SanityArticleCard[]
+}) => {
 
   return (
     <section className="py-20 bg-gray-50">
@@ -241,7 +196,7 @@ const PopularArticlesSection = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          {articles.map((article, index) => (
+          {articles.slice(0,6).map((article, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
@@ -249,15 +204,15 @@ const PopularArticlesSection = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
             >
-              <Link href="#" className="block rounded-3xl bg-white p-5 border border-gray-200 hover:scale-101 hover:border-primary/40 duration-300 transition-all group">
+              <Link href={`/blog/${article.slug}`} className="block rounded-3xl bg-white p-5 border border-gray-200 hover:scale-101 hover:border-primary/40 duration-300 transition-all group">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="text-xs font-medium text-primary mb-2 block">{article.category}</span>
+                    <span className="text-xs font-medium text-primary mb-2 block">{mapArticleCategory(article.category)}</span>
                     <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
                       {article.title}
                     </h3>
                   </div>
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{article.readTime}</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{article.readingTime} min</span>
                 </div>
               </Link>
             </motion.div>
@@ -271,10 +226,10 @@ const PopularArticlesSection = () => {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="text-center mt-8"
         >
-          <button className="flex items-center gap-2 px-4 py-2 w-fit mx-auto rounded-full border-gray-300 text-gray-700 hover:bg-gray-100">
+          <Link href='/blog' className="cursor-pointer flex items-center gap-2 px-4 py-2 w-fit mx-auto rounded-full border-gray-300 text-gray-700 hover:bg-gray-100">
             Vedi tutti gli articoli
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </Link>
         </motion.div>
       </div>
     </section>

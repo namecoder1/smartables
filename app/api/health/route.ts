@@ -3,6 +3,8 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+const startTime = Date.now();
+
 export async function GET() {
   try {
     const supabase = createAdminClient();
@@ -15,7 +17,7 @@ export async function GET() {
 
     if (error) {
       return NextResponse.json(
-        { status: "degraded", db: "error" },
+        { status: "degraded", db: "error", version: process.env.npm_package_version ?? "unknown" },
         { status: 503 },
       );
     }
@@ -23,11 +25,13 @@ export async function GET() {
     return NextResponse.json({
       status: "ok",
       timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version ?? "unknown",
+      uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
       db: "ok",
     });
   } catch {
     return NextResponse.json(
-      { status: "error" },
+      { status: "error", version: process.env.npm_package_version ?? "unknown" },
       { status: 503 },
     );
   }

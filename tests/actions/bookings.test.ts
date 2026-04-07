@@ -29,6 +29,8 @@ describe("bookings actions", () => {
       eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       single: vi.fn().mockReturnThis(),
+      // check_booking_capacity RPC — always returns available
+      rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
     };
     (createClient as any).mockResolvedValue(mockSupabase);
   });

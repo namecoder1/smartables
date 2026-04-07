@@ -1,4 +1,4 @@
-import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, Settings, Store, Users, Building2, TrendingUp, Activity, ShieldCheck, MessageSquare } from "lucide-react"
+import { BookCopy, Calendar, ChartSpline, BadgeQuestionMark, CreditCard, Home, Settings, Store, Users, Building2, TrendingUp, Activity, ShieldCheck, MessageSquare, Package } from "lucide-react"
 import { PiForkKnifeFill } from "react-icons/pi";
 import { GrConnect } from "react-icons/gr";
 import { RiTeamFill } from "react-icons/ri";
@@ -126,6 +126,11 @@ export const routes = {
           icon: FaWhatsapp,
         },
         {
+          title: "Template Bot",
+          url: "/bot-templates",
+          icon: FaWhatsapp,
+        },
+        {
           title: "Memoria Bot",
           url: "/bot-memory",
           icon: LuBotMessageSquare,
@@ -209,5 +214,10 @@ export const adminRoutes = [
     label: "System Health",
     url: "/health",
     icon: Activity,
+  },
+  {
+    label: "Addon Management",
+    url: "/addons",
+    icon: Package,
   },
 ] as RouteEntry[]

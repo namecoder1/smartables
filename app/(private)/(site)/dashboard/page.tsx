@@ -54,7 +54,7 @@ export default async function DashboardPage({
         .select('*')
         .eq('organization_id', profile.organization_id)
 
-      if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+      if (profile.role !== "admin" && profile.role !== "owner" && profile.accessible_locations && profile.accessible_locations.length > 0) {
         locationsQuery = locationsQuery.in('id', profile.accessible_locations)
       }
 

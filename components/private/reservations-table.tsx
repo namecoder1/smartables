@@ -132,7 +132,7 @@ const ReservationsTable = ({
   if (!data || data.length === 0) {
     return (
       <NoItems
-        icon={<CircleQuestionMark className="w-10 h-10 text-foreground" />}
+        icon={<CircleQuestionMark size={28} className='text-primary' />}
         title="Nessuna prenotazione"
         description="Non ci sono prenotazioni per questo periodo."
       />

@@ -1,6 +1,7 @@
 import { task } from "@trigger.dev/sdk/v3";
 import { createClient } from "@supabase/supabase-js";
 import { getCalendarAccessTokenAdmin } from "@/lib/google-calendar";
+import { captureError } from "@/lib/monitoring";
 
 function getSupabaseAdmin() {
   return createClient(
@@ -60,14 +61,19 @@ export const syncBookingToGcal = task({
       );
       // 404 = already deleted on Google side, that's fine
       if (!res.ok && res.status !== 404 && res.status !== 410) {
-        throw new Error(`GCal DELETE failed: ${res.status}`);
+        const err = new Error(`GCal DELETE failed: ${res.status}`);
+        captureError(err, { service: "google_calendar", flow: "sync_booking_delete", locationId: payload.locationId, bookingId: payload.bookingId, googleEventId: payload.googleEventId });
+        throw err;
       }
       // Clear google_event_id from booking if we know the bookingId
       if (payload.bookingId) {
-        await supabase
+        const { error: clearErr } = await supabase
           .from("bookings")
           .update({ google_event_id: null })
           .eq("id", payload.bookingId);
+        if (clearErr) {
+          captureError(clearErr, { service: "supabase", flow: "sync_booking_delete_clear_event_id", locationId: payload.locationId, bookingId: payload.bookingId });
+        }
       }
       return { ok: true, action: "deleted" };
     }
@@ -106,7 +112,9 @@ export const syncBookingToGcal = task({
       if (res.status === 404 || res.status === 410) {
         // Event was deleted on Google side — fall through to create a new one
       } else if (!res.ok) {
-        throw new Error(`GCal PATCH failed: ${res.status}`);
+        const err = new Error(`GCal PATCH failed: ${res.status}`);
+        captureError(err, { service: "google_calendar", flow: "sync_booking_update", locationId: payload.locationId, bookingId: payload.bookingId });
+        throw err;
       } else {
         return { ok: true, action: "updated", googleEventId: booking.google_event_id };
       }
@@ -122,15 +130,20 @@ export const syncBookingToGcal = task({
       },
     );
     if (!res.ok) {
-      throw new Error(`GCal POST failed: ${res.status}`);
+      const err = new Error(`GCal POST failed: ${res.status}`);
+      captureError(err, { service: "google_calendar", flow: "sync_booking_create", locationId: payload.locationId, bookingId: payload.bookingId });
+      throw err;
     }
     const created = await res.json();
 
     // Save google_event_id back to booking
-    await supabase
+    const { error: saveErr } = await supabase
       .from("bookings")
       .update({ google_event_id: created.id })
       .eq("id", booking.id);
+    if (saveErr) {
+      captureError(saveErr, { service: "supabase", flow: "sync_booking_create_save_event_id", locationId: payload.locationId, bookingId: booking.id });
+    }
 
     return { ok: true, action: "created", googleEventId: created.id };
   },

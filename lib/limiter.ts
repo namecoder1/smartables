@@ -20,7 +20,9 @@ export type ResourceType =
   | "zones"
   | "bookings"
   | "kb_chars"
-  | "analytics";
+  | "analytics"
+  | "connections"
+  | "waba_templates";
 
 export type ResourceAvailability = {
   allowed: boolean;
@@ -171,6 +173,31 @@ export async function checkResourceAvailability(
       const hasAddon = addons.extra_analytics > 0;
       const allowed = tier === "growth" || tier === "business" || hasAddon;
       return { allowed, current: hasAddon ? 1 : 0, limit: 1, remaining: allowed ? 1 : 0 };
+    }
+
+    case "connections": {
+      const tier: string = (org as any).billing_tier ?? "starter";
+      const hasAddon = addons.extra_connections > 0;
+      const allowed = tier === "growth" || tier === "business" || hasAddon;
+      return { allowed, current: hasAddon ? 1 : 0, limit: 1, remaining: allowed ? 1 : 0 };
+    }
+
+    case "waba_templates": {
+      const tier: string = (org as any).billing_tier ?? "starter";
+      // 5/12/20 keeps total WABA template usage well under the 6 000-template cap
+      // for agency-model (single WABA shared across all orgs). Revisit when
+      // approaching 500 active clients or migrating to per-org WABA.
+      const planLimit = tier === "business" ? 20 : tier === "growth" ? 12 : 5;
+      // Count custom templates across all locations of this org
+      const { data: locs } = await supabase
+        .from("locations")
+        .select("waba_templates")
+        .eq("organization_id", orgId);
+      const current = (locs ?? []).reduce(
+        (sum, loc) => sum + ((loc.waba_templates as unknown[]) ?? []).length,
+        0,
+      );
+      return build(current, planLimit);
     }
 
     default:

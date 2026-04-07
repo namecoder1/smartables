@@ -24,7 +24,7 @@ export const ResourcesSection = async () => {
         <div className="divide-y-2">
           {resources.map((resource) => (
             <ResourceItem
-              key={resource._id}
+              key={resource.id}
               title={resource.title}
               description={resource.excerpt}
               iconName={resource.icon}

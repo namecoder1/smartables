@@ -121,7 +121,7 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
 
   if (!menus || menus.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center space-y-4">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center space-y-4" data-testid="no-menu-message">
         <CircleQuestionMark color={primaryColor} size={48} />
         <h1 className="text-2xl font-bold">Nessun menu attivo</h1>
         <p>Non c'è un menu attivo collegato a questa sede.</p>
@@ -166,10 +166,11 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
           </div>
         </div>
 
-        <div className="w-full max-w-md px-4 -mt-8 z-20 pb-20 space-y-4">
+        <div className="w-full max-w-md px-4 -mt-8 z-20 pb-20 space-y-4" data-testid="menu-selection">
           {menus.map((menu) => (
             <Card
               key={menu.id}
+              data-testid={`menu-card-${menu.id}`}
               className="p-6 cursor-pointer hover:shadow-lg transition-all border-slate-100 hover:border-primary active:scale-[0.98] bg-white rounded-xl shadow-md"
               style={{ borderColor: "transparent" }}
               onClick={() => setSelectedMenu(menu)}
@@ -222,6 +223,7 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
 
           {!selectedMenu.pdf_url && (
             <div
+              data-testid="cart-open-button"
               className="w-9 h-9 rounded-full flex relative items-center justify-center bg-slate-100 text-slate-600 cursor-pointer hover:bg-slate-200 transition-colors"
               onClick={() => setCartOpen(true)}
             >
@@ -247,6 +249,7 @@ export function OrderClient({ location, table, menus, bookingName }: OrderData) 
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-3xl z-50 animate-in slide-in-from-bottom-4 duration-500 ease-out">
           <Button
             size="lg"
+            data-testid="view-order-button"
             className="w-full h-16 rounded-4xl shadow-2xl shadow-slate-900/20 flex items-center justify-between px-6 text-base font-bold text-white transition-transform active:scale-[0.98]"
             style={{
               background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,

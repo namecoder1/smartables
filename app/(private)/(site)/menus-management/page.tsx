@@ -39,7 +39,7 @@ const ManageMenus = async () => {
     .single()
 
 
-  if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+  if (profile.role !== "admin" && profile.role !== "owner" && profile.accessible_locations && profile.accessible_locations.length > 0) {
     locationsQuery = locationsQuery.in('id', profile.accessible_locations)
   }
 

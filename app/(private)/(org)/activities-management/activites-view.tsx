@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Store, Pencil, Trash2, Loader2, Info, UtensilsCrossed, MapPin, Phone, Users, Clock } from "lucide-react";
+import { Plus, Store, Pencil, Trash2, Loader2, UtensilsCrossed, MapPin, Phone, Users, Clock, Building2, ReceiptEuro } from "lucide-react";
+import { toast } from "sonner";
 import { WeeklyHoursSelector } from "@/components/utility/weekly-hours-selector";
 import { PhoneInput } from "@/components/ui/phone-input";
 import PageWrapper from "@/components/private/page-wrapper";
@@ -50,6 +51,10 @@ const ActivitiesView = ({
   const [isPending, startTransition] = useTransition();
 
   const selectedOrganizationId = organization?.id;
+
+  const baseLocations = organization?.billing_tier === "starter" ? 1 : organization?.billing_tier === "growth" ? 3 : 10;
+  const maxLocations = baseLocations + (organization?.addons_config?.extra_locations ?? 0);
+  const atLocationLimit = locations.length >= maxLocations;
 
   const fetchLocations = async () => {
     if (!selectedOrganizationId) return;
@@ -110,8 +115,7 @@ const ActivitiesView = ({
         setSheetOpen(false);
         fetchLocations();
       } else {
-        console.error("Operation failed");
-        alert("Operation failed");
+        toast.error("Operazione fallita", { description: "Si è verificato un errore. Riprova." });
       }
     });
   };
@@ -122,8 +126,7 @@ const ActivitiesView = ({
       if (result.success) {
         fetchLocations();
       } else {
-        console.error("Delete failed");
-        alert("Delete failed");
+        toast.error("Eliminazione fallita", { description: "Si è verificato un errore. Riprova." });
       }
     });
   };
@@ -154,7 +157,7 @@ const ActivitiesView = ({
             title="Aiuto"
             faqs={faqs}
           />
-          <Button onClick={handleOpenAdd} disabled={organization?.billing_tier === "starter"}>
+          <Button onClick={handleOpenAdd} disabled={atLocationLimit}>
             <Plus className="h-4 w-4" /> Aggiungi
           </Button>
         </ButtonGroup>
@@ -170,15 +173,15 @@ const ActivitiesView = ({
           },
           {
             title: 'Sedi massime',
-            value: organization.billing_tier === "starter" ? 1 : organization.billing_tier === "growth" ? 3 : 5,
+            value: maxLocations,
             description: 'sedi',
-            icon: <Store className="text-primary size-6 2xl:size-8" />
+            icon: <Building2 className="text-primary size-6 2xl:size-8" />
           },
           {
             title: 'Il tuo abbonamento',
             value: organization.billing_tier.charAt(0).toUpperCase() + organization.billing_tier.slice(1),
             description: '',
-            icon: <Store className="text-primary size-6 2xl:size-8" />
+            icon: <ReceiptEuro className="text-primary size-6 2xl:size-8" />
           }
         ]}
       />
@@ -187,7 +190,7 @@ const ActivitiesView = ({
         <TooltipTrigger asChild>
           <Button
             onClick={handleOpenAdd}
-            disabled={organization?.billing_tier === "starter"}
+            disabled={atLocationLimit}
             className="absolute bottom-6 right-6 flex xl:hidden"
           >
             <Plus className="h-4 w-4" /> Aggiungi
@@ -199,11 +202,10 @@ const ActivitiesView = ({
       </Tooltip>
 
       {/* Info Box */}
-      <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-4">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="flex items-start gap-3 rounded-3xl border-2 border-border border-dashed bg-card p-4">
         <div className="space-y-1">
-          <p className="font-medium text-sm">Gestisci più di una sede?</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="font-semibold text-lg">Gestisci più di una sede?</p>
+          <p className="text-base text-muted-foreground">
             Ogni sede ha il proprio indirizzo e orari di apertura specifici. Aggiungere una sede nuova permette di gestire le prenotazioni separatamente.
           </p>
         </div>
@@ -337,9 +339,8 @@ const LocationCard = ({
   onDeleteConfirm: (id: string) => void
 }) => {
   return (
-    <Card key={loc.id} className="group relative overflow-hidden">
-      <CardHeader>
-        <div className="flex items-start justify-between">
+    <Card key={loc.id} className="group relative overflow-hidden pt-0">
+      <CardHeader className="p-5 border-b-2 flex items-start justify-between">
           <CardTitle className="flex items-center gap-2">
             <h3 className="truncate tracking-tight font-bold text-2xl">{loc.name}</h3>
           </CardTitle>
@@ -359,7 +360,6 @@ const LocationCard = ({
               },
             ]}
           />
-        </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="flex items-start gap-3 text-foreground">

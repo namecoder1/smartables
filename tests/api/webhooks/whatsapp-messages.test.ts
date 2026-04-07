@@ -27,6 +27,9 @@ vi.mock("@trigger.dev/sdk/v3", () => ({
 vi.mock("@/trigger/verify-booking", () => ({ verifyBooking: {} }));
 vi.mock("@/trigger/request-review", () => ({ requestReview: {} }));
 vi.mock("@/trigger/reply-to-message", () => ({ replyToMessage: {} }));
+vi.mock("@/lib/monitoring", () => ({ captureError: vi.fn(), captureCritical: vi.fn(), captureWarning: vi.fn() }));
+vi.mock("@/lib/notifications", () => ({ checkWhatsAppLimitNotification: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/booking-notifications", () => ({ sendBookingPush: vi.fn().mockResolvedValue(undefined) }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +47,7 @@ function makeSupabase(opts: {
   const existingCustomer = opts.existingCustomer !== undefined ? opts.existingCustomer : CUSTOMER;
 
   return {
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
     from: vi.fn().mockImplementation((table: string) => {
       if (table === "locations") {
         return {
@@ -200,7 +204,9 @@ describe("handleButtonClick", () => {
     const { handleButtonClick } = await import(
       "@/app/api/webhooks/whatsapp/_handlers/messages"
     );
-    const message = { from: FROM, button: { payload: "annulla" }, id: "m1" };
+    // Same payload as "cancels booking" test — matches "non ci sarò" branch
+    // Note: cannot use "annulla prenotazione" because "prenotazione" contains "prenota" which hits a different branch
+    const message = { from: FROM, button: { payload: "Non ci sarò, annulla" }, id: "m1" };
     await handleButtonClick(supabase as any, message as any, VALUE, PHONE_ID);
 
     expect(mockSendWhatsAppText).toHaveBeenCalledWith(
@@ -259,6 +265,7 @@ describe("handleTextMessage", () => {
   it("returns EVENT_RECEIVED without sending reply when bot is paused", async () => {
     const pausedCustomer = {
       ...CUSTOMER,
+      bsuid: "bsuid_cust_1", // set bsuid so upsertCustomerAndGetThread skips the bsuid-update branch
       bot_paused_until: new Date(Date.now() + 3600_000).toISOString(), // 1h from now
     };
     const supabase = makeSupabase({ existingCustomer: pausedCustomer });

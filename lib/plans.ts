@@ -10,8 +10,8 @@ export const PLANS = [
     priceIdYear: !isDev()
       ? process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_YEAR
       : "price_1Sus34DmWHgnXPDyVEgoctUN",
-    priceMonth: 79,
-    priceYear: 790,
+    priceMonth: 59,
+    priceYear: 590,
     features: [
       "1 Sede",
       "5 Account Staff",
@@ -37,8 +37,8 @@ export const PLANS = [
     priceIdYear: !isDev()
       ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEAR
       : "price_1SusAiDmWHgnXPDyR4O5kF2O",
-    priceMonth: 99,
-    priceYear: 990,
+    priceMonth: 129,
+    priceYear: 1290,
     features: [
       "3 Sedi",
       "15 Account Staff",
@@ -66,8 +66,8 @@ export const PLANS = [
     priceIdYear: !isDev()
       ? process.env.NEXT_PUBLIC_STRIPE_PRICE_BUSINESS_YEAR
       : "price_1SusBKDmWHgnXPDyyetBeNzy",
-    priceMonth: 199,
-    priceYear: 1990,
+    priceMonth: 229,
+    priceYear: 2290,
     features: [
       "10 Sedi",
       "Account Staff Illimitati",

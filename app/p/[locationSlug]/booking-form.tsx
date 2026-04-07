@@ -171,7 +171,7 @@ export function BookingForm({
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-2 space-y-4">
+      <div className="flex flex-col items-center justify-center text-center py-2 space-y-4" data-testid="booking-success">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-2">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
@@ -196,6 +196,7 @@ export function BookingForm({
         <Button
           className="mt-6 w-full"
           variant="outline"
+          data-testid="booking-reset"
           onClick={() => {
             setSuccess(false);
             setDate(new Date());
@@ -228,6 +229,7 @@ export function BookingForm({
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
+                  data-testid="booking-date-trigger"
                   className={cn(
                     "w-full justify-start text-left font-normal py-6 px-4 rounded-xl border-2 border-slate-200",
                     !date && "text-muted-foreground"
@@ -273,7 +275,7 @@ export function BookingForm({
           <div className="space-y-2">
             <Label>Orario</Label>
             <Select value={time} onValueChange={setTime} disabled={!date || timeSlots.length === 0}>
-              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <SelectTrigger data-testid="booking-time-trigger" className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
                   <SelectValue placeholder={!date ? "Seleziona data" : (timeSlots.length === 0 ? "Chiuso" : "--")} />
@@ -290,7 +292,7 @@ export function BookingForm({
           <div className="space-y-2">
             <Label>Ospiti</Label>
             <Select value={guests} onValueChange={setGuests}>
-              <SelectTrigger className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <SelectTrigger data-testid="booking-guests-trigger" className="w-full py-6 px-4 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-400" />
                   <SelectValue placeholder="2" />
@@ -316,6 +318,7 @@ export function BookingForm({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              data-testid="booking-name"
             />
           </div>
         </div>
@@ -330,6 +333,7 @@ export function BookingForm({
               onChange={setPhone}
               defaultCountry="IT"
               className="rounded-xl border-2 border-slate-200 h-13"
+              data-testid="booking-phone"
             />
           </div>
         </div>
@@ -342,6 +346,7 @@ export function BookingForm({
             className="resize-none rounded-xl border-slate-200 min-h-[80px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            data-testid="booking-notes"
           />
         </div>
 
@@ -360,6 +365,7 @@ export function BookingForm({
 
       <Button
         type="submit"
+        data-testid="booking-submit"
         className="w-full py-6 text-lg rounded-xl shadow-lg transition-transform active:scale-[0.98] mt-4"
         disabled={loading}
         style={{

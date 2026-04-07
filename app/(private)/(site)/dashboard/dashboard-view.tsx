@@ -366,7 +366,7 @@ const DashboardView = ({
             lineColor={getLineColor(stats.avgTicket.trendType)}
           />
         </div>
-        <div className='bg-card text-card-foreground rounded-xl flex flex-col items-center gap-2 border-2 py-6 px-4 shadow-sm'>
+        <div className='bg-card text-card-foreground rounded-3xl flex flex-col items-center gap-2 border-2 py-6 px-4 shadow-sm'>
           <h2 className='text-lg text-muted-foreground text-left mr-auto font-semibold tracking-tight px-2'>Canale</h2>
           <div className='w-full max-w-70 mx-auto'>
             <DonutPie data={analysisBookings} />

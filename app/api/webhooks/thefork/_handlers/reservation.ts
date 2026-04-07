@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { captureCritical, captureWarning } from "@/lib/monitoring";
 
 // ── TheFork POS API — payload types ──────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export async function handleTheForkReservation(
 
   const notes = buildNotes(table, payload);
 
-  await supabase.from("bookings").insert({
+  const { error: bookingError } = await supabase.from("bookings").insert({
     organization_id: organizationId,
     location_id: locationId,
     customer_id: customerId,
@@ -100,6 +101,10 @@ export async function handleTheForkReservation(
     allergies: customer?.allergies?.join(", ") || null,
     notes,
   });
+
+  if (bookingError) {
+    captureCritical(bookingError, { service: "supabase", flow: "thefork_booking_creation", locationId, organizationId, mealUuid });
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -189,7 +194,10 @@ async function enrichCustomer(
     updates.name = [customer.firstName, customer.lastName].filter(Boolean).join(" ");
   }
 
-  await supabase.from("customers").update(updates).eq("id", customerId);
+  const { error: enrichError } = await supabase.from("customers").update(updates).eq("id", customerId);
+  if (enrichError) {
+    captureWarning("Failed to enrich customer from TheFork", { service: "supabase", flow: "thefork_customer_enrichment", customerId });
+  }
 }
 
 function buildMetadata(customer: TheForkCustomer): Record<string, unknown> {

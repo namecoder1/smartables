@@ -73,6 +73,7 @@ export async function submitOnboarding(formData: FormData) {
       organization_id: orgData.id,
       full_name: fullName,
       email: user.email,
+      role: "owner",
     })
     .eq("id", user.id);
 

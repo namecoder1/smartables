@@ -146,7 +146,7 @@ export default async function OrganizationsPage() {
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="py-0">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -247,8 +247,8 @@ function SummaryCard({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <Card className={`py-0 ${value > 0 ? "" : "opacity-50"}`}>
-      <CardContent className={`p-4 flex items-center gap-3 ${bg} rounded-xl`}>
+    <Card className={`py-0 ${value > 0 ? "" : "opacity-70"}`}>
+      <CardContent className={`p-4 flex items-center gap-3 ${bg} rounded-3xl`}>
         <Icon className={`h-5 w-5 ${color} shrink-0`} />
         <div>
           <p className={`text-2xl font-bold ${color}`}>{value}</p>

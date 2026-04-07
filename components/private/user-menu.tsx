@@ -8,20 +8,35 @@ import { LuCircleUserRound } from "react-icons/lu";
 import Link from 'next/link'
 import { Profile } from '@/types/general'
 import { logout } from '@/utils/supabase/actions'
-import { useTheme } from 'next-themes'
 
-export const UserMenu = ({ user, email }: { user: Profile | null, email: string | undefined }) => {
+export const UserMenu = ({ 
+  user, 
+  email,
+  context = 'default',
+  variant = 'navbar'
+}: { 
+  user: Profile | null, 
+  email: string | undefined,
+  context: 'default' | 'shared',
+  variant: 'navbar' | 'sheet'
+}) => {
   const [mounted, setMounted] = useState(false)
-  const { resolvedTheme } = useTheme()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  useEffect(() => {setMounted(true)}, [])
 
   if (!mounted) {
     return (
       <div className='bg-[#FF9710] p-4 shrink-0 size-10 flex items-center justify-center opacity-0 rounded-lg'>
       </div>
+    )
+  }
+
+  if (context === 'shared') {
+    return (
+      <Button asChild variant='ghost' size='icon-lg' className='border-2 border-neutral-300!'>
+        <Link href='/home'>
+          <LuCircleUserRound size={26} className='text-neutral-300!' />
+        </Link>
+      </Button>
     )
   }
 

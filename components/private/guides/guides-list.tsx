@@ -99,7 +99,7 @@ export default function GuidesList({ categories }: GuidesListProps) {
         ) : (
           <div className="flex flex-col gap-16 pb-20">
             {filteredCategories.map((section, sectionIndex) => (
-              <GuideCard key={section._id} section={section} sectionIndex={sectionIndex} />
+              <GuideCard key={section.id} section={section} sectionIndex={sectionIndex} />
             ))}
           </div>
         )}

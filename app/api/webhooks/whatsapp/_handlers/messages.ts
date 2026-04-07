@@ -107,7 +107,6 @@ async function upsertCustomerAndGetThread(
         organizationId,
         customerPhone: from,
       });
-      console.error("[WhatsApp Webhook] Error creating customer:", error);
       throw error;
     }
     customer = newCustomer;
@@ -170,15 +169,20 @@ async function saveWhatsAppMessage(
       customerId,
       direction,
     });
-    console.error(
-      `[WhatsApp Webhook] Failed to save ${direction} message:`,
-      error,
-    );
   }
 }
 
 // ── Message Handlers ──
 
+// PERCHÉ il dispatcher usa il payload e non il testo del bottone (vedi ADR-007):
+//
+// I ristoratori possono personalizzare il testo dei bottoni nei loro template
+// custom (es. "Sì, prenoto!" invece di "Prenota"). Se la logica dipendesse dal
+// testo visualizzato, ogni personalizzazione romperebbe il bot.
+//
+// I bottoni hanno un `semantic_role` (es. "book", "supplier", "callback") che
+// viene mappato a un payload canonico da ROLE_TO_PAYLOAD al momento dell'invio.
+// Questo handler controlla il payload canonico — mai il testo visualizzato.
 export async function handleButtonClick(
   supabase: SupabaseClient,
   message: Record<string, unknown>,
@@ -199,9 +203,7 @@ export async function handleButtonClick(
     .maybeSingle();
 
   if (!location) {
-    console.error(
-      `[WhatsApp Webhook] ❌ No location found for phone_number_id ${phoneNumberId}`,
-    );
+    captureWarning("No location found for WhatsApp button click", { service: "whatsapp", flow: "button_click_handler", metaPhoneNumberId: phoneNumberId });
     return new NextResponse("EVENT_RECEIVED", { status: 200 });
   }
 
@@ -252,11 +254,14 @@ export async function handleButtonClick(
     normalizedPayload.includes("parlare") ||
     normalizedPayload === "callback"
   ) {
-    await supabase.from("callback_requests").insert({
+    const { error: cbError } = await supabase.from("callback_requests").insert({
       location_id: location.id,
       phone_number: from,
       status: "pending",
     });
+    if (cbError) {
+      captureWarning("Failed to create callback request", { service: "supabase", flow: "whatsapp_callback_request", locationId: location.id });
+    }
     await sendWhatsAppText(
       from,
       `Ti ricontatteremo il prima possibile! 📞 Nel frattempo, puoi anche scriverci qui in chat.`,
@@ -361,10 +366,6 @@ export async function handleFlowCompletion(
         customerPhone: from,
         payload,
       });
-      console.error(
-        "[WhatsApp Webhook] Missing date or time in flow payload:",
-        payload,
-      );
       return new NextResponse("EVENT_RECEIVED", { status: 200 });
     }
 
@@ -383,10 +384,6 @@ export async function handleFlowCompletion(
         customerPhone: from,
         rawDateTime: `${payload.date}T${payload.time}`,
       });
-      console.error(
-        "[WhatsApp Webhook] Invalid date/time constructed:",
-        `${payload.date}T${payload.time}`,
-      );
       return new NextResponse("EVENT_RECEIVED", { status: 200 });
     }
 
@@ -457,7 +454,6 @@ export async function handleFlowCompletion(
         guests: payload.guests,
         guestName: payload.guest_name,
       });
-      console.error("Booking creation failed via WhatsApp Webhook", error);
       await sendWhatsAppText(
         from,
         `Ci dispiace, c'è stato un problema nel salvare la prenotazione. Contattaci in chat per confermare il tavolo!`,
@@ -510,10 +506,6 @@ export async function handleFlowCompletion(
           bookingId: latestBooking?.id,
           customerPhone: from,
         });
-        console.warn(
-          `[WhatsApp Webhook] Failed to dispatch Trigger task:`,
-          e,
-        );
       }
     }
 
@@ -535,10 +527,6 @@ export async function handleFlowCompletion(
           bookingId: latestBooking.id,
           customerPhone: from,
         });
-        console.warn(
-          `[WhatsApp Webhook] Failed to dispatch review request task:`,
-          e,
-        );
       }
     }
 
@@ -569,7 +557,6 @@ export async function handleFlowCompletion(
       flow: "booking_creation",
       customerPhone: from,
     });
-    console.error("Error parsing flow response", e);
   }
 
   return null;
@@ -657,10 +644,6 @@ export async function handleTextMessage(
         organizationId: location.organization_id,
         customerId: customer.id,
       });
-      console.error(
-        `[WhatsApp Webhook] Failed to dispatch AI reply task:`,
-        e,
-      );
     }
   }
 

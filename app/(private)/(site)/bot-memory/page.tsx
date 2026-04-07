@@ -1,14 +1,15 @@
-import PageWrapper from '@/components/private/page-wrapper'
-import React from 'react'
 import KnowledgeBaseView from './knowledge-base-view'
 import { getAuthContext } from '@/lib/auth'
 import { createClient } from '@/utils/supabase/server'
-import FaqSection from '@/components/private/faq-section'
-import { BrainCog } from 'lucide-react'
-import NoItems from '@/components/utility/no-items'
 import { BASE_KB_CHARS_BY_TIER, DEFAULT_BASE_KB_CHARS } from '@/lib/addons'
 import type { AddonConfig } from '@/types/general'
 import { getFaqsByTopic } from '@/utils/sanity/queries'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Memoria Bot',
+  description: 'Gestisci ciò che il tuo bot sa sul tuo locale, istruzioni personalizzate e regole.'
+}
 
 const BotMemory = async () => {
   const { organizationId } = await getAuthContext()

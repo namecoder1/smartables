@@ -184,7 +184,7 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
               <NoItems
                 title="Menu Vuoto"
                 description="Inizia aggiungendo la tua prima categoria di prodotti (es. Antipasti, Primi, Drink)."
-                icon={<Plus className="w-8 h-8" />}
+                icon={<Plus size={28} className='text-primary' />}
                 button={<Button onClick={openNewCategory}>
                   <Plus className="w-4 h-4" />
                   Aggiungi Categoria

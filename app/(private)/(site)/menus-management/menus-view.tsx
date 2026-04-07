@@ -118,7 +118,7 @@ const MenuView = ({ menus, limits, organizationId, locations, faqs }: MenusViewP
 
       {visibleMenus.length === 0 ? (
         <NoItems
-          icon={<MapIcon />}
+          icon={<MapIcon size={28} className='text-primary' />}
           title="Non hai ancora creato un menù"
           description="Crea il tuo primo menù e attivalo per mostrarlo ai tuoi clienti. Puoi caricare un PDF gia esistente o inserire i tuoi piatti a mano."
           button={

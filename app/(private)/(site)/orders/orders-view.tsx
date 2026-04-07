@@ -163,7 +163,7 @@ const OrdersView = () => {
       {orders.filter(o => o.status !== 'served').length === 0 && orders.length > 0 ? (
         <div className="flex-1">
           <NoItems
-            icon={<Check className='w-10 h-10 text-emerald-500' />}
+            icon={<Check size={28} className='text-primary' />}
             title='Tutti gli ordini sono stati serviti'
             description='Ottimo lavoro! La cucina e la sala sono perfettamente allineate.'
           />
@@ -171,7 +171,7 @@ const OrdersView = () => {
       ) : orders.length === 0 ? (
         <div className="flex-1">
           <NoItems
-            icon={<ChefHat className='w-10 h-10 text-foreground' />}
+            icon={<ChefHat size={28} className='text-primary' />}
             title='Nessun ordine attivo'
             description='Gli ordini appariranno qui quando i clienti invieranno le richieste'
           />

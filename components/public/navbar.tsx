@@ -19,12 +19,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { useState } from 'react'
 import { UserMenu } from '@/components/private/user-menu'
 import { Profile } from '@/types/general'
 
 const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
-  const [open, setOpen] = useState(false)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-neutral-800 bg-neutral-800">
@@ -45,8 +43,10 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className='bg-transparent! text-white! px-0'>Soluzioni</NavigationMenuTrigger>
-                  <NavigationMenuContent>
+                  <NavigationMenuTrigger className='bg-transparent! text-white! hover:text-primary! px-0'>
+                    <p className='group-data-[state=open]:text-primary!'>Soluzioni</p>
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent className='bg-neutral-800'>
                     <ul className='w-96 grid grid-cols-2'>
                       <ListItem href="/solutions/gestione-sala" title="Gestione Sala">
                         Gestisci i tavoli con Smartables
@@ -75,9 +75,11 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
             <NavigationMenu>
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className='bg-transparent! text-white! px-0'>Supporto</NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className='w-96 grid grid-cols-2'>
+                  <NavigationMenuTrigger className='bg-transparent! text-white! px-0'>
+                    <p className='group-data-[state=open]:text-primary!'>Supporto</p>
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent  className='bg-neutral-800'>
+                    <ul className='w-96 grid grid-cols-2 '>
                       <ListItem href="/support" title="Supporto">
                         Ottieni supporto su domande e dubbi più frequenti
                       </ListItem>
@@ -99,7 +101,7 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
 
           <div className="flex items-center gap-2">
             {user ? (
-              <UserMenu user={user} email={email} />
+              <UserMenu user={user} email={email} context='shared' variant='navbar' />
             ) : (
               <>
                 <Button variant='ghost' asChild className='text-white hover:text-white! hover:bg-neutral-600/40!'>
@@ -147,7 +149,7 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
                 <div className="mt-auto flex flex-col gap-4">
                   <div className="h-px bg-gray-100 my-2" />
                   {user ? (
-                    <UserMenu user={user} email={email} />
+                    <UserMenu user={user} email={email} context='shared' variant='sheet' />
                   ) : (
                     <>
                       <Button variant="outline" className="w-full justify-start font-semibold border-blue-600 text-blue-600" size="lg" asChild>
@@ -180,11 +182,11 @@ function ListItem({
 }: React.ComponentPropsWithoutRef<"li"> & { href: string }) {
   return (
     <li {...props}>
-      <NavigationMenuLink asChild className='rounded-lg'>
+      <NavigationMenuLink asChild className='rounded-lg! hover:bg-neutral-700 focus:bg-neutral-700'>
         <Link href={href}>
           <div className="flex flex-col gap-1 text-sm">
-            <div className="leading-none font-bold text-md">{title}</div>
-            <div className="line-clamp-2 text-muted-foreground">{children}</div>
+            <div className="leading-none text-white font-bold text-md">{title}</div>
+            <div className="line-clamp-2 text-white/70">{children}</div>
           </div>
         </Link>
       </NavigationMenuLink>

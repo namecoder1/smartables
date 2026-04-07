@@ -309,7 +309,7 @@ const AreasView = ({ faqs, limits }: { faqs: SanityFaq[]; limits: any }) => {
 
             {!loading && zones.length === 0 ? (
               <NoItems
-                icon={<Store className="w-10 h-10 text-foreground" />}
+                icon={<Store size={28} className='text-primary' />}
                 title="Non hai mappe della sala"
                 description="Crea la tua prima mappa per gestire i tavoli e le prenotazioni. Potrai creare diverse disposizioni per eventi o sale differenti."
                 button={<Button onClick={handleCreate} size="lg" disabled={isLimitReached}>

@@ -51,13 +51,15 @@ const HomePage = async () => {
       .from('bookings')
       .select('booking_time, guests_count, source, status')
       .eq('organization_id', orgId)
-      .gte('booking_time', thirtyDaysAgo),
+      .gte('booking_time', thirtyDaysAgo)
+      .limit(1000),
 
     supabase
       .from('orders')
       .select('created_at, total_amount')
       .eq('organization_id', orgId)
-      .gte('created_at', thirtyDaysAgo),
+      .gte('created_at', thirtyDaysAgo)
+      .limit(1000),
   ])
 
   // Fetch plan limits using the org's price ID
@@ -75,7 +77,7 @@ const HomePage = async () => {
     .select('id')
     .eq('organization_id', orgId)
 
-  if (profile.role !== 'admin' && profile.accessible_locations?.length > 0) {
+  if (profile.role !== 'admin' && profile.role !== 'owner' && profile.accessible_locations?.length > 0) {
     locationQuery = locationQuery.in('id', profile.accessible_locations)
   }
 

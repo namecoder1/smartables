@@ -29,7 +29,7 @@ const SettingsPage = async () => {
     .eq('organization_id', organizationId)
     .order('created_at')
 
-  if (profile.role !== "admin" && profile.accessible_locations && profile.accessible_locations.length > 0) {
+  if (profile.role !== "admin" && profile.role !== "owner" && profile.accessible_locations && profile.accessible_locations.length > 0) {
     locationsQuery = locationsQuery.in('id', profile.accessible_locations)
   }
 
