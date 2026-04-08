@@ -412,7 +412,7 @@ export default async function HealthPage() {
                     href={`/organizations/${loc.organization_id}`}
                     className="text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
                   >
-                    Vai all'org <ArrowRight className="h-2.5 w-2.5" />
+                    Vai all&apos;org <ArrowRight className="h-2.5 w-2.5" />
                   </Link>
                 </div>
               ))}

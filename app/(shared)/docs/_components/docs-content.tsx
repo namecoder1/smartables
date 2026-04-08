@@ -100,6 +100,40 @@ const components: PortableTextComponents = {
         </div>
       )
     },
+    table: ({ value }) => {
+      const rows: { _key: string; cells: string[] }[] = value.rows ?? []
+      if (rows.length === 0) return null
+      const [headerRow, ...bodyRows] = rows
+      return (
+        <div className="my-6 overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+          <table className="min-w-full text-sm text-gray-700">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                {headerRow.cells.map((cell, i) => (
+                  <th
+                    key={i}
+                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {bodyRows.map((row, ri) => (
+                <tr key={row._key ?? ri} className="hover:bg-gray-50/60 transition-colors">
+                  {row.cells.map((cell, ci) => (
+                    <td key={ci} className="px-4 py-3 text-gray-600 leading-relaxed">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    },
     steps: ({ value }) => (
       <div className="my-8">
         {value.title && (

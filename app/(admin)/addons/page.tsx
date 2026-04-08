@@ -303,7 +303,7 @@ export default async function AddonsPage() {
           <CardContent className="flex gap-3 items-start text-sm">
             <Plug className="size-4 text-amber-600 mt-0.5 shrink-0" />
             <div className="space-y-2">
-              <p className="font-semibold text-amber-800">GlitchTip non integrato nell'admin</p>
+              <p className="font-semibold text-amber-800">GlitchTip non integrato nell&apos;admin</p>
               <p className="text-amber-700 text-xs mt-1">
                 GlitchTip è configurato nel progetto ma gli errori critici non sono visibili qui.
                 Aggiungi un widget o collega la GlitchTip Issues API per vedere i crash in tempo reale.

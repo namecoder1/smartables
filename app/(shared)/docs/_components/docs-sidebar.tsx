@@ -17,7 +17,7 @@ function NavTree({
   onLinkClick?: () => void
 }) {
   return (
-    <nav className="space-y-5">
+    <nav className="space-y-5 px-2">
       {sections.map((section) => {
         const Icon = getDocSectionIcon(section.icon)
         return (
@@ -102,11 +102,10 @@ export function DocsSidebar({ sections, currentTopicSlug }: DocsSidebarProps) {
               Navigazione
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 overflow-y-auto">
-            <SheetHeader className="mb-6">
+          <SheetContent side="left" className="w-72 overflow-y-auto space-y-0 gap-0 pb-4">
+            <SheetHeader className="mb-6 border-b-2">
               <SheetTitle>
-                <Link href="/docs" className="flex items-center gap-2 text-gray-800">
-                  <BookMarked className="w-4 h-4 text-[#FF9710]" />
+                <Link href="/docs" className="text-gray-800 text-xl font-bold tracking-tight">
                   Documentazione
                 </Link>
               </SheetTitle>

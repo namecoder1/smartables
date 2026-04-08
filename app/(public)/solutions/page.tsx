@@ -119,8 +119,8 @@ export default function SolutionsIndexPage() {
 const Hero = () => (
   <section className="relative pt-32 pb-16 md:pt-48 md:pb-24 overflow-hidden">
     <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute top-[-15%] right-[-5%] w-[700px] h-[700px] bg-[#FF9710]/8 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-orange-100/50 rounded-full blur-[100px]" />
+      <div className="absolute top-[-15%] right-[-5%] w-175 h-175 bg-[#FF9710]/8 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-125 h-125 bg-orange-100/50 rounded-full blur-[100px]" />
     </div>
 
     <motion.div
@@ -176,7 +176,7 @@ const Hero = () => (
 )
 
 const SolutionsGrid = () => (
-  <section className="pb-24 bg-white">
+  <section className="py-24 bg-white">
     <div className="container px-4 md:px-6 mx-auto max-w-7xl">
       <motion.div
         className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -249,7 +249,7 @@ const integrationPoints = [
 
 const IntegrationStrip = () => (
   <section className="py-20 bg-gray-950 relative overflow-hidden">
-    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-[size:32px_32px]" />
+    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-size-[32px_32px]" />
     <div className="container px-4 md:px-6 mx-auto max-w-6xl relative z-10">
       <motion.div
         className="grid lg:grid-cols-2 gap-12 items-center"
@@ -291,7 +291,7 @@ const IntegrationStrip = () => (
 )
 
 const BottomCTA = () => (
-  <section className="py-24 bg-white">
+  <section className="py-24 bg-primary">
     <motion.div
       className="container px-4 md:px-6 mx-auto max-w-4xl text-center"
       variants={fadeUp}
@@ -299,16 +299,16 @@ const BottomCTA = () => (
       whileInView="visible"
       viewport={VP}
     >
-      <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+      <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
         Non sai da dove iniziare?
       </h2>
-      <p className="text-gray-500 text-lg mb-8">
+      <p className="text-white/80 text-lg mb-8">
         Prenota una demo gratuita di 20 minuti. Ti mostriamo esattamente cosa fa al caso tuo.
       </p>
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <Button
           asChild
-          className="h-14 px-8 text-lg font-bold bg-gray-900 hover:bg-black text-white rounded-2xl shadow-lg transition-all hover:scale-105"
+          className="h-14 px-8 text-lg font-bold bg-black hover:bg-black/90 text-white rounded-2xl shadow-lg transition-all hover:scale-105"
         >
           <Link href="/contact">Parla con un esperto</Link>
         </Button>
