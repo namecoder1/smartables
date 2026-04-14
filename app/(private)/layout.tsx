@@ -9,24 +9,20 @@ import Navbar from "@/components/private/navbar";
 import { getStarredPages } from "@/app/actions/starred-pages";
 import RefundGate from "@/components/private/refund-gate";
 import { PageTitleProvider } from "@/components/providers/page-title-context";
-import { ThemeProvider } from "@/components/utility/theme-provider";
 import { NavDataProvider } from "@/components/providers/nav-context";
 import { FeedbackWidget } from "@/components/private/feedback-widget";
+import { InstallPWABanner } from "@/components/private/install-pwa-banner";
 
 export const metadata = {
   title: {
     template: '%s | Smartables',
     default: 'Smartables'
   },
-  description: 'Smartables is a platform for managing your activities and bookings.',
-  openGraph: {
-    title: {
-      template: '%s | Smartables',
-      default: 'Smartables'
-    },
-    description: 'Smartables is a platform for managing your activities and bookings.',
-    type: 'website'
-  }
+  description: 'Smartables - Gestione ristorante.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default async function PrivateLayout({
@@ -106,6 +102,7 @@ export default async function PrivateLayout({
                     )}
                     <FeedbackWidget />
                   </main>
+                  <InstallPWABanner />
                 </div>
               </div>
             </NavDataProvider>

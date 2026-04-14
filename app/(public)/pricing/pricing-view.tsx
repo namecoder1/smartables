@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { PLANS } from '@/lib/plans'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
 const E = [0.22, 1, 0.36, 1] as const
 const D = 0.65
 const fadeUp = { hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0, transition: { duration: D, ease: E } } }
+const VP = { once: false, margin: '-80px' } as const
 
 const PricingView = () => {
   const [isAnnual, setIsAnnual] = useState(false)
@@ -23,7 +24,7 @@ const PricingView = () => {
       <PricingSection isAnnual={isAnnual} />
       <TrustSection />
       <ComparisonSection />
-      <TestimonialsSection />
+      {/* <TestimonialsSection /> */}
       <FAQSection />
       <CTASection />
     </div>
@@ -156,7 +157,7 @@ const TrustSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -170,7 +171,7 @@ const TrustSection = () => {
               key={index}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.4, delay: index * 0.1 }}
               className="text-center"
             >
@@ -211,7 +212,7 @@ const ComparisonSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -224,7 +225,7 @@ const ComparisonSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.6 }}
           className="max-w-5xl mx-auto overflow-x-auto"
         >
@@ -307,7 +308,7 @@ const TestimonialsSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -323,7 +324,7 @@ const TestimonialsSection = () => {
               key={index}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.4, delay: index * 0.1 }}
             >
               <Card className="h-full border-2 bg-[#f4f4f4]">
@@ -391,7 +392,7 @@ const FAQSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -407,7 +408,7 @@ const FAQSection = () => {
               key={index}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
               <Accordion type="single" collapsible className="border rounded-3xl border-gray-200 px-4 bg-white">
@@ -435,7 +436,7 @@ const CTASection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="max-w-4xl mx-auto text-center"
         >

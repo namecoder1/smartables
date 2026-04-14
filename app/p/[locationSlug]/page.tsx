@@ -22,10 +22,38 @@ import Link from "next/link";
 // Let's do Server Component + Client Form.
 import { BookingForm } from "./booking-form";
 
-export const metadata = {
-  title: "Prenota un Tavolo | Smartables",
-  description: "Prenota il tuo tavolo online.",
-};
+import { Metadata } from "next";
+
+type MetaProps = { params: Promise<{ locationSlug: string }> }
+
+export async function generateMetadata({ params }: MetaProps): Promise<Metadata> {
+  const { locationSlug } = await params
+  const supabase = await createClient()
+  const { data: location } = await supabase
+    .from("locations")
+    .select("name, organizations(name)")
+    .eq("slug", locationSlug)
+    .single()
+
+  if (!location) {
+    return { title: "Prenota un Tavolo | Smartables" }
+  }
+
+  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const title = `Prenota da ${location.name} | ${orgName}`
+  const description = `Prenota il tuo tavolo online da ${location.name}. Scegli data, orario e numero di persone in pochi secondi.`
+
+  return {
+    title,
+    description,
+    robots: { index: false, follow: false },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+  }
+}
 
 export default async function PublicBookingPage({
   params,

@@ -1,9 +1,22 @@
 import { Metadata } from 'next';
-import React from 'react';
 
 export const metadata: Metadata = {
   title: 'Informativa sulla Privacy',
-  description: 'Leggi l\'Informativa sulla privacy di Smartables',
+  description: 'Informativa sulla privacy di Smartables: come raccogliamo, utilizziamo e proteggiamo i tuoi dati personali in conformità al GDPR.',
+  alternates: { canonical: '/privacy-policy' },
+  openGraph: {
+    title: 'Informativa sulla Privacy - Smartables',
+    description: 'Informativa sulla privacy di Smartables: come raccogliamo, utilizziamo e proteggiamo i tuoi dati personali in conformità al GDPR.',
+    type: 'website',
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1280,
+        height: 800,
+        alt: "Smartables - Informativa sulla Privacy",
+      },
+    ],
+  }
 }
 
 export default function PrivacyPolicy() {

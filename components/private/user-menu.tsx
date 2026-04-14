@@ -8,6 +8,7 @@ import { LuCircleUserRound } from "react-icons/lu";
 import Link from 'next/link'
 import { Profile } from '@/types/general'
 import { logout } from '@/utils/supabase/actions'
+import { getRoleLabel } from '@/lib/utils'
 
 export const UserMenu = ({ 
   user, 
@@ -53,10 +54,7 @@ export const UserMenu = ({
             <span className='text-foreground font-semibold'>Loggato come:</span>
             <span className='text-sm text-muted-foreground'>{email}</span>
           </p>
-          <p className='flex items-center gap-2'>
-            <span>Ruolo:</span>
-            <span className='capitalize flex items-center gap-0.5 text-muted-foreground'><ShieldUser size={16} />{user?.role}</span>
-          </p>
+          <span className='capitalize flex items-center gap-0.5 text-muted-foreground'><ShieldUser size={16} />{getRoleLabel(user?.role!)}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

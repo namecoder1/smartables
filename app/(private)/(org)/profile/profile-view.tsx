@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PageWrapper from "@/components/private/page-wrapper";
 import { deleteAccountAction } from "./actions";
+import { getRoleLabel } from "@/lib/utils";
 
 interface ProfileData {
   id: string;
@@ -85,11 +86,7 @@ const ProfileView = ({ profile }: ProfileViewProps) => {
     return "secondary";
   };
 
-  const getRoleLabel = (role: string) => {
-    if (role === "owner") return "Proprietario";
-    if (role === "admin") return "Amministratore";
-    return "Staff";
-  };
+
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);

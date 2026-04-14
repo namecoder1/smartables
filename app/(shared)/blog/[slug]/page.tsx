@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 
 export const revalidate = 60
 
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://smartables.it"
+
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateStaticParams() {
@@ -21,14 +23,18 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const article = await getArticleBySlug(slug)
-  if (!article) return { title: 'Articolo non trovato | Smartables' }
+  if (!article) return { title: 'Articolo non trovato' }
   return {
-    title: article.seo?.metaTitle || `${article.title} | Smartables`,
+    title: article.seo?.metaTitle || article.title,
     description: article.seo?.metaDescription || article.excerpt,
+    alternates: { canonical: `/blog/${slug}` },
     openGraph: {
       title: article.seo?.metaTitle || article.title,
       description: article.seo?.metaDescription || article.excerpt,
-      images: article.image?.url ? [{ url: article.image.url }] : [],
+      type: 'article',
+      publishedTime: article.publishedAt,
+      authors: article.author ? [article.author] : undefined,
+      images: article.image?.url ? [{ url: article.image.url, alt: article.image.alt || article.title }] : [],
     },
   }
 }
@@ -159,7 +165,38 @@ export default async function ArticlePage({ params }: Props) {
 
   const related = allArticles.filter((a) => a.slug !== slug && a.category === article.category).slice(0, 3)
 
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    description: article.excerpt,
+    datePublished: article.publishedAt,
+    author: { "@type": "Person", name: article.author },
+    publisher: {
+      "@type": "Organization",
+      name: "Smartables",
+      "@id": `${BASE_URL}/#organization`,
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `${BASE_URL}/blog/${slug}` },
+    ...(article.image?.url && {
+      image: { "@type": "ImageObject", url: article.image.url },
+    }),
+  }
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
+      { "@type": "ListItem", position: 2, name: "Blog", item: `${BASE_URL}/blog` },
+      { "@type": "ListItem", position: 3, name: article.title, item: `${BASE_URL}/blog/${slug}` },
+    ],
+  }
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
     <div className="min-h-screen bg-white font-sans">
       {/* HERO IMAGE */}
       {article.image?.url && (
@@ -377,5 +414,6 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </div>
     </div>
+    </>
   )
 }

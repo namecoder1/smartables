@@ -4,8 +4,9 @@ import { OnboardingForm } from './onboarding-form'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Onboarding",
-  description: "Onboarding",
+  title: "Configura il tuo ristorante",
+  description: "Configura il tuo account Smartables in pochi minuti e inizia a gestire prenotazioni, sala e clienti.",
+  robots: { index: false, follow: false },
 }
 
 type Props = {

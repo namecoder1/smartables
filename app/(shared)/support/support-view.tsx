@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
+
+const VP = { once: false, margin: '-80px' } as const
 import { mapArticleCategory, SanityArticleCard } from '@/utils/sanity/queries'
 import { getDocSectionIcon } from '@/utils/sanity/icons'
 
@@ -98,7 +100,7 @@ const StatsSection = () => {
               key={index}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.4, delay: index * 0.1 }}
               className="text-center"
             >
@@ -127,7 +129,7 @@ const HelpSections = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -145,7 +147,7 @@ const HelpSections = ({
               key={section.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.4, delay: section.id * 0.1 }}
             >
               <Card className="hover:shadow-md transition-shadow border-gray-200 cursor-pointer group h-full bg-neutral-50">
@@ -187,7 +189,7 @@ const PopularArticlesSection = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -201,7 +203,7 @@ const PopularArticlesSection = ({
               key={index}
               initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.4, delay: index * 0.1 }}
             >
               <Link href={`/blog/${article.slug}`} className="block rounded-3xl bg-white p-5 border border-gray-200 hover:scale-101 hover:border-primary/40 duration-300 transition-all group">
@@ -222,7 +224,7 @@ const PopularArticlesSection = ({
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5, delay: 0.4 }}
           className="text-center mt-8"
         >
@@ -243,7 +245,7 @@ const ContactSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -255,7 +257,7 @@ const ContactSection = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={VP}
             transition={{ duration: 0.4 }}
           >
             <div className="bg-linear-to-br rounded-4xl from-blue-50 to-blue-100 p-6 border-2 border-blue-200 flex flex-col items-center text-center h-full">
@@ -275,7 +277,7 @@ const ContactSection = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={VP}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
             <div className="bg-linear-to-br rounded-4xl from-emerald-50 to-emerald-100 p-6 border-2 border-emerald-200 flex flex-col items-center text-center h-full">
@@ -295,7 +297,7 @@ const ContactSection = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={VP}
             transition={{ duration: 0.4, delay: 0.2 }}
           >
             <div className="bg-linear-to-br rounded-4xl from-purple-50 to-purple-100 p-6 border-2 border-purple-200 flex flex-col items-center text-center h-full">
@@ -343,7 +345,7 @@ const FAQSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -357,7 +359,7 @@ const FAQSection = () => {
               key={index}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <Accordion type="single" collapsible className="border border-gray-200 px-4 rounded-3xl bg-white shadow-sm hover:shadow-sm transition-shadow duration-200">
@@ -385,7 +387,7 @@ const CTASection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="max-w-3xl mx-auto text-center"
         >

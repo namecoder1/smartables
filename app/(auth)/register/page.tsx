@@ -4,7 +4,8 @@ import { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Registrati',
-  description: 'Seleziona il tuo piano e registrati a Smartables'
+  description: 'Crea il tuo account Smartables e inizia a gestire il tuo ristorante in modo intelligente.',
+  robots: { index: false, follow: false },
 }
 
 const RegisterPage = () => {

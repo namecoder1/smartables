@@ -1,7 +1,28 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import HomeView from './home-view'
 import { getFaqsByTopic } from '@/utils/sanity/queries'
-import { captureError } from '@/lib/monitoring'
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: { absolute: 'Smartables | Mai più tavoli vuoti' },
+  description: 'Trasforma le chiamate perse in prenotazioni confermate. Gestione prenotazioni, CRM clienti, menu digitale e analytics per il tuo ristorante.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Smartables | Mai più tavoli vuoti',
+    description: 'Trasforma le chiamate perse in prenotazioni confermate. Gestione prenotazioni, CRM clienti, menu digitale e analytics per il tuo ristorante.',
+    type: 'website',
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1280,
+        height: 800,
+        alt: "Smartables - Gestione ristorante",
+      },
+    ],
+  },
+}
 
 
 const HomePage = async () => {
@@ -11,18 +32,28 @@ const HomePage = async () => {
     .from('bookings')
     .select('*', { count: 'exact', head: true })
 
-  const [landingFaqs] = await Promise.all([
-    getFaqsByTopic('landing')
-  ])
+  const landingFaqs = await getFaqsByTopic('landing')
 
-  captureError(new Error('Test error from HomePage'), {
-    service: 'supabase',
-    flow: 'home_page_load',
-    reservationCount,
-  })
+  const faqSchema = landingFaqs.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: landingFaqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  } : null
 
   return (
-    <HomeView reservations={reservationCount} setupFee={setupFee} faqs={landingFaqs} />
+    <>
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
+      <HomeView reservations={reservationCount} setupFee={setupFee} faqs={landingFaqs} />
+    </>
   )
 }
 

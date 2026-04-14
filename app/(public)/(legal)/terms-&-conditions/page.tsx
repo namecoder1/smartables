@@ -1,4 +1,24 @@
-import React from 'react';
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Termini e Condizioni',
+  description: 'Leggi i Termini e Condizioni di utilizzo della piattaforma Smartables per la gestione di ristoranti e locali.',
+  alternates: { canonical: '/legal/terms-and-conditions' },
+  openGraph: {
+    title: 'Termini e Condizioni - Smartables',
+    description: 'Leggi i Termini e Condizioni di utilizzo della piattaforma Smartables per la gestione di ristoranti e locali.',
+    type: 'website',
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1280,
+        height: 800,
+        alt: "Smartables - Termini e Condizioni",
+      },
+    ],
+  },
+  robots: { index: false, follow: true },
+}
 
 export default function TermsAndConditions() {
   return (

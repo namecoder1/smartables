@@ -8,7 +8,7 @@ import Link from 'next/link'
 import PasswordInput from '@/components/ui/password-input'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Loader2 } from 'lucide-react'
 
 const LoginView = () => {

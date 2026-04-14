@@ -4,7 +4,8 @@ import LoginView from './login-view'
 
 export const metadata: Metadata = {
   title: 'Accedi',
-  description: 'Inserisci le tue credenziali per accedere all\'area protetta di Smartables con il tuo account.'
+  description: 'Inserisci le tue credenziali per accedere alla piattaforma Smartables.',
+  robots: { index: false, follow: false },
 }
 
 const LoginPage = () => {

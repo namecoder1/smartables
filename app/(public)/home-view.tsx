@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { CheckCircle2, Users, LayoutDashboard, LineChart, MessageCircle, PhoneMissed, Smartphone, X, EllipsisVertical, Check } from 'lucide-react'
+import { CheckCircle2, Users, LayoutDashboard, LineChart, MessageCircle, PhoneMissed, Smartphone, X, EllipsisVertical, Check, Share2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -46,7 +46,7 @@ const HomeView = ({
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans overflow-x-hidden selection:bg-[#FF9710] selection:text-white">
       <Hero isPromo={setupFee} />
-      <SocialProof count={reservations || 0} />
+      {/* <SocialProof count={reservations || 0} /> */}
       <HookSection />
       <ShowcaseSection />
       <BentoSection />
@@ -369,8 +369,8 @@ const HookSection = () => {
         viewport={VP}
         className='bg-primary/5 flex flex-col items-center justify-center gap-4 w-full lg:w-1/2 py-12 lg:h-100 rounded-4xl'
       >
-        <h4 className='text-primary text-6xl md:text-7xl font-bold tracking-tighter'>22%</h4>
-        <p className='text-lg md:text-xl font-medium text-[#6d4e00] max-w-sm text-center'>Aumento medio delle prenotazioni nel primo mese con Smartables.</p>
+        <h4 className='text-primary text-6xl md:text-7xl font-bold tracking-tighter'>3 tavoli</h4>
+        <p className='text-lg md:text-xl font-medium text-[#6d4e00] max-w-sm text-center'>Con cui riusciresti a coprire il costo mensile di Smartables.</p>
       </motion.div>
     </section>
   )
@@ -693,7 +693,7 @@ const FAQSection = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={VP}
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
@@ -707,7 +707,7 @@ const FAQSection = ({
               key={index}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={VP}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <Accordion type="single" collapsible className="border border-gray-200 px-4 rounded-3xl bg-white shadow-sm hover:shadow-sm transition-shadow duration-200">
@@ -728,12 +728,105 @@ const FAQSection = ({
   )
 }
 
+const AppInstallSteps = () => {
+  const [activeTab, setActiveTab] = useState<'ios' | 'android'>('ios')
+
+  const iosSteps = [
+    {
+      icon: <Share2 size={18} className="text-primary" />,
+      label: 'Tocca Condividi',
+      description: 'Icona in basso al centro di Safari',
+    },
+    {
+      icon: <Plus size={18} className="text-primary" />,
+      label: 'Aggiungi a Home',
+      description: 'Scorri e seleziona "Aggiungi alla schermata Home"',
+    },
+    {
+      icon: <Smartphone size={18} className="text-primary" />,
+      label: 'Conferma e apri',
+      description: 'Tocca "Aggiungi" — l\'app appare sulla tua schermata Home',
+    },
+  ]
+
+  const androidSteps = [
+    {
+      icon: <EllipsisVertical size={18} className="text-primary" />,
+      label: 'Apri il menu Chrome',
+      description: 'I tre puntini in alto a destra',
+    },
+    {
+      icon: <Plus size={18} className="text-primary" />,
+      label: 'Aggiungi a schermata Home',
+      description: 'Oppure "Installa app" se disponibile',
+    },
+    {
+      icon: <Smartphone size={18} className="text-primary" />,
+      label: 'Conferma e apri',
+      description: 'Tocca "Aggiungi" — l\'app è pronta',
+    },
+  ]
+
+  const steps = activeTab === 'ios' ? iosSteps : androidSteps
+
+  return (
+    <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 md:p-8 max-w-2xl mx-auto">
+      <div className="flex items-center gap-2 mb-6">
+        <Smartphone size={20} className="text-white" />
+        <p className="text-white font-semibold">Usa Smartables come App — gratis, nessun download</p>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('ios')}
+          className={cn(
+            'flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition-all',
+            activeTab === 'ios'
+              ? 'bg-white text-primary'
+              : 'bg-white/10 text-white/70 hover:bg-white/20'
+          )}
+        >
+          iPhone / iPad
+        </button>
+        <button
+          onClick={() => setActiveTab('android')}
+          className={cn(
+            'flex-1 py-2 px-4 rounded-xl text-sm font-semibold transition-all',
+            activeTab === 'android'
+              ? 'bg-white text-primary'
+              : 'bg-white/10 text-white/70 hover:bg-white/20'
+          )}
+        >
+          Android
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-start gap-4">
+            <div className="w-8 h-8 rounded-xl bg-white/55 flex items-center justify-center shrink-0 mt-0.5">
+              {step.icon}
+            </div>
+            <div className='flex flex-col items-start justify-center'>
+              <p className="text-white text-sm font-semibold">{step.label}</p>
+              <p className="text-white/60 text-xs">{step.description}</p>
+            </div>
+            {i < steps.length - 1 && (
+              <div className="ml-auto self-center text-white/30 text-xs">→</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const CTA = () => {
   return (
     <section className="bg-primary relative overflow-hidden">
       <div className="w-full max-w-5xl mx-auto px-4 md:px-6 text-center relative z-10">
         <motion.div
-          className="p-12 md:p-24 relative overflow-hidden text-center"
+          className="py-16 md:py-24 relative overflow-hidden text-center"
           variants={scaleUp}
           initial="hidden"
           whileInView="visible"
@@ -744,18 +837,22 @@ const CTA = () => {
             initial="hidden"
             whileInView="visible"
             viewport={VP}
-            className="relative z-10"
+            className="relative z-10 space-y-8"
           >
-            <motion.h2 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white mb-8">
+            <motion.h2 variants={fadeUp} className="text-4xl md:text-6xl font-bold text-white">
               Pronto a rivoluzionare <br /> il tuo ristorante?
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
-              Smetti di lasciare soldi sul tavolo. Unisciti ai migliori ristoranti italiani che hanno gia automatizzato il loro successo.
+            <motion.p variants={fadeUp} className="text-xl text-white/80 max-w-2xl mx-auto">
+              Smetti di lasciare soldi sul tavolo. Unisciti ai migliori ristoranti italiani che hanno già automatizzato il loro successo.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="h-16 px-12 text-xl font-bold bg-black hover:bg-black! text-white rounded-2xl shadow-xl hover:scale-105 transition-all">
-                Inizia ora
+              <Button asChild className="h-16 px-12 text-xl font-bold bg-black hover:bg-black! text-white rounded-2xl shadow-xl hover:scale-105 transition-all">
+                <Link href="/register">Inizia ora</Link>
               </Button>
+            </motion.div>
+
+            <motion.div variants={fadeUp}>
+              <AppInstallSteps />
             </motion.div>
           </motion.div>
         </motion.div>

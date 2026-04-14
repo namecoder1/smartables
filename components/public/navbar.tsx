@@ -136,7 +136,7 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
 
         {/* Mobile Menu Trigger */}
         <div className="md:hidden flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="text-white" onClick={() => setMobileOpen(v => !v)}>
+          <Button variant="ghost" size="icon" className="text-white hover:text-primary! hover:bg-transparent!" onClick={() => setMobileOpen(v => !v)}>
             {mobileOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
             <span className="sr-only">Toggle menu</span>
           </Button>
@@ -145,7 +145,7 @@ const Navbar = ({ user, email }: { user?: Profile | null, email?: string }) => {
 
       {/* Mobile Fullscreen Menu */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 top-[calc(var(--navbar-height,72px))] z-40 bg-neutral-900 flex flex-col px-6 py-8 gap-6 overflow-y-auto">
+        <div className="md:hidden fixed inset-0 top-[calc(var(--navbar-height,104px))] z-40 bg-neutral-900 flex flex-col px-6 py-8 gap-6 overflow-y-auto">
           <nav className="flex flex-col gap-1 text-lg font-medium text-white">
             <MobileAccordion label="Soluzioni">
               <Link href="/solutions/gestione-sala" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 hover:bg-neutral-800 rounded-lg transition-colors">

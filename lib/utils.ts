@@ -24,6 +24,12 @@ export function getStatusBadgeVariant(status: string) {
   }
 }
 
+export const getRoleLabel = (role: string) => {
+  if (role === "owner") return "Proprietario";
+  if (role === "admin") return "Amministratore";
+  return "Staff";
+};
+
 export function mapStatusLabel(status: string) {
   switch (status) {
     case "confirmed":

@@ -1,17 +1,26 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from 'react-icons/fa6'
 
 const Footer = () => {
   return (
     <footer className='bg-black text-white'>
       <div className='w-full max-w-7xl mx-auto px-4'>
         <div className='flex flex-col md:flex-row justify-between w-full items-start gap-y-8 py-12 px-6'>
-          <div className='flex items-center gap-3'>
-            <Image src="/logo.png" alt="Logo" width={55} height={55} />
-            <div className='flex flex-col'>
-              <span className='text-2xl font-bold'>Smartables</span>
-              <p className='text-white/80 text-md'>Il sistema operativo per il tuo ristorante</p>
+          <div>
+            <div className='flex items-center gap-3'>
+              <Image src="/logo.png" alt="Logo" width={55} height={55} />
+              <div className='flex flex-col'>
+                <span className='text-2xl font-bold'>Smartables</span>
+                <p className='text-white/80 text-md'>Il sistema operativo per il tuo ristorante</p>
+              </div>
+            </div>
+            <div className='flex items-center gap-4 pt-6'>
+              <FaLinkedin size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              <FaInstagram size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              <FaFacebook size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              <FaYoutube size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
             </div>
           </div>
           <div className='grid grid-cols-3 max-w-xl gap-12'>

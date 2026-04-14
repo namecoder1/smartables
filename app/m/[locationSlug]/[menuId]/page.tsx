@@ -1,9 +1,40 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Share2, Info, ChevronLeft, Search, UtensilsCrossed, CalendarDays, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Metadata } from "next";
+
+type MetaProps = { params: Promise<{ locationSlug: string; menuId: string }> }
+
+export async function generateMetadata({ params }: MetaProps): Promise<Metadata> {
+  const { locationSlug, menuId } = await params
+  const supabase = await createClient()
+  const [{ data: location }, { data: menu }] = await Promise.all([
+    supabase.from("locations").select("name, organizations(name)").eq("slug", locationSlug).single(),
+    supabase.from("menus").select("name, description").eq("id", menuId).single(),
+  ])
+
+  if (!location || !menu) return { title: "Menu" }
+
+  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const title = `${menu.name} – ${location.name} | ${orgName}`
+  const description = menu.description || `Sfoglia il menu ${menu.name} di ${location.name}. Scopri tutti i piatti con prezzi e descrizioni.`
+
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: `/m/${locationSlug}/${menuId}` },
+    robots: { index: false, follow: false },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+  }
+}
 
 type MenuItem = {
   id: string;
@@ -297,11 +328,12 @@ export default async function DigitalMenuPage({
                           {/* Image - Right aligned */}
                           {item.image_url && (
                             <div className="shrink-0 relative w-24 h-24 rounded-lg overflow-hidden bg-slate-100 shadow-sm border border-slate-100">
-                              <img
+                              <Image
                                 src={item.image_url}
                                 alt={item.name}
-                                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${!item.is_available ? 'grayscale opacity-70' : ''}`}
-                                loading="lazy"
+                                fill
+                                sizes="96px"
+                                className={`object-cover transition-transform duration-500 group-hover:scale-110 ${!item.is_available ? 'grayscale opacity-70' : ''}`}
                               />
                             </div>
                           )}
@@ -375,9 +407,8 @@ function PromotionCard({
       <div className="p-4">
         <div className="flex gap-3">
           {promotion.image_url ? (
-            <div className="shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-slate-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={promotion.image_url} alt={promotion.name} className="w-full h-full object-cover" />
+            <div className="shrink-0 relative w-14 h-14 rounded-xl overflow-hidden bg-slate-100">
+              <Image src={promotion.image_url} alt={promotion.name} fill sizes="56px" className="object-cover" />
             </div>
           ) : (
             <div

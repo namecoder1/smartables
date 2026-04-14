@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import {
   Phone, TrendingDown, ArrowRight, Calculator, MessageSquare,
   CalendarCheck, BarChart3, Bot, Sparkles, ChevronRight,
@@ -16,7 +16,7 @@ const fadeUp = {
   hidden: { opacity: 0, y: 28 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const } },
 }
-const VP = { once: true, margin: '-60px' } as const
+const VP = { once: false, margin: '-80px' } as const
 
 const formatEur = (n: number) =>
   new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)

@@ -16,7 +16,7 @@ const fadeLeft = { hidden: { opacity: 0, x: -40 }, visible: { opacity: 1, x: 0, 
 const fadeRight = { hidden: { opacity: 0, x: 40 }, visible: { opacity: 1, x: 0, transition: { duration: D, ease: E } } }
 const scaleUp = { hidden: { opacity: 0, scale: 0.94 }, visible: { opacity: 1, scale: 1, transition: { duration: D, ease: E } } }
 const stagger = (c = 0.12) => ({ hidden: {}, visible: { transition: { staggerChildren: c } } })
-const VP = { once: true, margin: '-60px' } as const
+const VP = { once: false, margin: '-80px' } as const
 
 const PageView = () => {
   return (

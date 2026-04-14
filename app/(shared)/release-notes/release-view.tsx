@@ -3,7 +3,7 @@
 import { SanityVersion } from '@/utils/sanity/queries'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import Link from 'next/link'
 import { ArrowRight, Package } from 'lucide-react'
 

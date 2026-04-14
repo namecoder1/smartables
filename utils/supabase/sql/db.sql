@@ -966,3 +966,17 @@ USING (
   bucket_id = 'promotion-images' AND
   (storage.foldername(name))[1] = public.get_auth_organization_id()::text
 );
+
+
+-- ─── Consent Records ──────────────────────────────────────────────────────────
+-- Stores audit trail of user consent choices (GDPR compliance).
+-- Written server-side via service role only — never exposed to clients.
+
+CREATE TABLE IF NOT EXISTS public.consent_records (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  preferences JSONB       NOT NULL,     -- { necessary: true, measurement: true, ... }
+  user_agent  TEXT,                     -- pseudonymous browser/device info
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.consent_records ENABLE ROW LEVEL SECURITY;

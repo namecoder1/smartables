@@ -9,13 +9,20 @@ export const revalidate = 60
 
 export const metadata: Metadata = {
   title: 'Documentazione | Smartables',
-  description:
-    'Guide, tutorial e riferimenti per usare al meglio Smartables nel tuo ristorante. Trova risposte veloci su prenotazioni, menù, WhatsApp, analytics e altro.',
+  description: 'Guide, tutorial e riferimenti per usare al meglio Smartables nel tuo ristorante. Trova risposte veloci su prenotazioni, menù, WhatsApp, analytics e altro.',
+  alternates: { canonical: '/docs' },
   openGraph: {
     title: 'Documentazione Smartables',
-    description:
-      'Guide, tutorial e riferimenti per usare al meglio Smartables nel tuo ristorante.',
+    description: 'Guide, tutorial e riferimenti per usare al meglio Smartables nel tuo ristorante.',
     type: 'website',
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1280,
+        height: 800,
+        alt: "Smartables - Documentazione",
+      },
+    ],
   },
 }
 

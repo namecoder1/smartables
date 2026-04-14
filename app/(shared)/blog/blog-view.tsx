@@ -3,7 +3,7 @@
 import { SanityArticleCard } from '@/utils/sanity/queries'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { ArrowRight, BookOpen, Clock } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'

@@ -3,7 +3,7 @@
 import { CaseStudy } from '@/utils/sanity/queries'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { ArrowRight, Briefcase } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -152,7 +152,7 @@ const CaseStudiesView = ({ caseStudies }: { caseStudies: CaseStudy[] }) => {
             Le storie di successo
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-5 tracking-tight text-white">
-            Case Studies
+            Casi Studio
           </h1>
           <p className="text-lg text-white/80 max-w-xl mx-auto">
             Scopri come i nostri clienti hanno trasformato il loro ristorante con Smartables.
@@ -164,7 +164,7 @@ const CaseStudiesView = ({ caseStudies }: { caseStudies: CaseStudy[] }) => {
       <section className="py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-6">
           {caseStudies.length === 0 ? (
-            <p className="text-center text-gray-400 py-16">Nessun case study pubblicato.</p>
+            <p className="text-center text-gray-400 py-16">Nessun caso studio pubblicato.</p>
           ) : (
             <>
               {/* Featured */}

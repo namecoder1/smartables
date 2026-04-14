@@ -1,15 +1,45 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, FileText, ChevronRight, Utensils, CalendarDays, MapPin, UtensilsCrossed, Percent, DollarSign, Package, UtensilsCrossed as CoverIcon, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TbRosetteDiscount } from "react-icons/tb";
 
-export const metadata = {
-  title: "Menu Digitale | Smartables",
-  description: "Sfoglia il nostro menu.",
-};
+import { Metadata } from "next";
+
+type MetaProps = { params: Promise<{ locationSlug: string }> }
+
+export async function generateMetadata({ params }: MetaProps): Promise<Metadata> {
+  const { locationSlug } = await params
+  const supabase = await createClient()
+  const { data: location } = await supabase
+    .from("locations")
+    .select("name, organizations(name)")
+    .eq("slug", locationSlug)
+    .single()
+
+  if (!location) {
+    return { title: "Menu Digitale" }
+  }
+
+  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const title = `Menu di ${location.name} | ${orgName}`
+  const description = `Sfoglia il menu digitale di ${location.name}. Scopri piatti, prezzi e promozioni. Nessuna app richiesta.`
+
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: `/m/${locationSlug}` },
+    robots: { index: false, follow: false },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+  }
+}
 
 type Menu = {
   id: string;
@@ -163,10 +193,11 @@ export default async function PublicMenuPage({
 
           {logoUrl && (
             <div className="mx-auto w-24 h-24 relative mb-4 rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white/20 bg-white p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={logoUrl}
                 alt={`${location.name} Logo`}
+                width={96}
+                height={96}
                 className="w-full h-full object-contain"
               />
             </div>
@@ -340,13 +371,8 @@ function PromotionCard({
         <div className="flex gap-4">
           {/* Image or icon */}
           {promotion.image_url ? (
-            <div className="shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-slate-100">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={promotion.image_url}
-                alt={promotion.name}
-                className="w-full h-full object-cover"
-              />
+            <div className="shrink-0 relative w-16 h-16 rounded-xl overflow-hidden bg-slate-100">
+              <Image src={promotion.image_url} alt={promotion.name} fill sizes="64px" className="object-cover" />
             </div>
           ) : (
             <div
