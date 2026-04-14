@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: "solutions/menu-digitale.png",
+        url: "solutions/menu-digitale.jpg",
         width: 1280,
         height: 800,
         alt: "Smartables - Menu digitale",

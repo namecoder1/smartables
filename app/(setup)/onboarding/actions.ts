@@ -19,6 +19,7 @@ export async function submitOnboarding(formData: FormData) {
   const openingHoursRaw = formData.get("openingHours") as string;
   const phoneNumber = formData.get("phoneNumber") as string;
   const address = formData.get("address") as string;
+  const mailingConsent = formData.get("mailingConsent") === "true";
 
   // Validate form data
   if (!restaurantName || restaurantName.length < 2) {
@@ -74,6 +75,8 @@ export async function submitOnboarding(formData: FormData) {
       full_name: fullName,
       email: user.email,
       role: "owner",
+      mailing_consent: mailingConsent,
+      mailing_consent_updated_at: new Date().toISOString(),
     })
     .eq("id", user.id);
 

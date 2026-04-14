@@ -17,12 +17,15 @@ import {
   Trash2,
   Loader2,
   AlertTriangle,
+  Bell,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { updateMailingConsentAction } from "./actions";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -35,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PageWrapper from "@/components/private/page-wrapper";
 import { deleteAccountAction } from "./actions";
+import { toast } from "sonner";
 import { getRoleLabel } from "@/lib/utils";
 
 interface ProfileData {
@@ -44,6 +48,7 @@ interface ProfileData {
   created_at: string;
   email: string;
   organization_id: string | null;
+  mailing_consent: boolean;
 }
 
 interface ProfileViewProps {
@@ -57,6 +62,8 @@ const ProfileView = ({ profile }: ProfileViewProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [mailingConsent, setMailingConsent] = useState(profile.mailing_consent);
+  const [isUpdatingConsent, setIsUpdatingConsent] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -87,6 +94,19 @@ const ProfileView = ({ profile }: ProfileViewProps) => {
   };
 
 
+
+  const handleMailingConsentChange = async (checked: boolean) => {
+    setMailingConsent(checked);
+    setIsUpdatingConsent(true);
+    const result = await updateMailingConsentAction(checked);
+    setIsUpdatingConsent(false);
+    if (!result.success) {
+      setMailingConsent(!checked);
+      toast.error("Errore nell'aggiornamento delle preferenze email");
+    } else {
+      toast.success(checked ? "Iscritto alla newsletter" : "Disiscritto dalla newsletter");
+    }
+  };
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
@@ -211,6 +231,36 @@ Esportato il: ${new Date().toLocaleString("it-IT")}
                     <p className="font-medium font-mono text-sm">{profile.id.slice(0, 16)}...</p>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="h-8 w-8 border-2 rounded-lg border-primary/20 bg-primary/10 flex items-center justify-center">
+                  <Bell className="h-4 w-4 text-primary" />
+                </div>
+                Preferenze email
+              </CardTitle>
+              <CardDescription>
+                Gestisci le comunicazioni che vuoi ricevere da Smartables.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 bg-background/80 border-2 rounded-2xl">
+                <div>
+                  <p className="font-medium text-sm">Newsletter & aggiornamenti</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Novità di prodotto, consigli pratici e aggiornamenti della piattaforma.
+                  </p>
+                </div>
+                <Switch
+                  checked={mailingConsent}
+                  onCheckedChange={handleMailingConsentChange}
+                  disabled={isUpdatingConsent}
+                />
               </div>
             </CardContent>
           </Card>

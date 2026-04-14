@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: "solutions/analitiche.png",
+        url: "solutions/analitiche.jpg",
         width: 1280,
         height: 800,
         alt: "Smartables - Analytics & Report",

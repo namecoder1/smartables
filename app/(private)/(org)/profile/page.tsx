@@ -19,7 +19,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, organization_id, full_name, role, created_at')
+    .select('id, organization_id, full_name, role, created_at, mailing_consent')
     .eq('id', user.id)
     .single()
 
@@ -34,6 +34,7 @@ export default async function ProfilePage() {
     created_at: profile.created_at,
     email: user.email || '',
     organization_id: profile.organization_id,
+    mailing_consent: profile.mailing_consent ?? true,
   }
 
   return <ProfileView profile={profileData} />

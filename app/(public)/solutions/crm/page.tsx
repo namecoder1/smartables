@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: "solutions/crm.png",
+        url: "solutions/crm.jpg",
         width: 1280,
         height: 800,
         alt: "Smartables - CRM & Loyalty",

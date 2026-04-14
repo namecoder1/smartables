@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WeeklyHoursSelector } from "@/components/utility/weekly-hours-selector";
-import { Store, User, Utensils, ArrowRight, Check, MapPin, Phone } from "lucide-react";
+import { Store, User, Utensils, ArrowRight, Check } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { NumberInput } from "@/components/ui/number-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { submitOnboarding } from "./actions";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
@@ -31,6 +32,8 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
+  const [mailingConsent, setMailingConsent] = useState(true);
+
   const [formData, setFormData] = useState({
     restaurantName: "",
     fullName: "",
@@ -150,24 +153,10 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
             <input type="hidden" name="address" value={formData.address} />
             <input type="hidden" name="phoneNumber" value={formData.phoneNumber} />
             <input type="hidden" name="totalSeats" value={formData.totalSeats} />
-            {/* WeeklyHoursSelector handles its own hidden input naming usually, 
-                    but here we need to ensure it syncs with a hidden field or distinct name 
-                    that actions.ts expects.
-                    The WeeklyHoursSelector inside creates a hidden input named "openingHours"
-                    with the value. Since we only render it in step 3, we need to make sure 
-                    it's available in the form when submitting.
-                    
-                    HOWEVER: If we unmount step 3 (by moving back to step 2), the hidden input 
-                    inside WeeklyHoursSelector might be gone.
-                    
-                    SOLUTION: We will render hidden inputs for ALL fields permanently outside the 
-                    switching logic, and sync them.
-                */}
             <input type="hidden" name="plan" value={plan || ''} />
             <input type="hidden" name="interval" value={interval || ''} />
-
-            {/* We manually handle openingHours hidden input to ensure it persists */}
             <input type="hidden" name="openingHours" value={formData.openingHours} />
+            <input type="hidden" name="mailingConsent" value={mailingConsent ? "true" : "false"} />
 
             <div className="mb-8">
               <h1 className="text-3xl font-bold tracking-tight text-black mb-2">
@@ -292,6 +281,23 @@ export function OnboardingForm({ plan, interval, error }: { plan?: string; inter
                           initialData={formData.openingHours ? JSON.parse(formData.openingHours) : undefined}
                           onChange={(hours) => updateField("openingHours", JSON.stringify(hours))}
                         />
+                      </div>
+
+                      <div className="flex items-start gap-3 p-4 bg-white border-2 border-neutral-200 rounded-xl">
+                        <Checkbox
+                          id="mailingConsent"
+                          checked={mailingConsent}
+                          onCheckedChange={(checked) => setMailingConsent(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <Label htmlFor="mailingConsent" className="text-black font-medium cursor-pointer">
+                            Voglio ricevere aggiornamenti e novità di Smartables
+                          </Label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Potrai disiscriverti in qualsiasi momento dalle impostazioni del tuo profilo.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

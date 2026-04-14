@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: "solutions/gestione-sala.png",
+        url: "solutions/gestione-sala.jpg",
         width: 1280,
         height: 800,
         alt: "Smartables - Gestione Sala",

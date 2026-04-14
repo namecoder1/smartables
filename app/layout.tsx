@@ -109,8 +109,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it" suppressHydrationWarning>
-      <GoogleAnalytics />
       <body className={`antialiased ${manrope.className}`}>
+      <GoogleAnalytics />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}

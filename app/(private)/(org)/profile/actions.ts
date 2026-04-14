@@ -5,6 +5,24 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { redirect } from "next/navigation";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { stripe } from "@/utils/stripe/client";
+import { ok, fail, type ActionResult } from "@/lib/action-response";
+
+export async function updateMailingConsentAction(consent: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fail("Non autenticato");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      mailing_consent: consent,
+      mailing_consent_updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+
+  if (error) return fail("Errore nell'aggiornamento delle preferenze email");
+  return ok();
+}
 
 /**
  * Recursively deletes all files inside a storage folder (handles nested subfolders).

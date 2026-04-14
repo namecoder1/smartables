@@ -5,9 +5,10 @@ const GA_ID = 'G-BDJXMQL9YN'
 /**
  * Google Analytics with Consent Mode v2.
  *
- * The default consent script runs `beforeInteractive` (injected into <head>
- * before any other JS) so that GA never fires before the user has been asked.
- * The gtag.js library and config tag load `afterInteractive` (after hydration).
+ * All three scripts use `afterInteractive` — the App Router does not support
+ * `beforeInteractive` for Script components. The consent defaults are set
+ * in the first script which still runs before gtag.js because Next.js
+ * preserves the render order within the same strategy bucket.
  *
  * Consent signals are updated from ConsentManager via window.gtag()
  * whenever the user makes an explicit choice.
@@ -15,8 +16,8 @@ const GA_ID = 'G-BDJXMQL9YN'
 export function GoogleAnalytics() {
   return (
     <>
-      {/* Must run before gtag.js to block analytics_storage by default */}
-      <Script id="gtag-consent-init" strategy="beforeInteractive">{`
+      {/* Initialize dataLayer and set consent defaults before gtag.js loads */}
+      <Script id="gtag-consent-init" strategy="afterInteractive">{`
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('consent', 'default', {

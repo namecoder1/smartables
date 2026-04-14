@@ -61,9 +61,24 @@ CREATE TABLE public.profiles (
   created_at timestamp with time zone DEFAULT now(),
   email text,
   accessible_locations text[],
+  mailing_consent boolean DEFAULT true,
+  mailing_consent_updated_at timestamp with time zone,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
   CONSTRAINT profiles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+);
+
+CREATE TABLE public.mailing_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject text NOT NULL,
+  content_markdown text NOT NULL,
+  status text DEFAULT 'draft' CHECK (status IN ('draft', 'sending', 'sent', 'failed')),
+  sent_at timestamp with time zone,
+  sent_by uuid REFERENCES public.profiles(id),
+  recipients_count int DEFAULT 0,
+  resend_batch_ids text[],
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
 );
 
 CREATE TABLE public.subscription_plans (

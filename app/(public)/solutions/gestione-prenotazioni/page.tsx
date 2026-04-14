@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: "solutions/gestione-prenotazioni.png",
+        url: "solutions/gestione-prenotazioni.jpg",
         width: 1280,
         height: 800,
         alt: "Smartables - Gestione Prenotazioni",
