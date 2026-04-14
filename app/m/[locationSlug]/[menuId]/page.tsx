@@ -19,7 +19,8 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
 
   if (!location || !menu) return { title: "Menu" }
 
-  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const org = Array.isArray(location.organizations) ? location.organizations[0] : location.organizations
+  const orgName = (org as { name: string } | null)?.name || "Ristorante"
   const title = `${menu.name} – ${location.name} | ${orgName}`
   const description = menu.description || `Sfoglia il menu ${menu.name} di ${location.name}. Scopri tutti i piatti con prezzi e descrizioni.`
 

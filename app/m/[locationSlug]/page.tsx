@@ -24,7 +24,8 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
     return { title: "Menu Digitale" }
   }
 
-  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const org = Array.isArray(location.organizations) ? location.organizations[0] : location.organizations
+  const orgName = (org as { name: string } | null)?.name || "Ristorante"
   const title = `Menu di ${location.name} | ${orgName}`
   const description = `Sfoglia il menu digitale di ${location.name}. Scopri piatti, prezzi e promozioni. Nessuna app richiesta.`
 

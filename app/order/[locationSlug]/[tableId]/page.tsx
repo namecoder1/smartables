@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
   const data = await getOrderData(locationSlug, tableId)
   if (!data) return { title: "Ordina al Tavolo | Smartables", robots: { index: false, follow: false } }
 
-  const title = `Ordina al Tavolo ${data.table?.name ?? ""} – ${data.location.name}`
+  const title = `Ordina al Tavolo ${data.table?.table_number ?? ""} – ${data.location.name}`
   return {
     title,
     description: `Sfoglia il menu, ordina e paga direttamente dal tavolo di ${data.location.name}. Nessuna app richiesta.`,

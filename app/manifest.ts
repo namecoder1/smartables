@@ -44,14 +44,12 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/dashboard-showcase.png",
         sizes: "1280x800",
         type: "image/png",
-        // @ts-expect-error – form_factor is a valid PWA field not yet in TS types
         form_factor: "wide",
       },
       {
         src: "/app-showcase.png",
         sizes: "390x844",
         type: "image/png",
-        // @ts-expect-error – form_factor is a valid PWA field not yet in TS types
         form_factor: "narrow",
       },
     ],

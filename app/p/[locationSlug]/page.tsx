@@ -39,7 +39,8 @@ export async function generateMetadata({ params }: MetaProps): Promise<Metadata>
     return { title: "Prenota un Tavolo | Smartables" }
   }
 
-  const orgName = (location.organizations as { name: string } | null)?.name || "Ristorante"
+  const org = Array.isArray(location.organizations) ? location.organizations[0] : location.organizations
+  const orgName = (org as { name: string } | null)?.name || "Ristorante"
   const title = `Prenota da ${location.name} | ${orgName}`
   const description = `Prenota il tuo tavolo online da ${location.name}. Scegli data, orario e numero di persone in pochi secondi.`
 
