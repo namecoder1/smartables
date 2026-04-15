@@ -17,10 +17,18 @@ const Footer = () => {
               </div>
             </div>
             <div className='flex items-center gap-4 pt-6'>
-              <FaLinkedin size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
-              <FaInstagram size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
-              <FaFacebook size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
-              <FaYoutube size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              <Link href='https://www.linkedin.com/company/smartables-it' target='_blank' rel='noopener noreferrer'>
+                <FaLinkedin size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              </Link>
+              <Link href='https://www.instagram.com/smartables.it/' target='_blank' rel='noopener noreferrer'>
+                <FaInstagram size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              </Link>
+              <Link href='https://www.facebook.com/groups/974259135169301' target='_blank' rel='noopener noreferrer'>
+                <FaFacebook size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              </Link>
+              <Link href='https://www.youtube.com/@Smartables' target='_blank' rel='noopener noreferrer'>
+                <FaYoutube size={24} className='text-white hover:text-white/70 transition-colors duration-300' />
+              </Link>
             </div>
           </div>
           <div className='grid grid-cols-3 max-w-xl gap-12'>

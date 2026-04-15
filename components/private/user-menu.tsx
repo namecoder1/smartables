@@ -33,11 +33,19 @@ export const UserMenu = ({
 
   if (context === 'shared') {
     return (
-      <Button asChild variant='ghost' size='icon-lg' className='border-2 border-neutral-300!'>
-        <Link href='/home'>
-          <LuCircleUserRound size={26} className='text-neutral-300!' />
-        </Link>
-      </Button>
+      <>
+        <Button asChild variant='outline' size='icon-lg' className='border-2 hidden md:flex text-black border-neutral-300/10!'>
+          <Link href='/home'>
+            <LuCircleUserRound size={26} color='black' />
+          </Link>
+        </Button>
+        <Button asChild variant='outline' size='icon-lg' className='border-2 w-full md:hidden text-black border-neutral-300/10!'>
+          <Link href='/home'>
+            <LuCircleUserRound size={26} color='black' />
+            <span className='md:hidden'>Profilo</span>
+          </Link>
+        </Button>
+      </>
     )
   }
 

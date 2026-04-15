@@ -130,7 +130,7 @@ export function InstallPWABanner() {
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-9 rounded-xl text-xs font-semibold border-white/20 text-white hover:bg-white/10"
+                className="w-full h-9 rounded-xl text-xs font-semibold text-black"
                 onClick={handleDismiss}
               >
                 Fatto!
