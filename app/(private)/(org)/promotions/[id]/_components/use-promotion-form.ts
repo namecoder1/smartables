@@ -172,6 +172,10 @@ export function usePromotionForm({
 
         finalImageUrl = publicUrl
         await trackStorageUpload(imageFile.size)
+
+        if (promotion?.image_url) {
+          await deleteStorageFileAndTrack(promotion.image_url, 'promotion-images')
+        }
       } else if (!imagePreview && promotion?.image_url) {
         await deleteStorageFileAndTrack(promotion.image_url, 'promotion-images')
         finalImageUrl = null
@@ -180,7 +184,7 @@ export function usePromotionForm({
       const payload = {
         name,
         description: description || undefined,
-        image_url: finalImageUrl || undefined,
+        image_url: finalImageUrl,
         type,
         value: value ?? null,
         all_locations: allLocations,

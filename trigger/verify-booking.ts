@@ -2,6 +2,8 @@ import { task, wait } from "@trigger.dev/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { isBefore, subHours } from "date-fns";
 import { captureError } from "@/lib/monitoring";
+import type { WabaTemplate, WabaTemplateButton } from "@/types/general";
+import { ROLE_TO_PAYLOAD } from "@/lib/waba-templates";
 
 // Supabase client initialization requires explicit passing since it runs in a different worker
 function getSupabaseAdmin() {
@@ -100,10 +102,10 @@ export const verifyBooking = task({
       }
     }
 
-    // Fetch the location meta phone ID AND name
+    // Fetch the location meta phone ID, name, and custom templates
     const { data: location } = await supabase
       .from("locations")
-      .select("meta_phone_id, name")
+      .select("meta_phone_id, name, waba_templates")
       .eq("id", locationId)
       .single();
 
@@ -122,34 +124,71 @@ export const verifyBooking = task({
       minute: "2-digit",
     });
 
-    console.log(
-      `[Verify Booking] Sending verify template to ${guestPhone} for ${timeString}`,
+    // Check for an APPROVED custom booking_reminder template for this location.
+    // Falls back to the system template "verify_booking" if none is found.
+    const locationTemplates = (location.waba_templates ?? []) as WabaTemplate[];
+    const customTemplate = locationTemplates.find(
+      (t) => t.template_type === "booking_reminder" && t.meta_status === "APPROVED",
     );
 
-    // Call WhatsApp API via our internal utility by providing the URL we run locally or remote
-    // NOTE: In trigger worker we can't always import next/server modules directly if they rely on request context
-    // It's safer to use the helper function directly
+    console.log(
+      `[Verify Booking] Sending ${customTemplate ? `custom template "${customTemplate.name}"` : "system template verify_booking"} to ${guestPhone} for ${timeString}`,
+    );
+
     const { sendWhatsAppMessage } = await import("../lib/whatsapp");
 
+    // Build template message: custom or system fallback
+    let templateMessage: Parameters<typeof sendWhatsAppMessage>[1];
+
+    if (customTemplate) {
+      const buttonsComp = customTemplate.components.find((c) => c.type === "BUTTONS");
+      const btns = (buttonsComp && "buttons" in buttonsComp ? buttonsComp.buttons : []) as WabaTemplateButton[];
+      const buttonComponents = btns
+        .map((btn, idx) => {
+          if (btn.type === "QUICK_REPLY") {
+            const payload = btn.semantic_role
+              ? (ROLE_TO_PAYLOAD[btn.semantic_role] ?? btn.text.toLowerCase())
+              : btn.text.toLowerCase();
+            return { type: "button", sub_type: "quick_reply", index: String(idx), parameters: [{ type: "payload", payload }] };
+          }
+          return null;
+        })
+        .filter(Boolean) as { type: string; sub_type: string; index: string; parameters: { type: string; payload: string }[] }[];
+
+      templateMessage = {
+        name: customTemplate.name,
+        language: { code: customTemplate.language },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: guestName },               // {{1}} nome ospite
+              { type: "text", text: timeString },               // {{2}} orario
+              { type: "text", text: location.name || "il ristorante" }, // {{3}} nome sede
+            ],
+          },
+          ...buttonComponents,
+        ],
+      };
+    } else {
+      templateMessage = {
+        name: "verify_booking",
+        language: { code: "it" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: guestName },               // {{1}} Name
+              { type: "text", text: timeString },               // {{2}} Time
+              { type: "text", text: location.name || "il ristorante" }, // {{3}} Location Name
+            ],
+          },
+        ],
+      };
+    }
+
     try {
-      await sendWhatsAppMessage(
-        guestPhone,
-        {
-          name: "verify_booking",
-          language: { code: "it" },
-          components: [
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: guestName }, // {{1}} Name
-                { type: "text", text: timeString }, // {{2}} Time
-                { type: "text", text: location.name || "il ristorante" }, // {{3}} Location Name
-              ],
-            },
-          ],
-        },
-        location.meta_phone_id,
-      );
+      await sendWhatsAppMessage(guestPhone, templateMessage, location.meta_phone_id);
 
       // Update DB to mark verification sent (if using that column) or just complete
       const { error: updateErr } = await supabase

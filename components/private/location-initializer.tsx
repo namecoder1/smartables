@@ -1,7 +1,7 @@
 'use client'
 
 import { useLocationStore } from "@/store/location-store"
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { setLocationCookie } from "@/app/actions/set-location-cookie"
 
 import { useRouter } from "next/navigation"
@@ -10,13 +10,6 @@ export function LocationInitializer({ locations, activeLocationId }: { locations
   const router = useRouter()
   const setLocations = useLocationStore((state) => state.setLocations)
   const selectedLocationId = useLocationStore((state) => state.selectedLocationId)
-  const initialized = useRef(false)
-
-  if (!initialized.current && locations) {
-    setLocations(locations)
-    initialized.current = true
-  }
-
   useEffect(() => {
     if (locations) {
       setLocations(locations)

@@ -184,6 +184,7 @@ export function useMenuDialogs({
             : null,
         })
         toast.success(`Menu creato per ${currentWorkingLocationName}`)
+        router.refresh()
       } else if (menuDialog.mode === 'edit' && menuDialog.menuId) {
         const currentMenu = menus.find((m) => m.id === menuDialog.menuId)
 
@@ -228,6 +229,7 @@ export function useMenuDialogs({
     try {
       await deleteMenu(id)
       toast.success('Menu eliminato')
+      router.refresh()
     } catch {
       toast.error("Errore durante l'eliminazione")
     }

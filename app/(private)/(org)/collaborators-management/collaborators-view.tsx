@@ -215,20 +215,19 @@ const CollaboratorsView = ({
                           </Select>
 
                           {locationType === "selected" && (
-                            <div className="space-y-2 border rounded-md p-3 max-h-48 overflow-y-auto">
+                            <div className="space-y-0.5 border rounded-xl p-1 max-h-48 overflow-y-auto">
                               {organizationLocations.map(loc => (
-                                <label key={loc.id} className="flex items-center space-x-2 p-1 hover:bg-muted/50 rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                <label key={loc.id} className="flex items-center space-x-2 p-1.5 hover:bg-muted rounded-xl cursor-pointer">
+                                  <Checkbox
                                     checked={selectedLocations.includes(loc.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
                                         setSelectedLocations([...selectedLocations, loc.id])
                                       } else {
                                         setSelectedLocations(selectedLocations.filter(id => id !== loc.id))
                                       }
                                     }}
+                                    aria-label={`Seleziona sede ${loc.name}`}
                                   />
                                   <span className="text-sm font-medium">{loc.name}</span>
                                 </label>
@@ -253,8 +252,6 @@ const CollaboratorsView = ({
           </Dialog>
         </ButtonGroup>
       </div>
-
-      
 
       <OverviewCards
         data={[
@@ -297,7 +294,7 @@ const CollaboratorsView = ({
                 onConfirm={handleDelete}
                 disabled={isDeletePending}
                 trigger={
-                  <Button size="sm" variant="destructive" disabled={isDeletePending}>
+                  <Button size="sm" variant="destructive" className='bg-destructive!' disabled={isDeletePending}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 }
@@ -305,10 +302,11 @@ const CollaboratorsView = ({
             )}
           </div>
         )}
+        <div className="rounded-2xl border-2 overflow-hidden">
         <Table>
-          <TableHeader className='bg-card'>
+          <TableHeader className='bg-card border-b-2'>
             <TableRow className='hover:bg-card/50'>
-              <TableHead className="w-10">
+              <TableHead className="w-10 rounded-t-3xl!">
                 <Checkbox
                   checked={allSelected}
                   onCheckedChange={toggleAll}
@@ -322,9 +320,9 @@ const CollaboratorsView = ({
               <TableHead>Stato</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className='bg-card/40'>
+          <TableBody className='bg-card/40 divide-x-2'>
             {collaborators.length === 0 ? (
-              <TableRow>
+              <TableRow className='border-2'>
                 <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-center">
                     <div className="rounded-full bg-gray-100 p-3 mb-2">
@@ -341,7 +339,7 @@ const CollaboratorsView = ({
               collaborators.map((collaborator) => {
                 const isDeletable = collaborator.id !== user.id && collaborator.role !== 'owner'
                 return (
-                  <TableRow key={collaborator.id} className='hover:bg-card'>
+                  <TableRow key={collaborator.id} className='hover:bg-card border-b-2'>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selected.has(collaborator.id)}
@@ -381,6 +379,7 @@ const CollaboratorsView = ({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Button className="shadow-sm absolute bottom-6 flex xl:hidden right-6" disabled={collaborators.length >= maxStaff} onClick={() => setOpen(true)}>

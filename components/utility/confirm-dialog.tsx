@@ -55,10 +55,7 @@ const ConfirmDialog = ({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={disabled}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault(); // Prevent auto-close if needed, but usually we want it to close. 
-              // However, typically AlertDialogAction closes automatically. 
-              // If we verify logic is sync, we can just run it.
+            onClick={() => {
               onConfirm();
             }}
             disabled={disabled}

@@ -155,7 +155,7 @@ export default function AcceptInvitePage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#e9e9e9]">
-      <Card className="w-full max-w-md rounded-xl shadow-sm border-2 gap-2">
+      <Card className="w-full max-w-md shadow-sm border-2 gap-2">
         <CardHeader>
           <img
             className="mx-auto h-12 w-auto"

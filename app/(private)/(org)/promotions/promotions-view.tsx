@@ -27,6 +27,7 @@ import NoItems from '@/components/utility/no-items'
 import { deletePromotion } from './actions'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import ConfirmDialog from '@/components/utility/confirm-dialog'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { FaqContent } from '@/components/private/faq-section'
@@ -91,23 +92,30 @@ interface PromotionsViewProps {
 
 const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: PromotionsViewProps) => {
   const router = useRouter()
+  const [localPromotions, setLocalPromotions] = useState(promotions)
+
+  useEffect(() => {
+    setLocalPromotions(promotions)
+  }, [promotions])
 
   const handleDelete = async (id: string) => {
+    setLocalPromotions(prev => prev.filter(p => p.id !== id))
     try {
       const result = await deletePromotion(id)
       if (!result.success) {
         toast.error("Errore nell'eliminazione della promozione")
+        setLocalPromotions(promotions)
       } else {
         toast.success('Promozione eliminata')
-        router.refresh()
       }
     } catch {
       toast.error("Errore nell'eliminazione della promozione")
+      setLocalPromotions(promotions)
     }
   }
 
-  const activeCount = promotions.filter((p) => p.is_active).length
-  const withThreshold = promotions.filter((p) => p.visit_threshold && p.visit_threshold > 0).length
+  const activeCount = localPromotions.filter((p) => p.is_active).length
+  const withThreshold = localPromotions.filter((p) => p.visit_threshold && p.visit_threshold > 0).length
 
   return (
     <PageWrapper className="relative">
@@ -138,7 +146,7 @@ const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: 
         data={[
           {
             title: 'Totale promozioni',
-            value: promotions.length,
+            value: localPromotions.length,
             description: 'promozioni',
             icon: <TbRosetteDiscount className="text-primary size-6 2xl:size-8" />,
           },
@@ -158,7 +166,7 @@ const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: 
       />
 
       {/* Promotions Grid */}
-      {promotions.length === 0 ? (
+      {localPromotions.length === 0 ? (
         <NoItems
           icon={<TbRosetteDiscount size={28} className='text-primary' />}
           title="Non hai ancora creato una promozione"
@@ -171,7 +179,7 @@ const PromotionsView = ({ promotions, locations, menus, organizationId, faqs }: 
         />
       ) : (
         <DataContainer>
-          {promotions.map((promo) => (
+          {localPromotions.map((promo) => (
             <PromotionCard
               key={promo.id}
               promotion={promo}

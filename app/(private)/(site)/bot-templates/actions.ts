@@ -7,6 +7,7 @@ import { checkResourceAvailability } from "@/lib/limiter";
 import { PATHS } from "@/lib/revalidation-paths";
 import {
   createMetaTemplate,
+  updateMetaTemplate,
   deleteMetaTemplate,
   syncMetaTemplateStatus,
   validateTemplateWithLLM,
@@ -231,7 +232,12 @@ export async function createTemplate(
 
 // ── Update ────────────────────────────────────────────────────────────────────
 
-/** Only DRAFT templates can be edited. */
+/**
+ * Update a template's content locally and reset its status to DRAFT.
+ * Works for any status — editing a non-DRAFT template brings it back to DRAFT
+ * so it won't be used in automation until re-approved by Meta.
+ * The template name is immutable once submitted to Meta.
+ */
 export async function updateTemplate(
   locationId: string,
   templateId: string,
@@ -257,24 +263,30 @@ export async function updateTemplate(
   const compError = validateComponents(input.components, existing.template_type);
   if (compError) return fail(compError);
 
-  if (!isValidTemplateName(input.name))
+  // Name is locked for templates already submitted to Meta
+  const wasSubmitted = existing.meta_status !== "DRAFT";
+  const effectiveName = wasSubmitted ? existing.name : input.name;
+
+  if (!isValidTemplateName(effectiveName))
     return fail("Nome template non valido.");
 
-  if (existing.meta_status !== "DRAFT")
-    return fail("Solo i template in bozza possono essere modificati.");
-
-  // Name uniqueness check (exclude self)
-  const nameConflict = locations.some((loc) =>
-    loc.waba_templates.some((t) => t.name === input.name && t.id !== templateId),
-  );
-  if (nameConflict) return fail("Esiste già un template con questo nome.");
+  // Name uniqueness check (exclude self), only relevant for DRAFT edits
+  if (!wasSubmitted) {
+    const nameConflict = locations.some((loc) =>
+      loc.waba_templates.some((t) => t.name === effectiveName && t.id !== templateId),
+    );
+    if (nameConflict) return fail("Esiste già un template con questo nome.");
+  }
 
   const updated: WabaTemplate = {
     ...existing,
     display_name: input.display_name.trim(),
-    name: input.name,
+    name: effectiveName,
     language: input.language,
     components: input.components,
+    // Reset to DRAFT so automation won't use this until re-approved
+    meta_status: "DRAFT",
+    rejection_reason: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -338,7 +350,13 @@ export async function validateTemplate(
 
 // ── Submit to Meta ────────────────────────────────────────────────────────────
 
-/** Run LLM check (warn but don't block on issues) then submit to Meta API. */
+/**
+ * Submit (or re-submit) a DRAFT template to Meta for review.
+ * - First submission: creates the template on Meta.
+ * - Re-submission (has meta_template_id): updates the existing Meta template.
+ * Only DRAFT templates can be submitted — updateTemplate() resets status to DRAFT
+ * whenever content is changed.
+ */
 export async function submitTemplateToMeta(
   locationId: string,
   templateId: string,
@@ -361,18 +379,34 @@ export async function submitTemplateToMeta(
   const compError = validateComponents(template.components, template.template_type);
   if (compError) return fail(compError);
 
-  // Submit to Meta
-  const { meta_template_id, meta_status } = await createMetaTemplate({
-    name: template.name,
-    language: template.language,
-    category: template.category,
-    components: template.components,
-  });
+  let meta_template_id: string;
+  let meta_status: WabaTemplate["meta_status"];
+
+  if (template.meta_template_id) {
+    // Re-submission: update the existing Meta template
+    await updateMetaTemplate(template.meta_template_id, {
+      components: template.components,
+      category: template.category,
+    });
+    meta_template_id = template.meta_template_id;
+    meta_status = "PENDING";
+  } else {
+    // First submission: create new template on Meta
+    const result = await createMetaTemplate({
+      name: template.name,
+      language: template.language,
+      category: template.category,
+      components: template.components,
+    });
+    meta_template_id = result.meta_template_id;
+    meta_status = result.meta_status;
+  }
 
   const updated: WabaTemplate = {
     ...template,
     meta_template_id,
     meta_status,
+    rejection_reason: null,
     updated_at: new Date().toISOString(),
     last_synced_at: new Date().toISOString(),
   };

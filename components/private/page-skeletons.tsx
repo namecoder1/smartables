@@ -68,7 +68,7 @@ export function HomeSkeleton() {
         <Skeleton className="h-4 w-72" />
       </div>
       {/* Stats cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {Array.from({ length: 4 }).map((_, i) => (
           <SCard key={i}>
             <Skeleton className="h-3.5 w-20 mb-3" />

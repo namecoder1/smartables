@@ -22,6 +22,7 @@ export type LimitsUsage = {
   storageBytes: number
   contactsWa: number
   kbChars: number
+  botTemplates: number
 }
 
 const LimitsPage = async () => {
@@ -55,13 +56,16 @@ const LimitsPage = async () => {
         .single()
     : { data: null }
 
-  // ── Fetch all location IDs for zone/zone counting ───────────────────────────
+  // ── Fetch all location IDs + waba_templates for template counting ───────────
   const { data: locationRows } = await supabase
     .from('locations')
-    .select('id')
+    .select('id, waba_templates')
     .eq('organization_id', orgId)
 
   const locationIds = locationRows?.map(l => l.id) ?? []
+  const botTemplatesCount = (locationRows ?? []).reduce(
+    (sum, l) => sum + ((l.waba_templates as unknown[]) ?? []).length, 0,
+  )
 
   const cycleStart = org?.current_billing_cycle_start ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
@@ -96,6 +100,7 @@ const LimitsPage = async () => {
     storageBytes: org?.total_storage_used ?? 0,
     contactsWa: org?.whatsapp_usage_count ?? 0,
     kbChars,
+    botTemplates: botTemplatesCount,
   }
 
   const addonsConfig: AddonConfig = org?.addons_config ?? {

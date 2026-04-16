@@ -7,7 +7,7 @@ import { LocationBranding as Branding, Location } from '@/types/general'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateLocation } from '@/app/actions/settings'
-import { trackStorageUpload } from '@/app/actions/storage'
+import { trackStorageUpload, deleteStorageFileAndTrack } from '@/app/actions/storage'
 import ColorPicker from '@/components/ui/color-picker'
 import { toast } from 'sonner'
 import { PhoneInput } from '@/components/ui/phone-input'
@@ -86,7 +86,16 @@ const SettingsView = ({
     try {
       let finalLogoUrl = branding.logo_url
 
+      // Logo removed without replacement
+      if (!logoFile && !branding.logo_url && location.branding?.logo_url) {
+        await deleteStorageFileAndTrack(location.branding.logo_url as string, 'location-logo')
+      }
+
       if (logoFile) {
+        if (location.branding?.logo_url) {
+          await deleteStorageFileAndTrack(location.branding.logo_url as string, 'location-logo')
+        }
+
         const supabase = createClient()
         const fileExt = logoFile.name.split('.').pop()
         const fileName = `${location.id}-${Math.random()}.${fileExt}`
@@ -290,7 +299,7 @@ const SettingsView = ({
                               aspect="square"
                               title='Logo Attività'
                               onChange={(url, file) => {
-                                if (file) setLogoFile(file)
+                                setLogoFile(file || null)
                                 setBranding(prev => ({ ...prev, logo_url: url || '' }))
                               }}
                             />

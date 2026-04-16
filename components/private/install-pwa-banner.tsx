@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { X, Smartphone, Share, MoreVertical, Plus } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { AnimatePresence, motion } from 'framer-motion'
 
 type Platform = 'ios' | 'android' | 'desktop' | null
 
@@ -63,10 +64,16 @@ export function InstallPWABanner() {
     }
   }
 
-  if (dismissed || !platform) return null
+  if (!platform) return null
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 xl:left-auto xl:right-6 xl:bottom-6 xl:w-80 z-50 bg-[#1a1a1a] border border-[#3B3B3B] rounded-2xl shadow-2xl p-4 text-white animate-in slide-in-from-bottom-4 duration-300">
+    <AnimatePresence>
+    {!dismissed && <motion.div
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 24 }}
+      transition={{ duration: 0.25, ease: 'easeInOut' }}
+      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-80 z-50 bg-[#1a1a1a] border border-[#3B3B3B] rounded-2xl shadow-2xl p-4 text-white">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
@@ -185,6 +192,7 @@ export function InstallPWABanner() {
           )}
         </div>
       )}
-    </div>
+    </motion.div>}
+    </AnimatePresence>
   )
 }

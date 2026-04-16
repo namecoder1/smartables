@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import PasswordStrength, { isPasswordValid } from '@/components/utility/password-strength'
 import { motion } from 'motion/react'
 import { Loader2, ArrowLeft, Check } from 'lucide-react'
@@ -33,8 +34,10 @@ const RegisterView = () => {
   // State for plan selection view
   const [isAnnual, setIsAnnual] = useState(false)
 
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    flushSync(() => setIsLoading(true))
     await signup(formData);
     setTimeout(() => setIsLoading(false), 2000); // Fail-safe reset
   }
@@ -147,7 +150,7 @@ const RegisterView = () => {
       </div>
 
       <div className="grid gap-6">
-        <form action={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>

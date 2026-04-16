@@ -4,6 +4,8 @@ import { Metadata } from 'next'
 import MenusView from './menus-view'
 import { getFaqsByTopic } from '@/utils/sanity/queries'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Gestisci Menu',
   description: 'Gestisci i menu del tuo ristorante',

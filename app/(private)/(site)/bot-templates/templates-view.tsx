@@ -22,12 +22,14 @@ import {
   AlertCircle,
   PauseCircle,
   FileText,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteTemplate, submitTemplateToMeta, syncTemplateStatus } from "./actions";
 import type { WabaTemplate } from "@/types/general";
 import ConfirmDialog from "@/components/utility/confirm-dialog";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { useLocationStore } from "@/store/location-store";
 
 interface LocationData {
   id: string;
@@ -73,12 +75,20 @@ export default function TemplatesView({ locations, templateLimit, totalUsed }: P
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ locationId: string; templateId: string; displayName: string } | null>(null);
 
+  const { selectedLocationId } = useLocationStore();
+  const hasMultipleLocations = locations.length > 1;
+
   const allTemplates: TemplateWithLocation[] = locations.flatMap((loc) =>
     loc.waba_templates.map((t) => ({ ...t, locationId: loc.id, locationName: loc.name })),
   );
 
-  const approvedCount = allTemplates.filter((t) => t.meta_status === "APPROVED").length;
-  const pendingCount  = allTemplates.filter((t) => t.meta_status === "PENDING").length;
+  // Filter by currently selected location when one is active
+  const visibleTemplates = selectedLocationId
+    ? allTemplates.filter((t) => t.locationId === selectedLocationId)
+    : allTemplates;
+
+  const approvedCount = visibleTemplates.filter((t) => t.meta_status === "APPROVED").length;
+  const pendingCount  = visibleTemplates.filter((t) => t.meta_status === "PENDING").length;
   const isAtLimit = totalUsed >= templateLimit;
 
   const handleDelete = () => {
@@ -179,7 +189,7 @@ export default function TemplatesView({ locations, templateLimit, totalUsed }: P
           </Button>
         </div>
 
-        {allTemplates.length === 0 ? (
+        {visibleTemplates.length === 0 ? (
           <NoItems
             icon={<MessageSquare size={28} className='text-primary' />}
             title="Nessun template"
@@ -192,7 +202,7 @@ export default function TemplatesView({ locations, templateLimit, totalUsed }: P
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {allTemplates.map((template) => {
+            {visibleTemplates.map((template) => {
               const status = STATUS_CONFIG[template.meta_status];
               const isLoading = loadingId === template.id;
               return (
@@ -213,6 +223,12 @@ export default function TemplatesView({ locations, templateLimit, totalUsed }: P
                     <p className="text-sm text-muted-foreground line-clamp-3">{getBodyPreview(template)}</p>
                     {template.rejection_reason && template.rejection_reason !== 'NONE' && (
                       <p className="text-xs text-destructive mt-2 line-clamp-2">✗ {template.rejection_reason || "Motivo non specificato"}</p>
+                    )}
+                    {hasMultipleLocations && (
+                      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{template.locationName}</span>
+                      </div>
                     )}
                   </CardContent>
 

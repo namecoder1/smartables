@@ -25,6 +25,8 @@ import NoItems from '@/components/utility/no-items'
 import ConfirmDialog from '@/components/utility/confirm-dialog'
 import SetPageTitle from '@/components/private/set-page-title'
 import { ButtonGroup } from '@/components/ui/button-group'
+import { MdNoFood } from 'react-icons/md'
+import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh'
 
 interface MenuEditorProps {
   menu: any
@@ -34,6 +36,8 @@ interface MenuEditorProps {
 export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEditorProps) {
   const router = useRouter()
   const menu = initialMenu
+
+  useRealtimeRefresh('menus', { filter: `id=eq.${menu.id}` })
 
   // State
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
@@ -184,7 +188,7 @@ export default function MenuEditor({ menu: initialMenu, organizationId }: MenuEd
               <NoItems
                 title="Menu Vuoto"
                 description="Inizia aggiungendo la tua prima categoria di prodotti (es. Antipasti, Primi, Drink)."
-                icon={<Plus size={28} className='text-primary' />}
+                icon={<MdNoFood size={28} className='text-primary' />}
                 button={<Button onClick={openNewCategory}>
                   <Plus className="w-4 h-4" />
                   Aggiungi Categoria

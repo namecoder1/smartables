@@ -137,6 +137,45 @@ export async function createMetaTemplate(
 }
 
 /**
+ * Update an existing Meta template's content (re-submits it for review).
+ * Used when editing a template that was already submitted (APPROVED, REJECTED, PAUSED, etc.).
+ * The template goes back to PENDING after the call.
+ */
+export async function updateMetaTemplate(
+  metaTemplateId: string,
+  template: Pick<WabaTemplate, "components" | "category">,
+): Promise<void> {
+  const response = await fetch(`${GRAPH_BASE}/${metaTemplateId}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      category: template.category,
+      components: template.components.map((c) => {
+        if (c.type === "BUTTONS") {
+          return { type: "BUTTONS", buttons: c.buttons.map(buildMetaButton) };
+        }
+        return c;
+      }),
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const err = new Error(data.error?.message ?? "Meta template update failed");
+    captureError(err, {
+      service: "whatsapp",
+      flow: "update_waba_template",
+      metaTemplateId,
+      metaErrorCode: data.error?.code,
+    });
+    throw err;
+  }
+}
+
+/**
  * Delete a template from Meta by name.
  * Throws if the Meta API returns an error so the caller can surface it to the user.
  */

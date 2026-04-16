@@ -105,7 +105,11 @@ interface InnerProps {
 function TemplateFormInner({
   locations, template, templateLocationId, isNew, activeType, onTypeReset, router,
 }: InnerProps) {
-  const isEditable = isNew || template?.meta_status === "DRAFT";
+  // All templates are editable; editing a non-DRAFT resets status to DRAFT locally
+  const isEditable = true;
+  // Name is locked once submitted to Meta (not DRAFT) — Meta uses it as identifier
+  const isNameLocked = !isNew && template?.meta_status !== "DRAFT";
+  const wasSubmitted = !isNew && template?.meta_status !== "DRAFT";
   const category: WabaTemplateCategory = TYPE_TO_CATEGORY[activeType];
   const typeConfig = TEMPLATE_TYPE_CONFIG[activeType];
   const requiredRoles: ButtonSemanticRole[] = typeConfig.requiredRoles;
@@ -281,7 +285,17 @@ function TemplateFormInner({
         )}
       </div>
 
-      {/* Warning */}
+      {/* Warning per template già inviato a Meta */}
+      {wasSubmitted && savePhase === "editing" && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertDescription>
+            Questo template è già stato inviato a Meta. Salvando le modifiche verrà riportato in bozza e <strong>non sarà usato</strong> finché non viene reinviato e approvato nuovamente.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Warning tipo template */}
       {typeConfig.warning && (
         <Alert variant="destructive">
           <TriangleAlert className="h-4 w-4" />
@@ -303,14 +317,15 @@ function TemplateFormInner({
                 placeholder="es. Recupero Chiamata Aperto Personalizzato"
                 value={displayName}
                 onChange={(e) => handleDisplayNameChange(e.target.value)}
-                disabled={!isEditable}
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="template-name">
                 Nome tecnico *{" "}
                 <span className="text-muted-foreground font-normal text-xs">
-                  (solo minuscole, numeri, underscore — univoco su WABA)
+                  {isNameLocked
+                    ? "(bloccato — identificatore univoco su Meta)"
+                    : "(solo minuscole, numeri, underscore — univoco su WABA)"}
                 </span>
               </Label>
               <Input
@@ -318,7 +333,7 @@ function TemplateFormInner({
                 placeholder="es. recupero_aperto_personalizzato"
                 value={name}
                 onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                disabled={!isEditable}
+                disabled={isNameLocked}
                 className="font-mono text-sm"
               />
             </div>
@@ -384,13 +399,18 @@ function TemplateFormInner({
                   {(activeType === "recovery_open" || activeType === "recovery_closed") && (
                     <span className="text-primary"> · {"{{1}}"} = nome sede (auto-iniettato)</span>
                   )}
+                  {activeType === "booking_reminder" && (
+                    <span className="text-primary"> · {"{{1}}"} = nome ospite · {"{{2}}"} = orario · {"{{3}}"} = nome sede</span>
+                  )}
                 </span>
               </Label>
               <Textarea
                 placeholder={
                   activeType.startsWith("recovery")
                     ? "Ciao! Hai chiamato {{1}} ma non abbiamo risposto.\nPossiamo aiutarti?"
-                    : "Ciao {{1}}, la tua prenotazione per {{2}} alle {{3}} è confermata."
+                    : activeType === "booking_reminder"
+                      ? "Ciao {{1}}, ti ricordiamo la tua prenotazione alle {{2}} presso {{3}}.\nConfermi la presenza?"
+                      : "Ciao {{1}}, la tua prenotazione per {{2}} alle {{3}} è confermata."
                 }
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value.slice(0, CHAR_LIMITS.BODY))}
@@ -410,7 +430,13 @@ function TemplateFormInner({
                     <div key={n} className="flex items-center gap-2">
                       <span className="text-xs font-mono text-muted-foreground shrink-0 w-8">{`{{${n}}}`}</span>
                       <Input
-                        placeholder={n === 1 && activeType.startsWith("recovery") ? "es. Pizzeria Roma" : `es. valore ${n}`}
+                        placeholder={
+                          n === 1 && activeType.startsWith("recovery") ? "es. Pizzeria Roma" :
+                          n === 1 && activeType === "booking_reminder" ? "es. Mario" :
+                          n === 2 && activeType === "booking_reminder" ? "es. 20:30" :
+                          n === 3 && activeType === "booking_reminder" ? "es. Pizzeria Roma" :
+                          `es. valore ${n}`
+                        }
                         value={variableExamples[n] ?? ""}
                         onChange={(e) => setVariableExamples((prev) => ({ ...prev, [n]: e.target.value }))}
                         disabled={!isEditable}

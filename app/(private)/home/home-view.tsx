@@ -108,7 +108,7 @@ export default function HomeView({
         <p className="text-muted-foreground text-sm mt-0.5">Panoramica di tutti i tuoi ristoranti — ultimi 30 giorni</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 my-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 my-6">
         <StatCard
           title="Prenotazioni"
           value={stats.bookings.total}
@@ -472,7 +472,7 @@ function FeatureTaskCard({
       'group relative flex items-center justify-between p-3 rounded-2xl border-2 transition-all duration-300',
       completed
         ? 'bg-muted/40'
-        : 'bg-card border-card-foreground/5 shadow-xs hover:border-primary/30 hover:shadow-md'
+        : 'bg-card border-card-foreground/5 shadow-xs hover:border-primary/30'
     )}>
       <div className="flex items-center gap-3">
         <div className={cn(

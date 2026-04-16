@@ -38,7 +38,7 @@ export const PATHS = {
   // ── Private (org) ────────────────────────────────────────────────────────
   RESERVATIONS_ORG: "/(private)/(org)/reservations",
   /** Pass "page" as the second arg. */
-  PROMOTIONS: "/(private)/(org)/promotions",
+  PROMOTIONS: "/promotions",
   MANAGE_COLLABORATORS: "/(private)/(org)/manage-collaborators",
 
   // ── Private (organization) ───────────────────────────────────────────────

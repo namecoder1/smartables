@@ -66,19 +66,19 @@ export const UserMenu = ({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Button variant='ghost' asChild className='w-full justify-start mb-0.5'>
+          <Button variant='outline' asChild className='w-full justify-start mb-1'>
             <Link href='/profile' className='cursor-pointer'>Il tuo Profilo</Link>
           </Button>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Button variant='ghost' asChild className='w-full justify-start'>
+          <Button variant='outline' asChild className='w-full justify-start'>
             <Link href='/billing' className='cursor-pointer'>Gestisci Fatturazione</Link>
           </Button>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Button variant='destructive' onClick={logout} className='w-full justify-start hover:bg-destructive/90! hover:text-white!'>
-            Logout
+          <Button variant='destructive' onClick={logout} className='w-full bg-destructive! justify-start pl-3 hover:bg-destructive/90! hover:text-white!'>
+            Esci
           </Button>
         </DropdownMenuItem>
       </DropdownMenuContent>

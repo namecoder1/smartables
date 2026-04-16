@@ -24,6 +24,8 @@ import { Menu } from '@/types/general'
 import Link from 'next/link'
 import { BiFoodMenu } from 'react-icons/bi'
 import { FaRegFilePdf } from 'react-icons/fa6'
+import { useState } from 'react'
+import ConfirmDialog from '@/components/utility/confirm-dialog'
 
 interface MenuCardProps {
   menu: Menu
@@ -38,6 +40,7 @@ export const MenuCard = ({
   openEditMenu,
   handleDelete,
 }: MenuCardProps) => {
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const categories = Array.isArray(menu.content) ? menu.content : []
   const totalItems = categories.reduce(
     (acc: number, cat: Record<string, unknown>) =>
@@ -143,9 +146,20 @@ export const MenuCard = ({
                 label: 'Elimina',
                 icon: <Trash className="w-4 h-4 group-hover:text-red-500!" />,
                 variant: 'destructive',
-                action: () => handleDelete(menu.id),
+                action: () => setDeleteOpen(true),
               },
             ]}
+          />
+
+          <ConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title="Elimina Menu"
+            description={`Sei sicuro di voler eliminare "${menu.name}"? Questa azione non può essere annullata.`}
+            confirmLabel="Elimina"
+            cancelLabel="Annulla"
+            variant="destructive"
+            onConfirm={() => handleDelete(menu.id)}
           />
         </div>
       </CardFooter>

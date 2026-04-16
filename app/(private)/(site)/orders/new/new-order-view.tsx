@@ -3,7 +3,7 @@
 import ReservationsFloorPlan from '@/components/reservations/reservations-floor-plan';
 import { useLocationStore } from '@/store/location-store';
 import { Booking } from '@/types/general';
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ResponsiveDialog } from '@/components/utility/responsive-dialog';
 import { TableOrdersPanel } from '@/components/reservations/table-orders-panel';
 import { Button } from '@/components/ui/button';
@@ -87,7 +87,7 @@ const NewOrderView = () => {
     <div className="flex flex-col h-full">
       <div className="flex-1 relative">
         <ReservationsFloorPlan
-          variant='reservations'
+          variant='orders'
           locationId={selectedLocationId}
           selectedDate={selectedDate}
           bookings={data.filter(booking => {

@@ -461,8 +461,9 @@ CREATE TABLE public.push_tokens (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   organization_id uuid NOT NULL,
   profile_id uuid,
-  token text NOT NULL,
+  token text NOT NULL,         -- ExponentPushToken for ios/android; endpoint URL for web
   platform text NOT NULL CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])),
+  subscription jsonb DEFAULT NULL, -- Full PushSubscription JSON for web (NULL for ios/android)
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT push_tokens_pkey PRIMARY KEY (id),

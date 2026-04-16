@@ -45,11 +45,10 @@ export const TEMPLATE_TYPE_CONFIG: Record<WabaTemplateType, TemplateTypeConfig> 
   },
   booking_reminder: {
     label: "Reminder Prenotazione",
-    description: "Inviato 24h prima della prenotazione al posto del template di sistema. (In sviluppo)",
+    description: "Inviato 24h prima della prenotazione al posto del template di sistema.",
     costPerConv: "€0.0248/conv",
     requiredRoles: ["booking_confirm", "booking_cancel"],
     icon: CalendarClock,
-    warning: "Funzionalità in sviluppo — il template verrà salvato ma non sarà usato automaticamente.",
   },
   service_update: {
     label: "Aggiornamento Servizio",

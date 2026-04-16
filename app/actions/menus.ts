@@ -57,6 +57,7 @@ export async function createMenu(
   }
 
   revalidatePath(PATHS.SETTINGS);
+  revalidatePath('/menus-management');
   return ok();
 }
 
@@ -79,6 +80,8 @@ export async function updateMenu(
   if (error) return fail("Impossibile aggiornare il menù");
 
   revalidatePath(PATHS.SETTINGS);
+  revalidatePath('/menus-management');
+  revalidatePath('/m', 'layout');
   return ok();
 }
 
@@ -114,6 +117,7 @@ export async function deleteMenu(menuId: string) {
   if (error) return fail("Impossibile eliminare il menù");
 
   revalidatePath(PATHS.SETTINGS);
+  revalidatePath('/menus-management');
   return ok();
 }
 

@@ -350,6 +350,7 @@ export default function LimitsView({
   const totalWa = effectiveWaCap
   const totalMenus = limits?.max_menus ?? 5
   const totalZones = limits?.max_zones ?? 3
+  const totalBotTemplates = billingTier === 'business' ? 20 : billingTier === 'growth' ? 12 : 5
   const baseKbChars = BASE_KB_CHARS_BY_TIER[billingTier] ?? DEFAULT_BASE_KB_CHARS
   const totalKbChars = baseKbChars + addonsConfig.extra_kb_chars
 
@@ -404,12 +405,24 @@ export default function LimitsView({
         />
 
         <LimitCard
-          label="Contatti Automatizzati AI"
-          usedLabel={`${usage.contactsWa} / ${totalWa}`}
-          baseLimit={limits?.wa_contacts ?? 400}
-          addonExtra={addonsConfig.extra_contacts_wa}
-          usedPct={pct(usage.contactsWa, totalWa)}
-          addonUnit="contatti"
+          variant="double"
+          label="Limiti Whatsapp"
+          items={[
+            {
+              label: "Contatti automatizzati",
+              usedLabel: `${usage.contactsWa} / ${totalWa}`,
+              baseLimit: limits?.wa_contacts ?? 400,
+              addonExtra: addonsConfig.extra_contacts_wa,
+              usedPct: pct(usage.contactsWa, totalWa),
+            },
+            {
+              label: "Template personalizzati",
+              usedLabel: `${usage.botTemplates} / ${totalBotTemplates}`,
+              baseLimit: totalBotTemplates,
+              addonExtra: 0,
+              usedPct: pct(usage.botTemplates, totalBotTemplates),
+            },
+          ]}
           tooltipText='Indica il numero di contatti WhatsApp che possono essere gestiti con funzionalità AI come Smart Reply e Bot AI.'
         />
 
@@ -425,7 +438,7 @@ export default function LimitsView({
 
         <LimitCard
           variant="double"
-          label="Layout Ristorante"
+          label="Limiti globali"
           items={[
             {
               label: "Mappe Tavoli",

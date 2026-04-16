@@ -69,3 +69,45 @@ self.addEventListener('fetch', (event) => {
     )
   )
 })
+
+// ── Push ─────────────────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = { title: 'Smartables', body: '', data: {} }
+  try {
+    data = event.data?.json() ?? data
+  } catch {
+    data.body = event.data?.text() ?? ''
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png',
+      data: data.data ?? {},
+    })
+  )
+})
+
+// ── Notification click ────────────────────────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+
+  const link = event.notification.data?.link ?? '/home'
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Focus existing window if open
+        for (const client of windowClients) {
+          if ('focus' in client) {
+            client.navigate(link)
+            return client.focus()
+          }
+        }
+        // Otherwise open a new window
+        return self.clients.openWindow(link)
+      })
+  )
+})

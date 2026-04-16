@@ -161,7 +161,7 @@ export async function createMenuItem(
     name: string;
     price: number;
     description?: string;
-    image_url?: string;
+    image_url?: string | null;
     is_available?: boolean;
     is_new?: boolean;
     allergens?: string[];
@@ -195,6 +195,7 @@ export async function createMenuItem(
     await saveMenuContent(menuId, content);
 
     revalidatePath(PATHS.SETTINGS);
+    revalidatePath(`/menus-management/${menuId}`);
     return { success: true };
   } catch (e) {
     console.error(e);
@@ -209,7 +210,7 @@ export async function updateMenuItem(
     name?: string;
     description?: string;
     price?: number;
-    image_url?: string;
+    image_url?: string | null;
     is_available?: boolean;
     is_new?: boolean;
     allergens?: string[];
@@ -231,7 +232,7 @@ export async function updateMenuItem(
           if (data.name !== undefined) item.name = data.name;
           if (data.description !== undefined) item.description = data.description;
           if (data.price !== undefined) item.price = data.price;
-          if (data.image_url !== undefined) item.image_url = data.image_url;
+          if ('image_url' in data) item.image_url = data.image_url ?? null;
           if (data.is_available !== undefined) item.is_available = data.is_available;
           if (data.is_new !== undefined) item.is_new = data.is_new;
           if (data.allergens !== undefined) item.allergens = data.allergens;
@@ -248,6 +249,7 @@ export async function updateMenuItem(
     await saveMenuContent(menuId, content);
 
     revalidatePath(PATHS.SETTINGS);
+    revalidatePath(`/menus-management/${menuId}`);
     return { success: true };
   } catch (e) {
     console.error(e);
@@ -281,6 +283,7 @@ export async function deleteMenuItem(menuId: string, itemId: string) {
     await saveMenuContent(menuId, content);
 
     revalidatePath(PATHS.SETTINGS);
+    revalidatePath(`/menus-management/${menuId}`);
     return { success: true };
   } catch (e) {
     console.error(e);

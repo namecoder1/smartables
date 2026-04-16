@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageUpload } from './image-upload'
 import { createMenuItem, deleteMenuItem, updateMenuItem } from '@/app/actions/menu-editor'
-import { trackStorageUpload } from '@/app/actions/storage'
+import { trackStorageUpload, deleteStorageFileAndTrack } from '@/app/actions/storage'
 import { createClient } from '@/utils/supabase/client'
 import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
@@ -66,6 +66,7 @@ export function MenuItemDialog({
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (open) {
@@ -78,6 +79,7 @@ export function MenuItemDialog({
         setSelectedAllergens(item.allergens ?? [])
         setSelectedTags(item.tags ?? [])
         setExistingImageUrl(item.image_url ?? undefined)
+        setOriginalImageUrl(item.image_url ?? undefined)
         setImageFile(null)
       } else {
         setName('')
@@ -88,6 +90,7 @@ export function MenuItemDialog({
         setSelectedAllergens([])
         setSelectedTags([])
         setExistingImageUrl(undefined)
+        setOriginalImageUrl(undefined)
         setImageFile(null)
       }
     }
@@ -101,7 +104,13 @@ export function MenuItemDialog({
 
     setLoading(true)
     try {
-      let finalImageUrl = existingImageUrl
+      let finalImageUrl: string | null | undefined = existingImageUrl
+
+      // Image explicitly removed (no new file, preview cleared, but original existed)
+      if (!imageFile && existingImageUrl === undefined && originalImageUrl) {
+        await deleteStorageFileAndTrack(originalImageUrl, 'menu-images')
+        finalImageUrl = null
+      }
 
       if (imageFile) {
         const timestamp = Date.now()
@@ -121,6 +130,10 @@ export function MenuItemDialog({
 
         finalImageUrl = publicUrl
         await trackStorageUpload(imageFile.size)
+
+        if (originalImageUrl) {
+          await deleteStorageFileAndTrack(originalImageUrl, 'menu-images')
+        }
       }
 
       const payload = {
@@ -131,7 +144,7 @@ export function MenuItemDialog({
         is_new: isNew,
         allergens: selectedAllergens,
         tags: selectedTags,
-        image_url: finalImageUrl
+        image_url: finalImageUrl ?? null
       }
 
       if (item) {

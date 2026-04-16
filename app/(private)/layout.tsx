@@ -12,6 +12,7 @@ import { PageTitleProvider } from "@/components/providers/page-title-context";
 import { NavDataProvider } from "@/components/providers/nav-context";
 import { FeedbackWidget } from "@/components/private/feedback-widget";
 import { InstallPWABanner } from "@/components/private/install-pwa-banner";
+import { PushSubscription } from "@/components/private/push-subscription";
 
 export const metadata = {
   title: {
@@ -103,6 +104,7 @@ export default async function PrivateLayout({
                     <FeedbackWidget />
                   </main>
                   <InstallPWABanner />
+                  <PushSubscription />
                 </div>
               </div>
             </NavDataProvider>

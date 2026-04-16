@@ -21,7 +21,7 @@ const NoItems = ({
         <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-4xl">
           {icon}
         </div>
-        <h3 className="text-lg font-semibold mb-1">{title}</h3>
+        <h3 className="text-lg text-center font-semibold mb-1">{title}</h3>
         <p className={cn('text-muted-foreground text-center max-w-xs sm:max-w-md', button ? 'mb-6' : 'mb-0')}>
           {description}
         </p>
@@ -35,7 +35,7 @@ const NoItems = ({
       <div className="bg-primary/10 border-2 border-primary/30 p-4 mb-4 rounded-4xl">
         {icon}
       </div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <h3 className="text-xl text-center font-semibold mb-2">{title}</h3>
       <p className={cn('text-muted-foreground text-center max-w-md', button ? 'mb-6' : 'mb-0')}>
         {description}
       </p>

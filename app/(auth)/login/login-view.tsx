@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import PasswordInput from '@/components/ui/password-input'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useState } from 'react'
+import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { motion } from 'motion/react'
 import { Loader2 } from 'lucide-react'
 
@@ -18,8 +19,10 @@ const LoginView = () => {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = async (formData: FormData) => {
-    setIsLoading(true)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    flushSync(() => setIsLoading(true))
     await login(formData);
     setTimeout(() => setIsLoading(false), 2000); // Fail-safe reset
   }
@@ -39,7 +42,7 @@ const LoginView = () => {
       </div>
 
       <div className="grid gap-6">
-        <form action={handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>

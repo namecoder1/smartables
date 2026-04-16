@@ -138,12 +138,21 @@ export async function removeCollaborators(ids: string[]) {
     return { error: "Non puoi rimuovere il proprietario dell'organizzazione" };
   }
 
-  const { error } = await supabaseAdmin
+  // Delete profiles rows first (FK constraint may exist on auth.users)
+  const { error: profilesError } = await supabaseAdmin
     .from("profiles")
-    .update({ organization_id: null, role: null })
+    .delete()
     .in("id", ids);
 
-  if (error) return { error: "Errore nella rimozione dei collaboratori" };
+  if (profilesError) return { error: "Errore nella rimozione dei collaboratori" };
+
+  // Delete users from auth.users via admin API
+  const deleteResults = await Promise.all(
+    ids.map((id) => supabaseAdmin.auth.admin.deleteUser(id))
+  );
+
+  const authError = deleteResults.find((r) => r.error);
+  if (authError?.error) return { error: "Errore nell'eliminazione degli account utente" };
 
   revalidatePath(PATHS.MANAGE_COLLABORATORS);
   return { success: true };

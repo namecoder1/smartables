@@ -63,9 +63,9 @@ export function ResponsiveDialog({
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerContent className="max-h-[96vh]">
         <DrawerHeader className="text-left items-start border-b-2 ">
-          <DrawerTitle>{title}</DrawerTitle>
+          <DrawerTitle className="text-lg">{title}</DrawerTitle>
           {description && (
-            <DrawerDescription>
+            <DrawerDescription className="text-left">
               {description}
             </DrawerDescription>
           )}

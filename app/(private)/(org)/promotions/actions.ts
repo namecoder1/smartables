@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/supabase-helpers";
 import { revalidatePath } from "next/cache";
 import { ok, okWith, fail, type ActionResult } from "@/lib/action-response";
 import { PATHS } from "@/lib/revalidation-paths";
+import { deleteFileFromStorage } from "@/app/actions/menu-editor";
 
 export async function getPromotions(organizationId: string) {
   const supabase = await createClient();
@@ -45,7 +46,7 @@ export async function createPromotion(
   data: {
     name: string;
     description?: string;
-    image_url?: string;
+    image_url?: string | null;
     type: string;
     value?: number | null;
     all_locations: boolean;
@@ -154,13 +155,23 @@ export async function updatePromotion(
 export async function deletePromotion(id: string): Promise<ActionResult> {
   const authCheck = await requireAuth();
   if (!authCheck.success) return fail("Non autorizzato");
-  const { supabase } = authCheck;
+  const { supabase, organizationId } = authCheck;
+
+  const { data: promo } = await supabase
+    .from("promotions")
+    .select("image_url")
+    .eq("id", id)
+    .single();
 
   const { error } = await supabase.from("promotions").delete().eq("id", id);
 
   if (error) {
     console.error("Error deleting promotion:", error);
     return fail("Failed to delete promotion");
+  }
+
+  if (promo?.image_url) {
+    await deleteFileFromStorage(promo.image_url, "promotion-images", supabase, organizationId);
   }
 
   revalidatePath(PATHS.PROMOTIONS, "page");

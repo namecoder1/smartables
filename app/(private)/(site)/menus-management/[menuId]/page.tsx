@@ -2,6 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import MenuEditor from './menu-editor'
 
+export const dynamic = 'force-dynamic'
+
 interface PageProps {
   params: Promise<{
     menuId: string
